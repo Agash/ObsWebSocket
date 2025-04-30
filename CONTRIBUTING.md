@@ -1,6 +1,6 @@
-﻿# Contributing to ObsWebSocket.Net
+﻿# Contributing to ObsWebSocket.Core
 
-First off, thank you for considering contributing to ObsWebSocket.Net! 🎉 Your help is appreciated, whether it's reporting bugs, suggesting features, or writing code.
+First off, thank you for considering contributing to ObsWebSocket.Core! 🎉 Your help is appreciated, whether it's reporting bugs, suggesting features, or writing code.
 
 This document provides guidelines for contributing to the project.
 
@@ -21,7 +21,7 @@ When creating a bug report, please include as much detail as possible:
 *   **Expected behavior:** What you thought would happen.
 *   **Actual behavior:** What actually happened.
 *   **Version information:**
-    *   ObsWebSocket.Net version (or commit hash if building from source)
+    *   ObsWebSocket.Core version (or commit hash if building from source)
     *   OBS Studio version
     *   obs-websocket plugin version (if using OBS < 28, though this library targets v5+)
     *   .NET version (`dotnet --version`)
@@ -53,7 +53,7 @@ To contribute code, you'll need to set up a local development environment:
 2.  **Clone the Repository:**
     ```bash
     git clone https://github.com/Agash/ObsWebSocket.git
-    cd ObsWebSocket.Net
+    cd ObsWebSocket
     ```
 3.  **Build the Solution:**
     ```bash

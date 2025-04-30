@@ -1,7 +1,7 @@
 ﻿namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Represents errors specific to the ObsWebSocket.Net library or the OBS WebSocket protocol interaction.
+/// Represents errors specific to the ObsWebSocket.Core library or the OBS WebSocket protocol interaction.
 /// </summary>
 [Serializable]
 public class ObsWebSocketException : Exception

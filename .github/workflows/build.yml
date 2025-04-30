@@ -1,7 +1,7 @@
 # GitHub Actions workflow for building, testing, packing, and publishing the ObsWebSocket.Core library.
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: Build, Test, and Publish ObsWebSocket.Net
+name: Build, Test, and Publish ObsWebSocket.Core
 
 on:
   workflow_dispatch: # Allow running the workflow manually from the GitHub UI
