@@ -7,7 +7,7 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <Description>Source Generators for ObsWebSocket.Net library.</Description>
+    <Description>Source Generators for ObsWebSocket.Core library.</Description>
     <!-- Enable recommended Roslyn analyzer rules -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

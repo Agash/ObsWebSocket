@@ -1,4 +1,4 @@
-﻿# ObsWebSocket.Net: Your Modern C# Bridge to OBS! 🚀🎬✨
+﻿# ObsWebSocket.Core: Your Modern C# Bridge to OBS! 🚀🎬✨
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/Agash/ObsWebSocket/build.yml?branch=main&style=flat-square&logo=github&logoColor=white)](https://github.com/Agash/ObsWebSocket/actions)
 [![NuGet Version](https://img.shields.io/nuget/v/ObsWebSocket.Core.svg?style=flat-square&logo=nuget&logoColor=white)](https://www.nuget.org/packages/ObsWebSocket.Core/)
@@ -8,7 +8,7 @@ Hey OBS Power Users, Stream Tool Crafters, and Automation Fans! 👋
 
 Ready to take control of OBS Studio directly from your C#/.NET applications? Want to build custom stream dashboards, trigger actions based on game events, automate scene switching, or create unique chat interactions linked to OBS? You've come to the right place! 😎
 
-**ObsWebSocket.Net** is a sleek, modern, and developer-friendly .NET 9 library built for interacting with the **OBS Studio WebSocket API v5**. Forget wrestling with raw WebSocket messages – this library provides a clean, asynchronous, and strongly-typed way to talk to OBS.
+**ObsWebSocket.Core** is a sleek, modern, and developer-friendly .NET 9 library built for interacting with the **OBS Studio WebSocket API v5**. Forget wrestling with raw WebSocket messages – this library provides a clean, asynchronous, and strongly-typed way to talk to OBS.
 
 Built with the latest C# 13/.NET 9 goodies, including source generators that build the API directly from the official `protocol.json`, ensuring you're always aligned with the latest OBS WebSocket features! 🔧
 
@@ -39,12 +39,12 @@ Perfect for:
 
 ## Get Started Fast 💨
 
-Using `ObsWebSocket.Net` with .NET's Generic Host and Dependency Injection is the smoothest path.
+Using `ObsWebSocket.Core` with .NET's Generic Host and Dependency Injection is the smoothest path.
 
 **1. Install the Package:**
 
 ```bash
-dotnet add package ObsWebSocket.Net
+dotnet add package ObsWebSocket.Core
 ```
 
 **2. Configure `appsettings.json`:**

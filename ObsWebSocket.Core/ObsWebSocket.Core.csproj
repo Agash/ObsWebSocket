@@ -6,7 +6,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>ObsWebSocket.Core</AssemblyName>
     <RootNamespace>ObsWebSocket.Core</RootNamespace>
-    <PackageId>ObsWebSocket.Net</PackageId>
+    <PackageId>ObsWebSocket.Core</PackageId>
     <Authors>Agash</Authors>
     <Company>Agash</Company>
     <Description>A modern .NET 9 / C# 13 library for interacting with the OBS Studio WebSocket v5 API, featuring source generation for protocol types and DI support.</Description>
