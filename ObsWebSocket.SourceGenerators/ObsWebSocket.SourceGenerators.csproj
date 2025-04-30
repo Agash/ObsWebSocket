@@ -8,9 +8,9 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <Description>Source Generators for ObsWebSocket.Core library.</Description>
-    <!-- Enable recommended Roslyn analyzer rules -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference
@@ -22,8 +22,11 @@
       Include="Microsoft.CodeAnalysis.Analyzers"
       Version="3.11.0"
       PrivateAssets="all"
-    />
+    >
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
+  <!-- Package References necessary for the Source Generator packaging AND inline task variable -->
   <ItemGroup Label="Package References">
     <PackageReference
       Include="System.Text.Json"
@@ -79,11 +82,19 @@
       GeneratePathProperty="true"
       PrivateAssets="all"
     />
+    <PackageReference
+      Include="System.Net.Http"
+      Version="4.3.4"
+      PrivateAssets="all"
+      GeneratePathProperty="true"
+    />
   </ItemGroup>
   <PropertyGroup>
     <GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
+    <ResolveNuGetPackages>true</ResolveNuGetPackages>
   </PropertyGroup>
-  <Target Name="GetDependencyTargetPaths">
+  <!-- Target to copy dependencies for Source Generator Packaging -->
+  <Target Name="GetDependencyTargetPaths" AfterTargets="ResolvePackageAssets">
     <ItemGroup>
       <TargetPathWithTargetPlatformMoniker
         Include="$(PKGSystem_Text_Json)\lib\netstandard2.0\*.dll"
@@ -121,10 +132,107 @@
         Include="$(PKGSystem_IO_Pipelines)\lib\netstandard2.0\*.dll"
         IncludeRuntimeDependency="false"
       />
+      <!-- Keep this: It's needed to package the dependency with the generator -->
+      <TargetPathWithTargetPlatformMoniker
+        Include="$(PKGSystem_Net_Http)\lib\netstandard2.0\*.dll"
+        IncludeRuntimeDependency="false"
+      />
     </ItemGroup>
   </Target>
   <!-- Files for Analyzer Release Tracking (RS2008) -->
   <ItemGroup>
     <AdditionalFiles Include="AnalyzerReleases.*.md" />
   </ItemGroup>
+  <!-- Define the inline task -->
+  <UsingTask
+    TaskName="DownloadFileTask"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll"
+  >
+    <ParameterGroup />
+    <Task>
+      <Reference Include="System.Net.Http" />
+      <Reference Include="netstandard" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Net.Http" />
+      <Using Namespace="System.Threading.Tasks" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        string url = "https://raw.githubusercontent.com/obsproject/obs-websocket/master/docs/generated/protocol.json";
+        string outputPath = Path.Combine("..", "protocol.json");
+        string fullOutputPath = Path.GetFullPath(outputPath);
+
+        string directory = Path.GetDirectoryName(fullOutputPath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Log.LogMessage(MessageImportance.Normal, "Creating directory: " + directory);
+            Directory.CreateDirectory(directory);
+        }
+
+        try
+        {
+            Log.LogMessage(MessageImportance.High, "Attempting to download protocol.json from " + url + " to " + fullOutputPath);
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ObsWebSocket.Core-Build/1.0 (MSBuild Task)");
+                client.Timeout = TimeSpan.FromSeconds(30);
+                string content = client.GetStringAsync(url).Result;
+                File.WriteAllText(fullOutputPath, content);
+                Log.LogMessage(MessageImportance.High, "Successfully downloaded and saved protocol.json to " + fullOutputPath);
+            }
+        }
+        catch (AggregateException ae)
+        {
+            HttpRequestException httpEx = ae.InnerException as HttpRequestException;
+            if (httpEx != null)
+            {
+                // REMOVED StatusCode from format string
+                Log.LogError(string.Format("HTTP Error downloading protocol.json: {0}", httpEx.Message));
+                Log.LogErrorFromException(httpEx, true, true, null);
+            }
+            else
+            {
+                Log.LogError("Aggregate error during download.");
+                Log.LogErrorFromException(ae, true, true, null);
+            }
+            Success = false;
+            return false;
+        }
+        catch (HttpRequestException httpEx)
+        {
+            // REMOVED StatusCode from format string
+            Log.LogError(string.Format("HTTP Error downloading protocol.json: {0}", httpEx.Message));
+            Log.LogErrorFromException(httpEx, true, true, null);
+            Success = false;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError("Failed to download protocol.json.");
+            Log.LogErrorFromException(ex, true, true, null);
+            Success = false;
+            return false;
+        }
+        // No 'return true;' here
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  <!-- Target to run the download task -->
+  <Target
+    Name="DownloadProtocolFile"
+    BeforeTargets="CoreCompile"
+    Outputs="..\protocol.json"
+    Condition="!Exists('..\protocol.json')"
+  >
+    <Message Text="protocol.json not found or condition met. Downloading..." Importance="high" />
+    <DownloadFileTask />
+  </Target>
+  <!-- Ensure the download happens before the generator dependencies are resolved -->
+  <!-- This might be slightly redundant with BeforeTargets but can help enforce order -->
+  <PropertyGroup>
+    <CoreCompileDependsOn>DownloadProtocolFile;$(CoreCompileDependsOn)</CoreCompileDependsOn>
+  </PropertyGroup>
 </Project>
