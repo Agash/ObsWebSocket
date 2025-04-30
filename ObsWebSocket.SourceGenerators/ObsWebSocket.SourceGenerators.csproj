@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -131,8 +131,10 @@
     <AdditionalFiles Include="AnalyzerReleases.*.md" />
   </ItemGroup>
   <PropertyGroup>
+    <!-- Define properties for URL and Output Path -->
     <_ProtocolJsonUrl>https://raw.githubusercontent.com/obsproject/obs-websocket/master/docs/generated/protocol.json</_ProtocolJsonUrl>
     <_ProtocolJsonOutputPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\protocol.json'))</_ProtocolJsonOutputPath>
+    <_ProtocolJsonOutputDirectory>$([System.IO.Path]::GetDirectoryName('$(_ProtocolJsonOutputPath)'))</_ProtocolJsonOutputDirectory>
   </PropertyGroup>
   <Target
     Name="DownloadProtocolFile"
@@ -144,20 +146,23 @@
       Text="protocol.json not found at '$(_ProtocolJsonOutputPath)'. Downloading from $(_ProtocolJsonUrl)..."
       Importance="high"
     />
-    <Exec
-      Command="curl '$(_ProtocolJsonUrl)' -o '$(_ProtocolJsonOutputPath)'"
-      ConsoleToMSBuild="true"
-      ContinueOnError="false"
+    <DownloadFile
+      SourceUrl="$(_ProtocolJsonUrl)"
+      DestinationFolder="$(_ProtocolJsonOutputDirectory)"
+      DestinationFileName="protocol.json"
+      SkipUnchangedFiles="false"
+      Retries="3"
+    >
+      <Output TaskParameter="DownloadedFile" ItemName="DownloadedProtocolFileItem" />
+    </DownloadFile>
+    <Message
+      Text="protocol.json downloaded to @(DownloadedProtocolFileItem)."
+      Importance="high"
+      Condition="Exists('%(DownloadedProtocolFileItem.Identity)')"
     />
-    <Message Text="protocol.json download attempt finished." Importance="high" />
-    <!-- Verify download success (optional but good practice) -->
     <Error
-      Text="Failed to download protocol.json. Check curl command output and network connection."
-      Condition="!Exists('$(_ProtocolJsonOutputPath)') AND '$(OS)' != 'Windows_NT'"
-    />
-    <Warning
-      Text="Could not verify protocol.json download on Windows using curl. Ensure curl is in PATH."
-      Condition="!Exists('$(_ProtocolJsonOutputPath)') AND '$(OS)' == 'Windows_NT'"
+      Text="Failed to download protocol.json using DownloadFile task. URL: $(_ProtocolJsonUrl)"
+      Condition="!Exists('$(_ProtocolJsonOutputPath)')"
     />
   </Target>
 </Project>
