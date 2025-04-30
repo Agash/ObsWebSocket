@@ -3,8 +3,29 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Description>Core library for interacting with OBS Studio WebSocket v5 API.</Description>
     <LangVersion>latest</LangVersion>
+    <AssemblyName>ObsWebSocket.Core</AssemblyName>
+    <RootNamespace>ObsWebSocket.Core</RootNamespace>
+    <PackageId>ObsWebSocket.Net</PackageId>
+    <Authors>Agash</Authors>
+    <Company>Agash</Company>
+    <Description>A modern .NET 9 / C# 13 library for interacting with the OBS Studio WebSocket v5 API, featuring source generation for protocol types and DI support.</Description>
+    <Copyright>Copyright (c) Agash 2025</Copyright>
+    <PackageProjectUrl>https://github.com/Agash/ObsWebSocket</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Agash/ObsWebSocket.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>obs obs-studio websocket obs-websocket obswebsocket obs-websocket-dotnet dotnet csharp websocket-client stream automation</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference
@@ -24,12 +45,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <!-- Include protocol.json for Source Generator -->
   <ItemGroup>
-    <!-- Adjust the path to where your protocol.json is located -->
     <AdditionalFiles Include="..\protocol.json" Link="protocol.json" />
   </ItemGroup>
-  <!-- Reference the Source Generator Project -->
   <ItemGroup>
     <ProjectReference
       Include="..\ObsWebSocket.SourceGenerators\ObsWebSocket.SourceGenerators.csproj"
@@ -45,7 +63,6 @@
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>ObsWebSocket.Tests</_Parameter1>
-      <!-- Name of the test assembly -->
     </AssemblyAttribute>
   </ItemGroup>
 </Project>
