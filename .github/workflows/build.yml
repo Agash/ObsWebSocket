@@ -1,17 +1,17 @@
-# GitHub Actions workflow for building, testing, and packing the ObsWebSocket.Net library.
+# GitHub Actions workflow for building, testing, packing, and publishing the ObsWebSocket.Core library.
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: Build and Test ObsWebSocket.Net
+name: Build, Test, and Publish ObsWebSocket.Net
 
 on:
   workflow_dispatch: # Allow running the workflow manually from the GitHub UI
   push:
-    branches: [ master ] # Run the workflow when pushing to the master branch
+    branches: [ master ] # Run build & test on pushes to master
   pull_request:
-    branches: [ master ] # Run the workflow for pull requests targeting master
+    branches: [ master ] # Run build & test on PRs to master
   release:
     types:
-      - published # Run the workflow when a new GitHub release is published
+      - published # Trigger build, test, pack AND publish when a release is PUBLISHED
 
 env:
   # Prevent the .NET SDK from displaying telemetry welcome messages/banners
@@ -23,7 +23,7 @@ env:
 
 defaults:
   run:
-    shell: pwsh # Use PowerShell for consistency across platforms if needed, good default
+    shell: pwsh # Use PowerShell
 
 jobs:
   build_and_test:
@@ -42,10 +42,9 @@ jobs:
         dotnet-version: '9.x' # Use the specific .NET 9 SDK
 
     - name: Restore dependencies
-      run: dotnet restore ObsWebSocket.sln # Restore for the entire solution
+      run: dotnet restore ObsWebSocket.sln
 
     - name: Build Solution
-      # Build the entire solution to ensure everything compiles, including Source Generators
       run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
 
     - name: Run Unit Tests
@@ -58,35 +57,35 @@ jobs:
         --verbosity normal
         --filter "TestCategory!=Integration"
 
-    - name: Pack Library (on master push only)
-      # Only run the pack step on pushes to the master branch
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # --- Packing is now done on push to master OR on release event ---
+    - name: Pack Library (on master push or release)
+      # Pack if it's a push to master OR if the event is a release
+      if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
       run: >
         dotnet pack ObsWebSocket.Core/ObsWebSocket.Core.csproj
         --configuration Release
         --no-build
         --output ${{ env.NuGetDirectory }}
 
-    - name: Upload NuGet Package Artifact (on master push only)
-      # Only upload the artifact if the pack step ran (i.e., on push to master)
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # --- Upload artifact on push to master OR on release event ---
+    - name: Upload NuGet Package Artifact (on master push or release)
+      # Upload if it's a push to master OR if the event is a release (so publish job can get it)
+      if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
       uses: actions/upload-artifact@v4
       with:
-        name: nuget-package # Artifact name
-        if-no-files-found: error # Fail if the package wasn't created
-        retention-days: 7 # Keep artifact for 7 days
-        path: ${{ env.NuGetDirectory }}/*.nupkg # Path to the NuGet package(s)
+        name: nuget-package
+        if-no-files-found: error
+        retention-days: 7
+        path: ${{ env.NuGetDirectory }}/*.nupkg
 
   publish_nuget:
     name: Publish NuGet Package
-    # This job depends on the build_and_test job completing successfully.
-    needs: [build_and_test]
-    # IMPORTANT: This condition ensures publishing only happens when a Release is *published* in GitHub.
-    # This prevents publishing on draft releases or simple tags.
+    needs: [build_and_test] # Depends only on build job which now creates the artifact on release
+    # Trigger ONLY on published releases
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Permission to download artifacts from the build job
+      contents: read # Needed for download-artifact
 
     steps:
     - name: Download NuGet Package Artifact
@@ -97,12 +96,13 @@ jobs:
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
-      # Uses dotnet-version from global.json or defaults if not specified
+
+    - name: Display Package Information
+      run: Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg | ForEach-Object { $_.FullName }
 
     - name: Publish NuGet package to NuGet.org
       run: |
         foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
             Write-Host "Pushing package: $($file.FullName)"
-            # Use --skip-duplicate to avoid errors if the exact version already exists (e.g., during workflow retries)
-            dotnet nuget push $file --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+            dotnet nuget push $file --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
         }
