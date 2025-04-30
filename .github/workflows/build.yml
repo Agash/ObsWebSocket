@@ -9,6 +9,9 @@ on:
     branches: [ master ] # Run the workflow when pushing to the master branch
   pull_request:
     branches: [ master ] # Run the workflow for pull requests targeting master
+  release:
+    types:
+      - published # Run the workflow when a new GitHub release is published
 
 env:
   # Prevent the .NET SDK from displaying telemetry welcome messages/banners
