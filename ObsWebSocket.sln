@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsWebSocket.Core", "ObsWebSocket.Core\ObsWebSocket.Core.csproj", "{826830C5-648F-4279-98FF-C1358E8E89EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsWebSocket.SourceGenerators", "ObsWebSocket.SourceGenerators\ObsWebSocket.SourceGenerators.csproj", "{A1CC6A2A-CB70-41D2-A9B5-37D5D6F35F51}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsWebSocket.Tests", "ObsWebSocket.Tests\ObsWebSocket.Tests.csproj", "{5AA95762-8FC0-4F92-996D-7EDFEE8D2592}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsWebSocket.Example", "ObsWebSocket.Example\ObsWebSocket.Example.csproj", "{8B73365F-A31D-4F3D-5139-545126A1720D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.github\workflows\build.yml = .github\workflows\build.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{826830C5-648F-4279-98FF-C1358E8E89EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{826830C5-648F-4279-98FF-C1358E8E89EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{826830C5-648F-4279-98FF-C1358E8E89EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{826830C5-648F-4279-98FF-C1358E8E89EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1CC6A2A-CB70-41D2-A9B5-37D5D6F35F51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1CC6A2A-CB70-41D2-A9B5-37D5D6F35F51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1CC6A2A-CB70-41D2-A9B5-37D5D6F35F51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1CC6A2A-CB70-41D2-A9B5-37D5D6F35F51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AA95762-8FC0-4F92-996D-7EDFEE8D2592}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AA95762-8FC0-4F92-996D-7EDFEE8D2592}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AA95762-8FC0-4F92-996D-7EDFEE8D2592}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AA95762-8FC0-4F92-996D-7EDFEE8D2592}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B73365F-A31D-4F3D-5139-545126A1720D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B73365F-A31D-4F3D-5139-545126A1720D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B73365F-A31D-4F3D-5139-545126A1720D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B73365F-A31D-4F3D-5139-545126A1720D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A665D5BA-2D9E-4D71-8B5F-BC032560D10B}
+	EndGlobalSection
+EndGlobal

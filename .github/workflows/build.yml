@@ -1,0 +1,105 @@
+# GitHub Actions workflow for building, testing, and packing the ObsWebSocket.Net library.
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Build and Test ObsWebSocket.Net
+
+on:
+  workflow_dispatch: # Allow running the workflow manually from the GitHub UI
+  push:
+    branches: [ master ] # Run the workflow when pushing to the master branch
+  pull_request:
+    branches: [ master ] # Run the workflow for pull requests targeting master
+
+env:
+  # Prevent the .NET SDK from displaying telemetry welcome messages/banners
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  # Disable the .NET SDK logo banner
+  DOTNET_NOLOGO: true
+  # Define a directory for NuGet package output
+  NuGetDirectory: ${{ github.workspace}}/nuget
+
+defaults:
+  run:
+    shell: pwsh # Use PowerShell for consistency across platforms if needed, good default
+
+jobs:
+  build_and_test:
+    name: Build, Test, and Pack
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Required for MinVer to determine the version from Git history
+
+    - name: Setup .NET 9 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.x' # Use the specific .NET 9 SDK
+
+    - name: Restore dependencies
+      run: dotnet restore ObsWebSocket.sln # Restore for the entire solution
+
+    - name: Build Solution
+      # Build the entire solution to ensure everything compiles, including Source Generators
+      run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
+
+    - name: Run Unit Tests
+      # Run tests specifically for the ObsWebSocket.Tests project
+      # Exclude integration tests which require a live OBS instance
+      run: >
+        dotnet test ObsWebSocket.Tests/ObsWebSocket.Tests.csproj
+        --configuration Release
+        --no-build
+        --verbosity normal
+        --filter "TestCategory!=Integration"
+
+    - name: Pack Library (on master push only)
+      # Only run the pack step on pushes to the master branch
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      run: >
+        dotnet pack ObsWebSocket.Core/ObsWebSocket.Core.csproj
+        --configuration Release
+        --no-build
+        --output ${{ env.NuGetDirectory }}
+
+    - name: Upload NuGet Package Artifact (on master push only)
+      # Only upload the artifact if the pack step ran (i.e., on push to master)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package # Artifact name
+        if-no-files-found: error # Fail if the package wasn't created
+        retention-days: 7 # Keep artifact for 7 days
+        path: ${{ env.NuGetDirectory }}/*.nupkg # Path to the NuGet package(s)
+
+  publish_nuget:
+    name: Publish NuGet Package
+    # This job depends on the build_and_test job completing successfully.
+    needs: [build_and_test]
+    # IMPORTANT: This condition ensures publishing only happens when a Release is *published* in GitHub.
+    # This prevents publishing on draft releases or simple tags.
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Permission to download artifacts from the build job
+
+    steps:
+    - name: Download NuGet Package Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package # Must match the upload artifact name
+        path: ${{ env.NuGetDirectory }}
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      # Uses dotnet-version from global.json or defaults if not specified
+
+    - name: Publish NuGet package to NuGet.org
+      run: |
+        foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
+            Write-Host "Pushing package: $($file.FullName)"
+            # Use --skip-duplicate to avoid errors if the exact version already exists (e.g., during workflow retries)
+            dotnet nuget push $file --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        }
