@@ -28,7 +28,7 @@ public interface IWebSocketMessageSerializer
     /// Deserializes an incoming message from a stream into its base structure.
     /// </summary>
     /// <remarks>
-    /// The returned object should be castable to `IncomingMessage<TData>` where `TData`
+    /// The returned object should be castable to `IncomingMessage&lt;TData&gt;` where `TData`
     /// depends on the serializer implementation (e.g., `JsonElement` for JSON, `object` for MessagePack).
     /// </remarks>
     /// <param name="messageStream">The stream containing the message data.</param>
@@ -43,7 +43,7 @@ public interface IWebSocketMessageSerializer
     /// Deserializes the raw payload data (e.g., JsonElement, object from MessagePack) into a specific target type.
     /// </summary>
     /// <typeparam name="TPayload">The target type to deserialize into.</typeparam>
-    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage<TData>.D field.</param>
+    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
     /// <returns>The deserialized payload object, or default if null or deserialization fails.</returns>
     TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
         where TPayload : class;
@@ -52,7 +52,7 @@ public interface IWebSocketMessageSerializer
     /// Deserializes the raw payload data into a specific target value type.
     /// </summary>
     /// <typeparam name="TPayload">The target value type to deserialize into.</typeparam>
-    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage<TData>.D field.</param>
+    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
     /// <returns>The deserialized payload value, or default if null or deserialization fails.</returns>
     TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
         where TPayload : struct;

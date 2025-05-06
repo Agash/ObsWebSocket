@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,7 @@ internal sealed partial class Worker(
     private static readonly JsonSerializerOptions s_serializerOptions = new()
     {
         WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
     // Store the *intended* subscription flags (initialized from options, updated by set-subs)
@@ -556,6 +558,9 @@ internal sealed partial class Worker(
                 );
                 return false;
 
+            case "get-all-filter-settings": // New Command
+                await GetAllFilterSettingsForSource(cancellationToken);
+                return false;
             // --- End of New Commands ---
 
             default:
@@ -581,6 +586,119 @@ internal sealed partial class Worker(
                 $"Source '{sourceName}' not found in scene '{sceneName}'."
             )
             : response.SceneItemId;
+    }
+
+    // Worker.cs - Replace the existing GetAllFilterSettingsForSource method
+
+    private async Task GetAllFilterSettingsForSource(CancellationToken cancellationToken)
+    {
+        // Note: The 'sourceName' parameter is no longer strictly needed by the core logic,
+        // but we keep it in the command signature for user context.
+        // We *could* potentially use it to filter filter kinds that are applicable
+        // to the source type, but GetSourceFilterKindListAsync doesn't support that.
+        _logger.LogInformation(
+            "Attempting to get default settings for all available filter kinds..."
+        );
+
+        List<string> availableFilterKinds;
+        Dictionary<string, JsonElement?> filterDefaultSettings = new(
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        // 1. Get all available filter kinds
+        try
+        {
+            GetSourceFilterKindListResponseData? response =
+                await _obsClient.GetSourceFilterKindListAsync(cancellationToken: cancellationToken);
+            if (response?.SourceFilterKinds is null || response.SourceFilterKinds.Count == 0)
+            {
+                _logger.LogWarning("Could not retrieve filter kinds from OBS.");
+                return;
+            }
+
+            availableFilterKinds = response.SourceFilterKinds;
+            _logger.LogInformation(
+                "Found {Count} available filter kinds.",
+                availableFilterKinds.Count
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get filter kind list.");
+            return;
+        }
+
+        // 2. Get default settings for each filter kind
+        _logger.LogInformation("Retrieving default settings for each filter kind...");
+        foreach (string filterKind in availableFilterKinds)
+        {
+            try
+            {
+                GetSourceFilterDefaultSettingsResponseData? defaultSettingsResponse =
+                    await _obsClient.GetSourceFilterDefaultSettingsAsync(
+                        new GetSourceFilterDefaultSettingsRequestData(filterKind),
+                        cancellationToken: cancellationToken
+                    );
+
+                if (defaultSettingsResponse != null)
+                {
+                    // Store default settings using the KIND as the key
+                    filterDefaultSettings[filterKind] =
+                        defaultSettingsResponse.DefaultFilterSettings;
+                    _logger.LogDebug(
+                        "Retrieved default settings for kind: {FilterKind}",
+                        filterKind
+                    );
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Received null response when getting default settings for filter kind '{FilterKind}'.",
+                        filterKind
+                    );
+                    // Store null or an empty element to indicate we tried but got nothing back
+                    filterDefaultSettings[filterKind] = null;
+                }
+            }
+            catch (ObsWebSocketException ex)
+            {
+                _logger.LogWarning(
+                    "Could not get default settings for filter kind '{FilterKind}'. OBS Error: {ErrorMessage}",
+                    filterKind,
+                    ex.Message
+                );
+                // Optionally store null or skip based on error type if needed
+                filterDefaultSettings[filterKind] = null; // Indicate failure
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unexpected error getting default settings for filter kind '{FilterKind}'.",
+                    filterKind
+                );
+                filterDefaultSettings[filterKind] = null; // Indicate failure
+            }
+        }
+
+        // 3. Output the results as JSON
+        _logger.LogInformation("Default settings retrieval complete. Outputting JSON...");
+        Console.WriteLine("\n--- FILTER DEFAULT SETTINGS START ---");
+        try
+        {
+            string jsonOutput = JsonSerializer.Serialize(filterDefaultSettings);
+            Console.WriteLine(jsonOutput);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to serialize filter default settings results to JSON.");
+            Console.WriteLine("{\"error\": \"Failed to serialize results.\"}");
+        }
+
+        Console.WriteLine("--- FILTER DEFAULT SETTINGS END ---\n");
+
+        _logger.LogInformation("Default filter settings retrieval finished.");
+        // No cleanup needed as we didn't add filters to the source
     }
 
     // --- Event Handlers ---

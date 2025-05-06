@@ -46,57 +46,111 @@ public sealed record SceneStub
 /// <remarks>Generated from heuristics based on obs-websocket protocol.</remarks>
 public sealed record SceneItemTransformStub
 {
+    /// <summary>
+    /// Position X value.
+    /// </summary>
     [JsonPropertyName("positionX")]
     public double? PositionX { get; init; }
 
+    /// <summary>
+    /// Position X value.
+    /// </summary>
     [JsonPropertyName("positionY")]
     public double? PositionY { get; init; }
 
+    /// <summary>
+    /// Rotation value.
+    /// </summary>
     [JsonPropertyName("rotation")]
     public double? Rotation { get; init; }
 
+    /// <summary>
+    /// Scale X value.
+    /// </summary>
     [JsonPropertyName("scaleX")]
     public double? ScaleX { get; init; }
 
+    /// <summary>
+    /// Scale Y value.
+    /// </summary>
     [JsonPropertyName("scaleY")]
     public double? ScaleY { get; init; }
 
+    /// <summary>
+    /// Width value.
+    /// </summary>
     [JsonPropertyName("width")]
     public double? Width { get; init; }
 
+    /// <summary>
+    /// Height value.
+    /// </summary>
     [JsonPropertyName("height")]
     public double? Height { get; init; }
 
+    /// <summary>
+    /// Source width value.
+    /// </summary>
     [JsonPropertyName("sourceWidth")]
     public double? SourceWidth { get; init; }
 
+    /// <summary>
+    /// Source height value.
+    /// </summary>
     [JsonPropertyName("sourceHeight")]
     public double? SourceHeight { get; init; }
 
+    /// <summary>
+    /// Alignment value.
+    /// </summary>
     [JsonPropertyName("alignment")]
     public double? Alignment { get; init; }
 
+    /// <summary>
+    /// Bounds type value.
+    /// </summary>
     [JsonPropertyName("boundsType")]
     public string? BoundsType { get; init; }
 
+    /// <summary>
+    /// Bounds alignment value.
+    /// </summary>
     [JsonPropertyName("boundsAlignment")]
     public double? BoundsAlignment { get; init; }
 
+    /// <summary>
+    /// Bounds width value.
+    /// </summary>
     [JsonPropertyName("boundsWidth")]
     public double? BoundsWidth { get; init; }
 
+    /// <summary>
+    /// Bounds height value.
+    /// </summary>
     [JsonPropertyName("boundsHeight")]
     public double? BoundsHeight { get; init; }
 
+    /// <summary>
+    /// Crop left value.
+    /// </summary>
     [JsonPropertyName("cropLeft")]
     public double? CropLeft { get; init; }
 
+    /// <summary>
+    /// Crop top value.
+    /// </summary>
     [JsonPropertyName("cropTop")]
     public double? CropTop { get; init; }
 
+    /// <summary>
+    /// Crop right value.
+    /// </summary>
     [JsonPropertyName("cropRight")]
     public double? CropRight { get; init; }
 
+    /// <summary>
+    /// Crop bottom value.
+    /// </summary>
     [JsonPropertyName("cropBottom")]
     public double? CropBottom { get; init; }
 

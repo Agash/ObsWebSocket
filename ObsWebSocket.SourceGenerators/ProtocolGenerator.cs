@@ -69,6 +69,7 @@ public sealed class ProtocolGenerator : IIncrementalGenerator
                 Emitter.GenerateEventPayloads(spc, result.Definition);
                 Emitter.GenerateEventArgs(spc, result.Definition);
                 Emitter.GenerateClientEventInfrastructure(spc, result.Definition);
+                Emitter.GenerateWaitForEventHelper(spc, result.Definition);
             }
         );
     }

@@ -53,16 +53,32 @@ public sealed partial class ObsWebSocketClient(
 ) : IAsyncDisposable
 {
     #region Fields
-    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    internal readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IWebSocketMessageSerializer _serializer =
         serializer ?? throw new ArgumentNullException(nameof(serializer));
-    private readonly IOptions<ObsWebSocketClientOptions> _options =
+    internal readonly IOptions<ObsWebSocketClientOptions> _options =
         options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWebSocketConnectionFactory _connectionFactory =
         connectionFactory ?? new WebSocketConnectionFactory();
+
+    /// <summary>
+    /// Default size of the receive buffer for WebSocket messages.
+    /// </summary>
     public const int ReceiveBufferSize = 8192;
+
+    /// <summary>
+    /// Default timeout in milliseconds for the initial handshake phase (Hello/Identified).
+    /// </summary>
     public const int DefaultHandshakeTimeoutMs = 5000;
+
+    /// <summary>
+    /// Default timeout in milliseconds for awaiting individual request responses.
+    /// </summary>
     public const int DefaultRequestTimeoutMs = 10000;
+
+    /// <summary>
+    /// Default multiplier for the timeout of batch requests.
+    /// </summary>
     public const int DefaultBatchTimeoutMultiplier = 2;
 
     private IWebSocketConnection? _webSocket;
@@ -300,7 +316,7 @@ public sealed partial class ObsWebSocketClient(
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
     /// A task representing the asynchronous operation. Yields the deserialized response data payload
-    /// (<see cref="TResponse"/>), or <c>null</c> if the successful response does not contain data.
+    /// (<typeparamref name="TResponse"/>), or <c>null</c> if the successful response does not contain data.
     /// </returns>
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side (indicated by the response status) or if serialization/deserialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
@@ -315,11 +331,15 @@ public sealed partial class ObsWebSocketClient(
         where TResponse : class
     {
         ArgumentException.ThrowIfNullOrEmpty(requestType);
+
         EnsureConnected();
+
         Debug.Assert(_clientLifetimeCts != null);
 
         string requestId = Guid.NewGuid().ToString();
+
         TaskCompletionSource<object> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         if (!_pendingRequests.TryAdd(requestId, tcs))
         {
             throw new ObsWebSocketException($"Duplicate request ID: {requestId}");
@@ -344,6 +364,7 @@ public sealed partial class ObsWebSocketClient(
                 .ConfigureAwait(false);
 
             int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
+
             _logger.LogDebug(
                 "Waiting for Response {RequestId} ({RequestType}, Timeout: {TimeoutMs}ms)...",
                 requestId,
@@ -358,11 +379,13 @@ public sealed partial class ObsWebSocketClient(
                     linkedCts.Token
                 )
                 .ConfigureAwait(false);
+
             RequestResponsePayload<object> response = CastResponsePayload<
                 RequestResponsePayload<object>
             >(responseObj, "RequestResponse");
 
             ProcessResponseStatus(response.RequestStatus, requestType, requestId);
+
             return _serializer.DeserializePayload<TResponse>(response.ResponseData);
         }
         catch (Exception ex)
@@ -374,7 +397,9 @@ public sealed partial class ObsWebSocketClient(
                 requestType,
                 requestId
             );
+
             tcs.TrySetException(ex); // Ensure TCS is completed on failure
+
             throw;
         }
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
@@ -384,7 +409,9 @@ public sealed partial class ObsWebSocketClient(
                 requestType,
                 requestId
             );
+
             tcs.TrySetCanceled(_clientLifetimeCts.Token);
+
             throw;
         }
         finally
@@ -403,7 +430,7 @@ public sealed partial class ObsWebSocketClient(
     /// <param name="timeoutMs">Optional timeout in milliseconds to wait for the response. Defaults to <see cref="ObsWebSocketClientOptions.RequestTimeoutMs"/>.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
-    /// A task representing the asynchronous operation. Yields a nullable <see cref="TResponse"/> containing the
+    /// A task representing the asynchronous operation. Yields a nullable <typeparamref name="TResponse"/> containing the
     /// deserialized response data payload, or <c>null</c> if the successful response does not contain data.
     /// </returns>
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side (indicated by the response status), if serialization/deserialization fails, or if a null value is deserialized for a non-nullable struct.</exception>
@@ -2133,7 +2160,7 @@ public sealed partial class ObsWebSocketClient(
 
     #region Helper Methods (Static & Instance)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void EnsureConnected()
+    internal void EnsureConnected()
     {
         if (
             _connectionState != ConnectionState.Connected
@@ -2471,6 +2498,10 @@ public sealed partial class ObsWebSocketClient(
     #endregion
 
     #region Finalizer
+
+    /// <summary>
+    /// Finalizer for the ObsWebSocketClient class.
+    /// </summary>
     ~ObsWebSocketClient()
     {
         if (
