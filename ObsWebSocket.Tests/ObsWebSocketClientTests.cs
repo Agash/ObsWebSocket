@@ -80,6 +80,56 @@ public partial class ObsWebSocketClientTests
     }
 
     /// <summary>
+    /// Verifies that arbitrary anonymous objects in batch request data are rejected to keep serialization AOT-safe.
+    /// </summary>
+    [TestMethod]
+    public async Task CallBatchAsync_AnonymousRequestData_ThrowsObsWebSocketException()
+    {
+        // Arrange
+        (
+            ObsWebSocketClient client,
+            _,
+            Mock<IWebSocketConnection> mockWebSocket
+        ) = TestUtils.SetupConnectedClientForceState();
+
+        List<BatchRequestItem> requests =
+        [
+            new("GetInputList", new { inputKind = "text_gdiplus_v3" }),
+        ];
+
+        // Act
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(async () =>
+            await client.CallBatchAsync(requests)
+        );
+
+        // Assert
+        bool outerHasExpectedMessage = ex.Message.Contains(
+            "Failed to serialize request data",
+            StringComparison.Ordinal
+        );
+        bool innerHasExpectedMessage = ex.InnerException?.Message.Contains(
+            "Failed to serialize request data",
+            StringComparison.Ordinal
+        ) == true;
+        Assert.IsTrue(
+            outerHasExpectedMessage || innerHasExpectedMessage,
+            "Exception chain should indicate request data serialization failure."
+        );
+
+        mockWebSocket.Verify(
+            ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never,
+            "No message should be sent when request data cannot be serialized."
+        );
+    }
+
+    /// <summary>
     /// Verifies that CallBatchAsync correctly serializes and sends a batch request message,
     /// processes the corresponding batch response, and returns the results.
     /// </summary>

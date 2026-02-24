@@ -117,6 +117,11 @@ For generated request models and direct requests, see:
 - `ObsWebSocket.Core.Protocol.Responses`
 - `ObsWebSocket.Core.Events.Generated`
 
+Batch API note (AOT-safe path):
+
+- `BatchRequestItem.RequestData` should be `null`, `JsonElement`, or a generated `*RequestData` DTO from `ObsWebSocket.Core.Protocol.Requests`.
+- Arbitrary anonymous/POCO objects are not guaranteed to be serializable in Native AOT builds.
+
 ## Example App
 
 `ObsWebSocket.Example` contains a host-based sample using configuration + DI.

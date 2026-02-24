@@ -498,21 +498,35 @@ internal sealed partial class Worker(
                 return false;
 
             case "batch-example":
+            {
                 _logger.LogInformation("Running batch example...");
+                ArrayBufferWriter<byte> batchSettingsBuffer = new();
+                using (Utf8JsonWriter batchSettingsWriter = new(batchSettingsBuffer))
+                {
+                    batchSettingsWriter.WriteStartObject();
+                    batchSettingsWriter.WriteString("text", "Batch updated!");
+                    batchSettingsWriter.WriteEndObject();
+                    batchSettingsWriter.Flush();
+                }
+
+                using JsonDocument batchSettingsDocument = JsonDocument.Parse(
+                    batchSettingsBuffer.WrittenMemory
+                );
+                JsonElement batchSettingsPayload = batchSettingsDocument.RootElement.Clone();
+
                 List<BatchRequestItem> batchItems =
                 [
                     new("GetVersion", null),
                     new("GetCurrentProgramScene", null),
-                    new("GetInputList", new { inputKind = "text_gdiplus_v3" }), // Get only text inputs
-                    new("Sleep", new { sleepMillis = 100 }), // Wait 100ms
+                    new("GetInputList", new GetInputListRequestData("text_gdiplus_v3")),
+                    new("Sleep", new SleepRequestData(sleepMillis: 100)),
                     new(
                         "SetInputSettings", // Example: Set specific text source's text (requires knowing name)
-                        new
-                        {
-                            inputName = "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
-                            inputSettings = new { text = "Batch updated!" },
-                            overlay = true,
-                        }
+                        new SetInputSettingsRequestData(
+                            batchSettingsPayload,
+                            inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
+                            overlay: true
+                        )
                     ),
                 ];
 
@@ -568,6 +582,7 @@ internal sealed partial class Worker(
 
                 _logger.LogInformation("Batch example finished.");
                 return false;
+            }
 
             case "run-transport-tests":
                 await RunTransportValidationSuiteAsync(cancellationToken).ConfigureAwait(false);

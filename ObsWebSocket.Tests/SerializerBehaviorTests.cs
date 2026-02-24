@@ -94,15 +94,17 @@ public class SerializerBehaviorTests
         );
 
         Assert.IsNotNull(payload);
-        Assert.IsNotNull(payload.Scenes);
-        Assert.AreEqual(1, payload.Scenes.Count);
-        Assert.AreEqual(1, payload.Scenes[0].SceneIndex);
-        Assert.AreEqual("IntegrationScene", payload.Scenes[0].SceneName);
-        Assert.AreEqual("scene-uuid-1", payload.Scenes[0].SceneUuid);
-        Assert.IsNotNull(payload.Scenes[0].ExtensionData);
+        List<Core.Protocol.Common.SceneStub>? scenes = payload.Scenes;
+        Assert.IsNotNull(scenes);
+        Assert.AreEqual(1, scenes.Count);
+        Assert.AreEqual(1, scenes[0].SceneIndex);
+        Assert.AreEqual("IntegrationScene", scenes[0].SceneName);
+        Assert.AreEqual("scene-uuid-1", scenes[0].SceneUuid);
+        Dictionary<string, JsonElement>? extensionData = scenes[0].ExtensionData;
+        Assert.IsNotNull(extensionData);
         Assert.AreEqual(
             "extension-data-like-field",
-            payload.Scenes[0].ExtensionData["extraTag"].GetString()
+            extensionData["extraTag"].GetString()
         );
     }
 
@@ -118,29 +120,32 @@ public class SerializerBehaviorTests
             );
 
         Assert.IsNotNull(payload);
-        Assert.IsNotNull(payload.Filters);
-        Assert.AreEqual(1, payload.Filters.Count);
-        Assert.AreEqual("Color Correction", payload.Filters[0].FilterName);
-        Assert.AreEqual("color_filter_v2", payload.Filters[0].FilterKind);
-        Assert.AreEqual(0, payload.Filters[0].FilterIndex);
-        Assert.IsTrue(payload.Filters[0].FilterEnabled ?? false);
-        Assert.IsTrue(payload.Filters[0].FilterSettings.HasValue);
+        List<Core.Protocol.Common.FilterStub>? filters = payload.Filters;
+        Assert.IsNotNull(filters);
+        Assert.AreEqual(1, filters.Count);
+        Assert.AreEqual("Color Correction", filters[0].FilterName);
+        Assert.AreEqual("color_filter_v2", filters[0].FilterKind);
+        Assert.AreEqual(0, filters[0].FilterIndex);
+        Assert.IsTrue(filters[0].FilterEnabled ?? false);
+        Assert.IsTrue(filters[0].FilterSettings.HasValue);
+        JsonElement filterSettings = filters[0].FilterSettings.GetValueOrDefault();
         Assert.AreEqual(
             0.8d,
-            payload.Filters[0].FilterSettings.Value.GetProperty("opacity").GetDouble(),
+            filterSettings.GetProperty("opacity").GetDouble(),
             0.0001d
         );
         Assert.AreEqual(
             1.2d,
-            payload.Filters[0].FilterSettings.Value.GetProperty("gamma").GetDouble(),
+            filterSettings.GetProperty("gamma").GetDouble(),
             0.0001d
         );
-        Assert.IsNotNull(payload.Filters[0].ExtensionData);
+        Dictionary<string, JsonElement>? extensionData = filters[0].ExtensionData;
+        Assert.IsNotNull(extensionData);
         Assert.AreEqual(
             "present",
-            payload.Filters[0].ExtensionData["customExtensionField"].GetString()
+            extensionData["customExtensionField"].GetString()
         );
-        JsonElement listExtension = payload.Filters[0].ExtensionData["listExtension"];
+        JsonElement listExtension = extensionData["listExtension"];
         Assert.AreEqual(JsonValueKind.Array, listExtension.ValueKind);
         Assert.AreEqual(2, listExtension.GetArrayLength());
         Assert.AreEqual("a", listExtension[0].GetString());
@@ -385,14 +390,18 @@ public class SerializerBehaviorTests
             serializer.DeserializePayload<GetSceneItemListResponseData>(new ReadOnlyMemory<byte>(bytes));
 
         Assert.IsNotNull(payload);
-        Assert.IsNotNull(payload.SceneItems);
-        Assert.AreEqual(1, payload.SceneItems.Count);
-        Assert.AreEqual(42, payload.SceneItems[0].SceneItemId);
-        Assert.AreEqual("Camera", payload.SceneItems[0].SourceName);
-        Assert.IsNotNull(payload.SceneItems[0].SceneItemTransform);
-        Assert.AreEqual(1920d, payload.SceneItems[0].SceneItemTransform.Width!.Value, 0.001d);
-        Assert.IsNotNull(payload.SceneItems[0].ExtensionData);
-        Assert.AreEqual("group-A", payload.SceneItems[0].ExtensionData["customGroup"].GetString());
+        List<Core.Protocol.Common.SceneItemStub>? sceneItems = payload.SceneItems;
+        Assert.IsNotNull(sceneItems);
+        Assert.AreEqual(1, sceneItems.Count);
+        Assert.AreEqual(42, sceneItems[0].SceneItemId);
+        Assert.AreEqual("Camera", sceneItems[0].SourceName);
+        Core.Protocol.Common.SceneItemTransformStub? transform = sceneItems[0].SceneItemTransform;
+        Assert.IsNotNull(transform);
+        Assert.IsTrue(transform.Width.HasValue);
+        Assert.AreEqual(1920d, transform.Width.Value, 0.001d);
+        Dictionary<string, JsonElement>? extensionData = sceneItems[0].ExtensionData;
+        Assert.IsNotNull(extensionData);
+        Assert.AreEqual("group-A", extensionData["customGroup"].GetString());
     }
 
     [TestMethod]
