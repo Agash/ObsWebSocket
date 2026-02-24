@@ -52,6 +52,8 @@ jobs:
         dotnet restore ObsWebSocket.Example/ObsWebSocket.Example.csproj
         -p:TargetFramework=net10.0
         --runtime linux-x64
+        -p:SelfContained=true
+        -p:PublishAot=true
 
     - name: Native AOT Smoke Publish (ObsWebSocket.Example)
       run: >
@@ -63,7 +65,6 @@ jobs:
         /p:PublishAot=true
         /p:ILLinkTreatWarningsAsErrors=true
         /p:IlcTreatWarningsAsErrors=true
-        --no-restore
 
     - name: Run Unit Tests
       # Run tests specifically for the ObsWebSocket.Tests project
