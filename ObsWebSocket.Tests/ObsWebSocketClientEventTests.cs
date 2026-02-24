@@ -198,8 +198,18 @@ public class ObsWebSocketClientEventTests
             Mock<IWebSocketConnection>? mockWebSocket
         ) = TestUtils.SetupConnectedClientForceState();
 
-        SceneStub scene1Data = new("Scene 1", Guid.NewGuid().ToString(), 1);
-        SceneStub scene2Data = new("Scene 2", Guid.NewGuid().ToString(), 2);
+        SceneStub scene1Data = new()
+        {
+            SceneName = "Scene 1",
+            SceneUuid = Guid.NewGuid().ToString(),
+            SceneIndex = 1,
+        };
+        SceneStub scene2Data = new()
+        {
+            SceneName = "Scene 2",
+            SceneUuid = Guid.NewGuid().ToString(),
+            SceneIndex = 2,
+        };
 
         List<SceneStub> sceneListElements = [scene1Data, scene2Data];
 

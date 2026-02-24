@@ -7,9 +7,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
 
 namespace ObsWebSocket.Tests;
 
@@ -103,8 +105,23 @@ public class ObsWebSocketClientIntegrationTests
         }
     }
 
-    private static ObsWebSocketClient CreateClient() =>
-        s_serviceProvider.GetRequiredService<ObsWebSocketClient>();
+    private static ObsWebSocketClient CreateClient()
+    {
+        ILogger<ObsWebSocketClient> logger = s_serviceProvider.GetRequiredService<
+            ILogger<ObsWebSocketClient>
+        >();
+        IWebSocketMessageSerializer serializer = s_serviceProvider.GetRequiredService<
+            IWebSocketMessageSerializer
+        >();
+        IOptions<ObsWebSocketClientOptions> options = s_serviceProvider.GetRequiredService<
+            IOptions<ObsWebSocketClientOptions>
+        >();
+        IWebSocketConnectionFactory connectionFactory = s_serviceProvider.GetRequiredService<
+            IWebSocketConnectionFactory
+        >();
+
+        return new ObsWebSocketClient(logger, serializer, options, connectionFactory);
+    }
 
     // --- Test Cases ---
 

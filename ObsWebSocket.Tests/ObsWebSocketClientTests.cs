@@ -6,6 +6,7 @@ using ObsWebSocket.Core;
 using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated;
+using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses; // Required for DTOs like GetVersionResponseData
 using ObsWebSocket.Core.Serialization;
 using RequestStatus = ObsWebSocket.Core.Protocol.RequestStatus; // Alias
@@ -95,8 +96,7 @@ public partial class ObsWebSocketClientTests
 
         // Define the batch items
         BatchRequestItem request1 = new("GetVersion", null);
-        // Ensure request data uses anonymous objects or concrete DTOs that System.Text.Json can serialize
-        var request2Data = new { sceneName = "OldScene", newSceneName = "NewScene" };
+        SetSceneNameRequestData request2Data = new("OldScene", "NewScene");
         BatchRequestItem request2 = new("SetSceneName", request2Data);
         List<BatchRequestItem> requests = [request1, request2];
 
@@ -248,13 +248,13 @@ public partial class ObsWebSocketClientTests
                 req2SentData.TryGetProperty("sceneName", out JsonElement sceneNameElement),
                 "sceneName property missing"
             );
-            Assert.AreEqual(request2Data.sceneName, sceneNameElement.GetString());
+            Assert.AreEqual(request2Data.SceneName, sceneNameElement.GetString());
 
             Assert.IsTrue(
                 req2SentData.TryGetProperty("newSceneName", out JsonElement newSceneNameElement),
                 "newSceneName property missing"
             );
-            Assert.AreEqual(request2Data.newSceneName, newSceneNameElement.GetString());
+            Assert.AreEqual(request2Data.NewSceneName, newSceneNameElement.GetString());
         }
         catch (Exception ex)
         {
