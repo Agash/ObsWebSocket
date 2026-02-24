@@ -4,8 +4,15 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core;
 using ObsWebSocket.Example;
+using Spectre.Console;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+AnsiConsole.Write(
+    new Rule("[cyan]ObsWebSocket Example Tool[/]")
+    {
+        Justification = Justify.Left,
+    }
+);
 
 // Reads appsettings.json, environment variables, command-line args
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
@@ -30,4 +37,4 @@ using IHost host = builder.Build();
 
 await host.RunAsync();
 
-Console.WriteLine("\nExample application finished.");
+AnsiConsole.MarkupLine("[grey]Example application finished.[/]");

@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Text.Json;
 using MessagePack;
 using MessagePack.Formatters;
-using MessagePack.Resolvers;
 
 namespace ObsWebSocket.Core.Serialization;
 
@@ -12,15 +11,7 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
 
     private MsgPackJsonElementResolver() { }
 
-    public IMessagePackFormatter<T>? GetFormatter<T>()
-    {
-        if (typeof(T) == typeof(JsonElement))
-        {
-            return (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance;
-        }
-
-        return null;
-    }
+    public IMessagePackFormatter<T>? GetFormatter<T>() => typeof(T) == typeof(JsonElement) ? (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance : null;
 
     internal sealed class JsonElementFormatter : IMessagePackFormatter<JsonElement>
     {

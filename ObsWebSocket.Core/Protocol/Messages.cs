@@ -31,7 +31,7 @@ public record IncomingMessage<TData>(
 );
 
 // --- Handshake Payloads (Internal) ---
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record HelloPayload(
     [property: JsonPropertyName("obsWebSocketVersion"), Key("obsWebSocketVersion")]
         string ObsWebSocketVersion,
@@ -40,13 +40,13 @@ internal record HelloPayload(
         AuthenticationData? Authentication
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record AuthenticationData(
     [property: JsonPropertyName("challenge"), Key("challenge")] string Challenge,
     [property: JsonPropertyName("salt"), Key("salt")] string Salt
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record IdentifyPayload(
     [property: JsonPropertyName("rpcVersion"), Key("rpcVersion")] int RpcVersion,
     [property: JsonPropertyName("authentication"), Key("authentication")]
@@ -55,13 +55,13 @@ internal record IdentifyPayload(
         uint EventSubscriptions = 0
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record IdentifiedPayload(
     [property: JsonPropertyName("negotiatedRpcVersion"), Key("negotiatedRpcVersion")]
         int NegotiatedRpcVersion
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record ReidentifyPayload(
     [property:
         JsonPropertyName("eventSubscriptions"),
@@ -72,7 +72,7 @@ internal record ReidentifyPayload(
 );
 
 // --- Request/Response Payloads ---
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record RequestPayload(
     [property: JsonPropertyName("requestType"), Key("requestType")] string RequestType,
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
@@ -158,7 +158,7 @@ public record BatchRequestItem(
     [property: Key("requestData")] object? RequestData = null
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record RequestBatchPayload(
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
     [property:
@@ -176,7 +176,7 @@ internal record RequestBatchPayload(
     [property: JsonPropertyName("requests"), Key("requests")] List<RequestPayload> Requests
 );
 
-[MessagePackObject]
+[MessagePackObject(AllowPrivate = true)]
 internal record RequestBatchResponsePayload<TData>(
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
     [property: JsonPropertyName("results"), Key("results")] List<RequestResponsePayload<TData>> Results

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Events;
 using ObsWebSocket.Core.Protocol.Generated;
-using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Serialization;
 
 namespace ObsWebSocket.Tests;
@@ -39,7 +38,7 @@ public class JsonMessageSerializerTests
 
         Assert.IsNotNull(result);
         Assert.AreEqual("SceneListChanged", result.EventType);
-        Assert.IsInstanceOfType<JsonElement>(result.EventData);
+        _ = Assert.IsInstanceOfType<JsonElement>(result.EventData);
         JsonElement eventData = (JsonElement)result.EventData;
         Assert.AreEqual(JsonValueKind.Object, eventData.ValueKind);
         Assert.AreEqual(1, eventData.GetProperty("scenes").GetArrayLength());
@@ -67,7 +66,7 @@ public class JsonMessageSerializerTests
 
         Assert.IsNotNull(result);
         Assert.AreEqual("GetVersion", result.RequestType);
-        Assert.IsInstanceOfType<JsonElement>(result.ResponseData);
+        _ = Assert.IsInstanceOfType<JsonElement>(result.ResponseData);
         JsonElement responseData = (JsonElement)result.ResponseData!;
         Assert.AreEqual("31.1.0", responseData.GetProperty("obsVersion").GetString());
     }
@@ -130,7 +129,7 @@ public class JsonMessageSerializerTests
         Assert.IsNotNull(result);
         Assert.AreEqual("batch-1", result.RequestId);
         Assert.AreEqual(1, result.Results.Count);
-        Assert.IsInstanceOfType<JsonElement>(result.Results[0].ResponseData);
+        _ = Assert.IsInstanceOfType<JsonElement>(result.Results[0].ResponseData);
         JsonElement responseData = (JsonElement)result.Results[0].ResponseData!;
         Assert.AreEqual("31.1.0", responseData.GetProperty("obsVersion").GetString());
     }
@@ -177,7 +176,7 @@ public class JsonMessageSerializerTests
         object? result = await CreateSerializer().DeserializeAsync(stream);
 
         Assert.IsNotNull(result);
-        Assert.IsInstanceOfType<IncomingMessage<JsonElement>>(result);
+        _ = Assert.IsInstanceOfType<IncomingMessage<JsonElement>>(result);
         IncomingMessage<JsonElement> incoming = (IncomingMessage<JsonElement>)result;
         Assert.AreEqual(WebSocketOpCode.Event, incoming.Op);
         Assert.AreEqual("SceneListChanged", incoming.D.GetProperty("eventType").GetString());

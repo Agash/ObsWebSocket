@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using MessagePack;
 using MessagePack.Formatters;
-using MessagePack.Resolvers;
 using ObsWebSocket.Core.Protocol.Common;
 
 namespace ObsWebSocket.Core.Serialization;
@@ -48,23 +47,14 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
             return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<TransitionStub>();
         }
 
-        if (type == typeof(OutputStub))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>();
-        }
-
-        if (type == typeof(MonitorStub))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>();
-        }
-
-        if (type == typeof(PropertyItemStub))
-        {
-            return (IMessagePackFormatter<T>)(object)
-                new MsgPackJsonBridgeFormatter<PropertyItemStub>();
-        }
-
-        return null;
+        return type == typeof(OutputStub)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>()
+            : type == typeof(MonitorStub)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>()
+            : type == typeof(PropertyItemStub)
+            ? (IMessagePackFormatter<T>)(object)
+                new MsgPackJsonBridgeFormatter<PropertyItemStub>()
+            : null;
     }
 
     private sealed class MsgPackJsonBridgeFormatter<T> : IMessagePackFormatter<T?>

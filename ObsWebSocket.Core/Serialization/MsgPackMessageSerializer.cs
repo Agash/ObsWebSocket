@@ -127,76 +127,18 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         {
             if (typeof(TPayload) == typeof(EventPayloadBase<object>))
             {
-                EventPayloadBase<ReadOnlyMemory<byte>>? eventPayload =
-                    MessagePackSerializer.Deserialize<EventPayloadBase<ReadOnlyMemory<byte>>>(
-                        raw,
-                        s_msgPackOptions
-                    );
-                if (eventPayload is null)
-                {
-                    return default;
-                }
-
-                return (TPayload)
-                    (object)
-                        new EventPayloadBase<object>(
-                            eventPayload.EventType,
-                            eventPayload.EventIntent,
-                            eventPayload.EventData
-                        );
+                return (TPayload)(object)DeserializeEventPayloadBase(raw);
             }
 
             if (typeof(TPayload) == typeof(RequestResponsePayload<object>))
             {
-                RequestResponsePayload<ReadOnlyMemory<byte>>? responsePayload =
-                    MessagePackSerializer.Deserialize<RequestResponsePayload<ReadOnlyMemory<byte>>>(
-                        raw,
-                        s_msgPackOptions
-                    );
-                if (responsePayload is null)
-                {
-                    return default;
-                }
-
-                return (TPayload)
-                    (object)
-                        new RequestResponsePayload<object>(
-                            responsePayload.RequestType,
-                            responsePayload.RequestId,
-                            responsePayload.RequestStatus,
-                            responsePayload.ResponseData
-                        );
+                MessagePackReader wrapperReader = new(raw);
+                return (TPayload)(object)DeserializeRequestResponsePayload(ref wrapperReader);
             }
 
-            if (typeof(TPayload) == typeof(RequestBatchResponsePayload<object>))
-            {
-                RequestBatchResponsePayload<ReadOnlyMemory<byte>>? batchPayload =
-                    MessagePackSerializer.Deserialize<
-                        RequestBatchResponsePayload<ReadOnlyMemory<byte>>
-                    >(raw, s_msgPackOptions);
-                if (batchPayload is null)
-                {
-                    return default;
-                }
-
-                List<RequestResponsePayload<object>> mappedResults =
-                [
-                    .. batchPayload.Results.Select(result => new RequestResponsePayload<object>(
-                        result.RequestType,
-                        result.RequestId,
-                        result.RequestStatus,
-                        result.ResponseData
-                    )),
-                ];
-
-                return (TPayload)
-                    (object)new RequestBatchResponsePayload<object>(
-                        batchPayload.RequestId,
-                        mappedResults
-                    );
-            }
-
-            return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
+            return typeof(TPayload) == typeof(RequestBatchResponsePayload<object>)
+                ? (TPayload)(object)DeserializeRequestBatchResponsePayload(raw)
+                : MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)
         {
@@ -274,5 +216,122 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         sequence.CopyTo(raw);
         reader = clone;
         return raw;
+    }
+
+    private static EventPayloadBase<object> DeserializeEventPayloadBase(ReadOnlyMemory<byte> raw)
+    {
+        MessagePackReader reader = new(raw);
+        int count = reader.ReadMapHeader();
+
+        string? eventType = null;
+        int eventIntent = 0;
+        object? eventData = null;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "eventType":
+                    eventType = reader.ReadString();
+                    break;
+                case "eventIntent":
+                    eventIntent = reader.ReadInt32();
+                    break;
+                case "eventData":
+                    eventData = ReadRawValue(ref reader);
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new EventPayloadBase<object>(eventType ?? string.Empty, eventIntent, eventData);
+    }
+
+    private static RequestBatchResponsePayload<object> DeserializeRequestBatchResponsePayload(
+        ReadOnlyMemory<byte> raw
+    )
+    {
+        MessagePackReader reader = new(raw);
+        int count = reader.ReadMapHeader();
+
+        string? requestId = null;
+        List<RequestResponsePayload<object>> results = [];
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "requestId":
+                    requestId = reader.ReadString();
+                    break;
+                case "results":
+                {
+                    int resultCount = reader.ReadArrayHeader();
+                    for (int r = 0; r < resultCount; r++)
+                    {
+                        results.Add(DeserializeRequestResponsePayload(ref reader));
+                    }
+
+                    break;
+                }
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new RequestBatchResponsePayload<object>(requestId ?? string.Empty, results);
+    }
+
+    private static RequestResponsePayload<object> DeserializeRequestResponsePayload(
+        ref MessagePackReader reader
+    )
+    {
+        int count = reader.ReadMapHeader();
+
+        string? requestType = null;
+        string? requestId = null;
+        Protocol.RequestStatus requestStatus = new(false, 0, "Missing requestStatus");
+        object? responseData = null;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "requestType":
+                    requestType = reader.ReadString();
+                    break;
+                case "requestId":
+                    requestId = reader.ReadString();
+                    break;
+                case "requestStatus":
+                {
+                    ReadOnlyMemory<byte> statusRaw = ReadRawValue(ref reader);
+                    requestStatus = MessagePackSerializer.Deserialize<Protocol.RequestStatus>(
+                        statusRaw,
+                        s_msgPackOptions
+                    );
+                    break;
+                }
+                case "responseData":
+                    responseData = ReadRawValue(ref reader);
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new RequestResponsePayload<object>(
+            requestType ?? string.Empty,
+            requestId ?? string.Empty,
+            requestStatus,
+            responseData
+        );
     }
 }

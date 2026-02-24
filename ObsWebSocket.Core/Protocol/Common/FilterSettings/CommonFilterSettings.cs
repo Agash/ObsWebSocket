@@ -62,7 +62,7 @@ public sealed record ColorCorrectionFilterSettings(
     [property: JsonPropertyName("saturation")] double? Saturation = null,
     // V1 Specific (or maybe shared, depends on exact OBS version behavior)
     [property: JsonPropertyName("color")] long? Color = null, // Integer representation (e.g., white 16777215)
-    // V2 Specific
+                                                              // V2 Specific
     [property: JsonPropertyName("color_add")] long? ColorAdd = null,
     [property: JsonPropertyName("color_multiply")] long? ColorMultiply = null
 );

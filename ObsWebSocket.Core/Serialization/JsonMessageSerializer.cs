@@ -134,12 +134,9 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                         typeof(EventPayloadBase<JsonElement>)
                     );
                 EventPayloadBase<JsonElement>? eventPayload = jsonElement.Deserialize(eventTypeInfo);
-                if (eventPayload is null)
-                {
-                    return default;
-                }
-
-                return (TPayload)
+                return eventPayload is null
+                    ? default
+                    : (TPayload)
                     (object)
                         new EventPayloadBase<object>(
                             eventPayload.EventType,
@@ -156,12 +153,9 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                     );
                 RequestResponsePayload<JsonElement>? responsePayload =
                     jsonElement.Deserialize(responseTypeInfo);
-                if (responsePayload is null)
-                {
-                    return default;
-                }
-
-                return (TPayload)
+                return responsePayload is null
+                    ? default
+                    : (TPayload)
                     (object)
                         new RequestResponsePayload<object>(
                             responsePayload.RequestType,

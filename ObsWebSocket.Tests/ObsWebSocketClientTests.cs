@@ -32,7 +32,7 @@ public partial class ObsWebSocketClientTests
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
 
         // Act & Assert
-        await Assert.ThrowsExactlyAsync<ArgumentNullException>(async () =>
+        _ = await Assert.ThrowsExactlyAsync<ArgumentNullException>(async () =>
             await client.CallBatchAsync(null!) // Pass null directly
         );
     }
@@ -125,7 +125,7 @@ public partial class ObsWebSocketClientTests
         byte[]? sentBytes = null; // Capture the serialized batch message bytes
 
         // Mock SendAsync: Capture the request ID and simulate the batch response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -165,7 +165,7 @@ public partial class ObsWebSocketClientTests
                         );
 
                         // Simulate the batch response arriving
-                        TestUtils.SimulateIncomingResponse(
+                        _ = TestUtils.SimulateIncomingResponse(
                             client,
                             capturedBatchRequestId,
                             simulatedBatchResponse
@@ -176,7 +176,7 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Mock DeserializePayload for the batch response structure
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<RequestBatchResponsePayload<object>>(It.IsAny<object>())
             )
@@ -288,7 +288,7 @@ public partial class ObsWebSocketClientTests
         string? capturedBatchRequestId = null;
 
         // Mock SendAsync: Capture ID but DO NOT simulate a response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -326,7 +326,7 @@ public partial class ObsWebSocketClientTests
             ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase),
             "Exception message should indicate timeout."
         );
-        Assert.IsInstanceOfType<OperationCanceledException>(
+        _ = Assert.IsInstanceOfType<OperationCanceledException>(
             ex.InnerException,
             "Inner exception should be OperationCanceledException."
         );

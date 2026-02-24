@@ -56,7 +56,7 @@ internal static class TestUtils
     {
         ServiceCollection services = new();
 
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Trace));
+        _ = services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Trace));
 
         // --- Create Mocks (Strict) ---
         Mock<IWebSocketConnection> mockConnection = new(MockBehavior.Strict);
@@ -67,21 +67,21 @@ internal static class TestUtils
         // --- Default Mock Setups (Strict Behavior Compliance) ---
 
         // IWebSocketConnectionFactory
-        mockConnectionFactory.Setup(f => f.CreateConnection()).Returns(mockConnection.Object);
+        _ = mockConnectionFactory.Setup(f => f.CreateConnection()).Returns(mockConnection.Object);
 
         // IWebSocketConnection (Defaults for basic operation and cleanup)
-        mockConnection.SetupGet(c => c.State).Returns(WebSocketState.None);
-        mockConnection.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
-        mockConnection.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-        mockConnection.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
-        mockConnection.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
-        mockConnection
+        _ = mockConnection.SetupGet(c => c.State).Returns(WebSocketState.None);
+        _ = mockConnection.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
+        _ = mockConnection.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
+        _ = mockConnection.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+        _ = mockConnection.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
+        _ = mockConnection
             .Setup(c => c.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        mockConnection
+        _ = mockConnection
             .Setup(c => c.ReceiveAsync(It.IsAny<Memory<byte>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValueWebSocketReceiveResult(0, WebSocketMessageType.Close, true));
-        mockConnection
+        _ = mockConnection
             .Setup(c =>
                 c.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -91,7 +91,7 @@ internal static class TestUtils
                 )
             )
             .Returns(ValueTask.CompletedTask);
-        mockConnection
+        _ = mockConnection
             .Setup(c =>
                 c.CloseOutputAsync(
                     It.IsAny<WebSocketCloseStatus>(),
@@ -100,7 +100,7 @@ internal static class TestUtils
                 )
             )
             .Returns(Task.CompletedTask);
-        mockConnection
+        _ = mockConnection
             .Setup(c =>
                 c.CloseAsync(
                     It.IsAny<WebSocketCloseStatus>(),
@@ -109,15 +109,15 @@ internal static class TestUtils
                 )
             )
             .Returns(Task.CompletedTask);
-        mockConnection.Setup(c => c.Abort());
-        mockConnection.Setup(c => c.Dispose());
+        _ = mockConnection.Setup(c => c.Abort());
+        _ = mockConnection.Setup(c => c.Dispose());
 
         // IWebSocketMessageSerializer (Defaults)
-        mockSerializer.SetupGet(s => s.ProtocolSubProtocol).Returns("obswebsocket.json");
-        mockSerializer
+        _ = mockSerializer.SetupGet(s => s.ProtocolSubProtocol).Returns("obswebsocket.json");
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((object?)null);
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.SerializeAsync(
                     It.IsAny<OutgoingMessage<IdentifyPayload>>(),
@@ -125,7 +125,7 @@ internal static class TestUtils
                 )
             )
             .ReturnsAsync([]);
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.SerializeAsync(
                     It.IsAny<OutgoingMessage<ReidentifyPayload>>(),
@@ -133,7 +133,7 @@ internal static class TestUtils
                 )
             )
             .ReturnsAsync([]);
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.SerializeAsync(
                     It.IsAny<OutgoingMessage<RequestPayload>>(),
@@ -144,7 +144,7 @@ internal static class TestUtils
                 (OutgoingMessage<RequestPayload> msg, CancellationToken _) =>
                     Encoding.UTF8.GetBytes(JsonSerializer.Serialize(msg, s_jsonSerializerOptions))
             );
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.SerializeAsync(
                     It.IsAny<OutgoingMessage<RequestBatchPayload>>(),
@@ -157,10 +157,10 @@ internal static class TestUtils
             );
 
         // --- DI Registration ---
-        services.AddOptions();
-        services.AddSingleton(mockSerializer.Object);
-        services.AddSingleton(mockConnectionFactory.Object);
-        services.Configure<ObsWebSocketClientOptions>(opts =>
+        _ = services.AddOptions();
+        _ = services.AddSingleton(mockSerializer.Object);
+        _ = services.AddSingleton(mockConnectionFactory.Object);
+        _ = services.Configure<ObsWebSocketClientOptions>(opts =>
         {
             opts.ServerUri = new Uri("ws://testhost:4455");
             opts.AutoReconnectEnabled = false;
@@ -169,7 +169,7 @@ internal static class TestUtils
             opts.Format = SerializationFormat.Json;
             configureOptions?.Invoke(opts);
         });
-        services.AddSingleton<ObsWebSocketClient>();
+        _ = services.AddSingleton<ObsWebSocketClient>();
 
         // --- Build and Return ---
         ServiceProvider provider = services.BuildServiceProvider();
@@ -213,10 +213,10 @@ internal static class TestUtils
         SetPrivateProperty(client, "IsConnected", true);
         SetPrivateField(client, "_clientLifetimeCts", new CancellationTokenSource());
 
-        mockConnection.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = mockConnection.SetupGet(c => c.State).Returns(WebSocketState.Open);
 
         TaskCompletionSource<ValueWebSocketReceiveResult> blockedReceiveTcs = new();
-        mockConnection
+        _ = mockConnection
             .Setup(c => c.ReceiveAsync(It.IsAny<Memory<byte>>(), It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<ValueWebSocketReceiveResult>(blockedReceiveTcs.Task));
 
@@ -238,7 +238,7 @@ internal static class TestUtils
             ) ?? throw new MissingMethodException("ObsWebSocketClient", "ProcessIncomingMessage");
         try
         {
-            method.Invoke(client, [messageObject]);
+            _ = method.Invoke(client, [messageObject]);
         }
         catch (TargetInvocationException ex)
         {

@@ -2,9 +2,7 @@ using System.Buffers;
 using System.Text.Json;
 using MessagePack;
 using Microsoft.Extensions.Logging.Abstractions;
-using ObsWebSocket.Core;
 using ObsWebSocket.Core.Protocol;
-using ObsWebSocket.Core.Protocol.Common.NestedTypes;
 using ObsWebSocket.Core.Protocol.Events;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
@@ -269,7 +267,7 @@ public class SerializerBehaviorTests
 
         object? envelope = await serializer.DeserializeAsync(stream);
 
-        Assert.IsInstanceOfType<IncomingMessage<ReadOnlyMemory<byte>>>(envelope);
+        _ = Assert.IsInstanceOfType<IncomingMessage<ReadOnlyMemory<byte>>>(envelope);
         IncomingMessage<ReadOnlyMemory<byte>> incoming = (IncomingMessage<ReadOnlyMemory<byte>>)envelope;
         Assert.AreEqual(WebSocketOpCode.Hello, incoming.Op);
         Assert.IsTrue(incoming.D.Length > 0);
