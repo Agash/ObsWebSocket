@@ -261,6 +261,26 @@ public class SerializerBehaviorTests
     }
 
     [TestMethod]
+    public async Task MsgPackSerializer_DeserializeAsync_IncomingMapPayload_CapturesRawDBytes()
+    {
+        MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
+        byte[] bytes = BuildIncomingHelloEnvelopeBytes();
+        await using MemoryStream stream = new(bytes);
+
+        object? envelope = await serializer.DeserializeAsync(stream);
+
+        Assert.IsInstanceOfType<IncomingMessage<ReadOnlyMemory<byte>>>(envelope);
+        IncomingMessage<ReadOnlyMemory<byte>> incoming = (IncomingMessage<ReadOnlyMemory<byte>>)envelope;
+        Assert.AreEqual(WebSocketOpCode.Hello, incoming.Op);
+        Assert.IsTrue(incoming.D.Length > 0);
+
+        HelloPayload? hello = serializer.DeserializePayload<HelloPayload>(incoming.D);
+        Assert.IsNotNull(hello);
+        Assert.AreEqual("5.0.0", hello.ObsWebSocketVersion);
+        Assert.AreEqual(1, hello.RpcVersion);
+    }
+
+    [TestMethod]
     public async Task MsgPackSerializer_DeserializeAsync_WithUnreadableStream_ThrowsArgumentException()
     {
         MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
@@ -558,6 +578,25 @@ public class SerializerBehaviorTests
         writer.Write("not-a-number");
         writer.Write("filterEnabled");
         writer.Write(true);
+        writer.Flush();
+
+        return [.. buffer.WrittenSpan];
+    }
+
+    private static byte[] BuildIncomingHelloEnvelopeBytes()
+    {
+        ArrayBufferWriter<byte> buffer = new();
+        MessagePackWriter writer = new(buffer);
+
+        writer.WriteMapHeader(2);
+        writer.Write("op");
+        writer.Write((int)WebSocketOpCode.Hello);
+        writer.Write("d");
+        writer.WriteMapHeader(2);
+        writer.Write("obsWebSocketVersion");
+        writer.Write("5.0.0");
+        writer.Write("rpcVersion");
+        writer.Write(1);
         writer.Flush();
 
         return [.. buffer.WrittenSpan];

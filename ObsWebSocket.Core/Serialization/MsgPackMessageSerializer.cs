@@ -1,7 +1,9 @@
-﻿using MessagePack;
+using System.Buffers;
+using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Protocol;
+using ObsWebSocket.Core.Protocol.Generated;
 
 namespace ObsWebSocket.Core.Serialization;
 
@@ -87,19 +89,13 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
-            IncomingMessage<ReadOnlyMemory<byte>>? message = await MessagePackSerializer
-                .DeserializeAsync<IncomingMessage<ReadOnlyMemory<byte>>>(
-                    messageStream,
-                    s_msgPackOptions,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            await using MemoryStream buffer = new();
+            await messageStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            IncomingMessage<ReadOnlyMemory<byte>> message = DeserializeIncomingEnvelope(
+                buffer.ToArray()
+            );
 
-            if (message is null)
-            {
-                _logger.LogWarning("MessagePack deserialization resulted in null.");
-            }
-            else if (_logger.IsEnabled(LogLevel.Trace))
+            if (_logger.IsEnabled(LogLevel.Trace))
             {
                 _logger.LogTrace("Deserialized MessagePack message: Op={Op}", message.Op);
             }
@@ -108,9 +104,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (MessagePackSerializationException ex)
         {
-            // Difficult to log problematic MessagePack data directly compared to JSON.
             _logger.LogError(ex, "MessagePack deserialization failed.");
-            // Consider reading stream to byte array here for logging if absolutely needed, but can be large.
             return null;
         }
         catch (Exception ex)
@@ -168,5 +162,46 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             );
             return default;
         }
+    }
+
+    private static IncomingMessage<ReadOnlyMemory<byte>> DeserializeIncomingEnvelope(
+        ReadOnlyMemory<byte> payload
+    )
+    {
+        MessagePackReader reader = new(payload);
+        int count = reader.ReadMapHeader();
+        WebSocketOpCode op = default;
+        ReadOnlyMemory<byte> data = default;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            if (key == "op")
+            {
+                op = (WebSocketOpCode)reader.ReadInt32();
+                continue;
+            }
+
+            if (key == "d")
+            {
+                data = ReadRawValue(ref reader);
+                continue;
+            }
+
+            reader.Skip();
+        }
+
+        return new IncomingMessage<ReadOnlyMemory<byte>>(op, data);
+    }
+
+    private static ReadOnlyMemory<byte> ReadRawValue(ref MessagePackReader reader)
+    {
+        MessagePackReader clone = reader;
+        clone.Skip();
+        ReadOnlySequence<byte> sequence = reader.Sequence.Slice(reader.Position, clone.Position);
+        byte[] raw = new byte[checked((int)sequence.Length)];
+        sequence.CopyTo(raw);
+        reader = clone;
+        return raw;
     }
 }
