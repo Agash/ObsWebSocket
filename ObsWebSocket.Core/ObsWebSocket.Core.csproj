@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net10.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -9,7 +9,7 @@
     <PackageId>ObsWebSocket.Core</PackageId>
     <Authors>Agash</Authors>
     <Company>Agash</Company>
-    <Description>A modern .NET 9 / C# 13 library for interacting with the OBS Studio WebSocket v5 API, featuring source generation for protocol types and DI support.</Description>
+    <Description>A modern .NET 10 / C# 14 library for interacting with the OBS Studio WebSocket v5 API, featuring source generation for protocol types and DI support.</Description>
     <Copyright>Copyright (c) Agash 2025</Copyright>
     <PackageProjectUrl>https://github.com/Agash/ObsWebSocket</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Agash/ObsWebSocket.git</RepositoryUrl>
@@ -28,39 +28,74 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
   <PropertyGroup>
-    <IsAotCompatible
-      Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))"
-      >true</IsAotCompatible
-    >
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference
-      Include="Microsoft.Extensions.DependencyInjection.Abstractions"
-      Version="9.0.4"
-    />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.4" />
-    <PackageReference Include="MessagePack" Version="3.1.3" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.4" />
-    <PackageReference Include="MinVer" Version="6.0.0">
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageReference Include="MessagePack" Version="3.1.4" ExcludeAssets="build;buildTransitive;analyzers" />
+    <PackageReference Include="MessagePackAnalyzer" Version="3.1.4" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageReference Include="MinVer" Version="7.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="DotNet.ReproducibleBuilds" Version="1.2.25">
+    <PackageReference Include="DotNet.ReproducibleBuilds" Version="2.0.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup>
-    <AdditionalFiles Include="..\protocol.json" Link="protocol.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference
-      Include="..\ObsWebSocket.SourceGenerators\ObsWebSocket.SourceGenerators.csproj"
-      OutputItemType="Analyzer"
-      ReferenceOutputAssembly="false"
+  <PropertyGroup>
+    <ObsCodegenTaskProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\ObsWebSocket.Codegen.Tasks\ObsWebSocket.Codegen.Tasks.csproj'))</ObsCodegenTaskProject>
+    <ObsCodegenTaskAssembly>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\ObsWebSocket.Codegen.Tasks\bin\$(Configuration)\net9.0\ObsWebSocket.Codegen.Tasks.dll'))</ObsCodegenTaskAssembly>
+    <ObsCodegenProtocolPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\protocol.json'))</ObsCodegenProtocolPath>
+    <ObsCodegenOutputPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)Generated'))</ObsCodegenOutputPath>
+    <ObsCodegenKeyFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)Generated\Serialization\ObsWebSocketJsonContext.g.cs'))</ObsCodegenKeyFile>
+  </PropertyGroup>
+  <UsingTask TaskName="ObsWebSocket.Codegen.Tasks.GenerateObsWebSocketSourcesTask" AssemblyFile="$(ObsCodegenTaskAssembly)" />
+  <Target
+    Name="BuildObsCodegenTask"
+    Condition="'$(DesignTimeBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
+  >
+    <Message
+      Text="Building codegen task project $(ObsCodegenTaskProject)..."
+      Importance="high"
     />
-  </ItemGroup>
+    <Exec
+      Command="dotnet build &quot;$(ObsCodegenTaskProject)&quot; -c $(Configuration) --nologo"
+      WorkingDirectory="$(MSBuildProjectDirectory)"
+    />
+  </Target>
+  <Target Name="SetObsCodegenForceRegeneration" BeforeTargets="Rebuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <ObsCodegenForceRegeneration>true</ObsCodegenForceRegeneration>
+    </PropertyGroup>
+  </Target>
+  <Target
+    Name="GenerateObsWebSocketSourcesCrossTargeting"
+    BeforeTargets="DispatchToInnerBuilds"
+    DependsOnTargets="BuildObsCodegenTask"
+    Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' == 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
+  >
+    <Message
+      Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..."
+      Importance="high"
+    />
+    <GenerateObsWebSocketSourcesTask ProtocolPath="$(ObsCodegenProtocolPath)" OutputDirectory="$(ObsCodegenOutputPath)" DownloadIfMissing="true" />
+  </Target>
+  <Target
+    Name="GenerateObsWebSocketSourcesSingleTarget"
+    BeforeTargets="CoreCompile"
+    DependsOnTargets="BuildObsCodegenTask"
+    Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
+  >
+    <Message
+      Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..."
+      Importance="high"
+    />
+    <GenerateObsWebSocketSourcesTask ProtocolPath="$(ObsCodegenProtocolPath)" OutputDirectory="$(ObsCodegenOutputPath)" DownloadIfMissing="true" />
+  </Target>
   <ItemGroup>
     <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
     <None Include="..\README.md" Pack="true" PackagePath="" />

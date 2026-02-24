@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Moq;
@@ -6,6 +6,7 @@ using ObsWebSocket.Core;
 using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated;
+using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses; // Required for DTOs like GetVersionResponseData
 using ObsWebSocket.Core.Serialization;
 using RequestStatus = ObsWebSocket.Core.Protocol.RequestStatus; // Alias
@@ -31,7 +32,7 @@ public partial class ObsWebSocketClientTests
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
 
         // Act & Assert
-        await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () =>
+        _ = await Assert.ThrowsExactlyAsync<ArgumentNullException>(async () =>
             await client.CallBatchAsync(null!) // Pass null directly
         );
     }
@@ -64,7 +65,7 @@ public partial class ObsWebSocketClientTests
         List<BatchRequestItem> requests = [new("", null)]; // Item with empty RequestType
 
         // Act & Assert
-        ArgumentException ex = await Assert.ThrowsExceptionAsync<ArgumentException>(async () =>
+        ArgumentException ex = await Assert.ThrowsExactlyAsync<ArgumentException>(async () =>
             await client.CallBatchAsync(requests)
         );
         Assert.IsTrue(
@@ -75,6 +76,56 @@ public partial class ObsWebSocketClientTests
             "requests",
             ex.ParamName,
             "Exception should target the 'requests' parameter."
+        );
+    }
+
+    /// <summary>
+    /// Verifies that arbitrary anonymous objects in batch request data are rejected to keep serialization AOT-safe.
+    /// </summary>
+    [TestMethod]
+    public async Task CallBatchAsync_AnonymousRequestData_ThrowsObsWebSocketException()
+    {
+        // Arrange
+        (
+            ObsWebSocketClient client,
+            _,
+            Mock<IWebSocketConnection> mockWebSocket
+        ) = TestUtils.SetupConnectedClientForceState();
+
+        List<BatchRequestItem> requests =
+        [
+            new("GetInputList", new { inputKind = "text_gdiplus_v3" }),
+        ];
+
+        // Act
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(async () =>
+            await client.CallBatchAsync(requests)
+        );
+
+        // Assert
+        bool outerHasExpectedMessage = ex.Message.Contains(
+            "Failed to serialize request data",
+            StringComparison.Ordinal
+        );
+        bool innerHasExpectedMessage = ex.InnerException?.Message.Contains(
+            "Failed to serialize request data",
+            StringComparison.Ordinal
+        ) == true;
+        Assert.IsTrue(
+            outerHasExpectedMessage || innerHasExpectedMessage,
+            "Exception chain should indicate request data serialization failure."
+        );
+
+        mockWebSocket.Verify(
+            ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never,
+            "No message should be sent when request data cannot be serialized."
         );
     }
 
@@ -95,8 +146,7 @@ public partial class ObsWebSocketClientTests
 
         // Define the batch items
         BatchRequestItem request1 = new("GetVersion", null);
-        // Ensure request data uses anonymous objects or concrete DTOs that System.Text.Json can serialize
-        var request2Data = new { sceneName = "OldScene", newSceneName = "NewScene" };
+        SetSceneNameRequestData request2Data = new("OldScene", "NewScene");
         BatchRequestItem request2 = new("SetSceneName", request2Data);
         List<BatchRequestItem> requests = [request1, request2];
 
@@ -125,7 +175,7 @@ public partial class ObsWebSocketClientTests
         byte[]? sentBytes = null; // Capture the serialized batch message bytes
 
         // Mock SendAsync: Capture the request ID and simulate the batch response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -165,7 +215,7 @@ public partial class ObsWebSocketClientTests
                         );
 
                         // Simulate the batch response arriving
-                        TestUtils.SimulateIncomingResponse(
+                        _ = TestUtils.SimulateIncomingResponse(
                             client,
                             capturedBatchRequestId,
                             simulatedBatchResponse
@@ -176,7 +226,7 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Mock DeserializePayload for the batch response structure
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<RequestBatchResponsePayload<object>>(It.IsAny<object>())
             )
@@ -248,13 +298,13 @@ public partial class ObsWebSocketClientTests
                 req2SentData.TryGetProperty("sceneName", out JsonElement sceneNameElement),
                 "sceneName property missing"
             );
-            Assert.AreEqual(request2Data.sceneName, sceneNameElement.GetString());
+            Assert.AreEqual(request2Data.SceneName, sceneNameElement.GetString());
 
             Assert.IsTrue(
                 req2SentData.TryGetProperty("newSceneName", out JsonElement newSceneNameElement),
                 "newSceneName property missing"
             );
-            Assert.AreEqual(request2Data.newSceneName, newSceneNameElement.GetString());
+            Assert.AreEqual(request2Data.NewSceneName, newSceneNameElement.GetString());
         }
         catch (Exception ex)
         {
@@ -288,7 +338,7 @@ public partial class ObsWebSocketClientTests
         string? capturedBatchRequestId = null;
 
         // Mock SendAsync: Capture ID but DO NOT simulate a response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -317,7 +367,7 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Act & Assert
-        ObsWebSocketException ex = await Assert.ThrowsExceptionAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
             async () => await client.CallBatchAsync(requests, timeoutMs: timeoutMs) // Use the timeout override
         );
 
@@ -326,7 +376,7 @@ public partial class ObsWebSocketClientTests
             ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase),
             "Exception message should indicate timeout."
         );
-        Assert.IsInstanceOfType<OperationCanceledException>(
+        _ = Assert.IsInstanceOfType<OperationCanceledException>(
             ex.InnerException,
             "Inner exception should be OperationCanceledException."
         );
@@ -377,3 +427,4 @@ public partial class ObsWebSocketClientTests
         } // Ignore deserialization errors
     }
 }
+

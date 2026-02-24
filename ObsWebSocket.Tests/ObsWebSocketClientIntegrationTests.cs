@@ -7,9 +7,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
 
 namespace ObsWebSocket.Tests;
 
@@ -42,13 +44,13 @@ public class ObsWebSocketClientIntegrationTests
             .Build();
 
         ServiceCollection services = new();
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(minLogLevel));
+        _ = services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(minLogLevel));
 
         // Bind the "ObsIntegration" section from configuration to the options class
-        services.Configure<ObsIntegrationTestOptions>(configuration.GetSection("ObsIntegration"));
+        _ = services.Configure<ObsIntegrationTestOptions>(configuration.GetSection("ObsIntegration"));
 
         // Configure ObsWebSocketClientOptions based on ObsIntegrationTestOptions
-        services
+        _ = services
             .AddOptions<ObsWebSocketClientOptions>()
             .Configure<IOptions<ObsIntegrationTestOptions>>(
                 (coreOptions, testOpts) =>
@@ -61,7 +63,7 @@ public class ObsWebSocketClientIntegrationTests
             );
 
         // Add the OBS WebSocket client services
-        services.AddObsWebSocketClient();
+        _ = services.AddObsWebSocketClient();
 
         s_serviceProvider = services.BuildServiceProvider();
         s_testOptions = s_serviceProvider
@@ -90,7 +92,7 @@ public class ObsWebSocketClientIntegrationTests
         ValidateOption(s_testOptions.TestAudioInputName, nameof(s_testOptions.TestAudioInputName));
     }
 
-    [ClassCleanup(ClassCleanupBehavior.EndOfClass)]
+    [ClassCleanup]
     public static async Task ClassCleanup()
     {
         if (s_serviceProvider is IAsyncDisposable asyncDisposable)
@@ -103,8 +105,23 @@ public class ObsWebSocketClientIntegrationTests
         }
     }
 
-    private static ObsWebSocketClient CreateClient() =>
-        s_serviceProvider.GetRequiredService<ObsWebSocketClient>();
+    private static ObsWebSocketClient CreateClient()
+    {
+        ILogger<ObsWebSocketClient> logger = s_serviceProvider.GetRequiredService<
+            ILogger<ObsWebSocketClient>
+        >();
+        IWebSocketMessageSerializer serializer = s_serviceProvider.GetRequiredService<
+            IWebSocketMessageSerializer
+        >();
+        IOptions<ObsWebSocketClientOptions> options = s_serviceProvider.GetRequiredService<
+            IOptions<ObsWebSocketClientOptions>
+        >();
+        IWebSocketConnectionFactory connectionFactory = s_serviceProvider.GetRequiredService<
+            IWebSocketConnectionFactory
+        >();
+
+        return new ObsWebSocketClient(logger, serializer, options, connectionFactory);
+    }
 
     // --- Test Cases ---
 
@@ -280,7 +297,7 @@ public class ObsWebSocketClientIntegrationTests
                 $"--> Integration Test: Received CurrentProgramSceneChanged event for scene '{args.EventData.SceneName}'"
             );
             changedToSceneName = args.EventData.SceneName;
-            tcs.TrySetResult(args); // Signal that the event was received
+            _ = tcs.TrySetResult(args); // Signal that the event was received
         };
 
         await client.ConnectAsync();
@@ -488,7 +505,7 @@ public class ObsWebSocketClientIntegrationTests
                 response.InputAudioTracks.ContainsKey(i.ToString()),
                 $"Track '{i}' not found in dictionary."
             );
-            Assert.IsInstanceOfType<bool>(
+            _ = Assert.IsInstanceOfType<bool>(
                 response.InputAudioTracks[i.ToString()],
                 $"Track '{i}' value is not a boolean."
             );
@@ -750,7 +767,7 @@ public class ObsWebSocketClientIntegrationTests
         {
             Trace.WriteLine($"--> Integration Test: Received SceneListChanged event.");
             receivedArgs = args;
-            tcs.TrySetResult(args); // Signal that the event was received
+            _ = tcs.TrySetResult(args); // Signal that the event was received
         };
 
         await client.ConnectAsync();

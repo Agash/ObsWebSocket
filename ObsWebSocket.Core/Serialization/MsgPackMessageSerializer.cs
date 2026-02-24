@@ -1,7 +1,9 @@
-﻿using MessagePack;
+using System.Buffers;
+using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Protocol;
+using ObsWebSocket.Core.Protocol.Generated;
 
 namespace ObsWebSocket.Core.Serialization;
 
@@ -14,14 +16,10 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 {
     private readonly ILogger _logger = logger;
 
-    // Configure MessagePack options.
-    // ContractlessStandardResolverAllowPrivate: Allows deserialization without explicit attributes and works with record primary constructors.
     private static readonly MessagePackSerializerOptions s_msgPackOptions =
-        ContractlessStandardResolverAllowPrivate.Options;
-
-    // Optional: Consider adding compression if needed and supported by OBS (check compatibility)
-    // private static readonly MessagePackSerializerOptions s_msgPackOptions = ContractlessStandardResolverAllowPrivate.Options
-    //     .WithCompression(MessagePackCompression.Lz4BlockArray);
+        MessagePackSerializerOptions
+            .Standard.WithResolver(CompositeResolver.Create(CreateResolverChain()))
+            .WithSecurity(MessagePackSecurity.UntrustedData);
 
     /// <inheritdoc/>
     public string ProtocolSubProtocol => "obswebsocket.msgpack";
@@ -37,11 +35,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
-            byte[] serializedData = MessagePackSerializer.Serialize(
-                message,
-                s_msgPackOptions,
-                cancellationToken
-            );
+            byte[] serializedData = SerializeOutgoingEnvelope(message, cancellationToken);
             return Task.FromResult(serializedData);
         }
         catch (MessagePackSerializationException ex)
@@ -84,21 +78,13 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
-            // Deserialize using 'object' as the placeholder type for the payload 'd'.
-            // With ContractlessStandardResolver, this typically results in nested Dictionary<object, object>, List<object>, or primitive types.
-            IncomingMessage<object>? message = await MessagePackSerializer
-                .DeserializeAsync<IncomingMessage<object>>(
-                    messageStream,
-                    s_msgPackOptions,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            await using MemoryStream buffer = new();
+            await messageStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            IncomingMessage<ReadOnlyMemory<byte>> message = DeserializeIncomingEnvelope(
+                buffer.ToArray()
+            );
 
-            if (message is null)
-            {
-                _logger.LogWarning("MessagePack deserialization resulted in null.");
-            }
-            else if (_logger.IsEnabled(LogLevel.Trace))
+            if (_logger.IsEnabled(LogLevel.Trace))
             {
                 _logger.LogTrace("Deserialized MessagePack message: Op={Op}", message.Op);
             }
@@ -107,9 +93,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (MessagePackSerializationException ex)
         {
-            // Difficult to log problematic MessagePack data directly compared to JSON.
             _logger.LogError(ex, "MessagePack deserialization failed.");
-            // Consider reading stream to byte array here for logging if absolutely needed, but can be large.
             return null;
         }
         catch (Exception ex)
@@ -123,21 +107,27 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
         where TPayload : class
     {
-        if (rawPayloadData is null)
+        if (rawPayloadData is not ReadOnlyMemory<byte> raw)
         {
             return default;
         }
 
         try
         {
-            // ContractlessStandardResolver should handle converting from the underlying object/dictionary
-            // structure back to the target TPayload type if the structure is compatible or TPayload
-            // uses attributes recognized by the resolver (like [Key]).
-            // If direct conversion fails, serializing then deserializing is a fallback.
-            return MessagePackSerializer.Deserialize<TPayload>(
-                MessagePackSerializer.Serialize(rawPayloadData, s_msgPackOptions),
-                s_msgPackOptions
-            );
+            if (typeof(TPayload) == typeof(EventPayloadBase<object>))
+            {
+                return (TPayload)(object)DeserializeEventPayloadBase(raw);
+            }
+
+            if (typeof(TPayload) == typeof(RequestResponsePayload<object>))
+            {
+                MessagePackReader wrapperReader = new(raw);
+                return (TPayload)(object)DeserializeRequestResponsePayload(ref wrapperReader);
+            }
+
+            return typeof(TPayload) == typeof(RequestBatchResponsePayload<object>)
+                ? (TPayload)(object)DeserializeRequestBatchResponsePayload(raw)
+                : MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)
         {
@@ -155,18 +145,14 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
         where TPayload : struct
     {
-        if (rawPayloadData is null)
+        if (rawPayloadData is not ReadOnlyMemory<byte> raw)
         {
             return default;
         }
 
         try
         {
-            // Similar logic as above for value types
-            return MessagePackSerializer.Deserialize<TPayload>(
-                MessagePackSerializer.Serialize(rawPayloadData, s_msgPackOptions),
-                s_msgPackOptions
-            );
+            return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)
         {
@@ -178,5 +164,267 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             );
             return default;
         }
+    }
+
+    private static IncomingMessage<ReadOnlyMemory<byte>> DeserializeIncomingEnvelope(
+        ReadOnlyMemory<byte> payload
+    )
+    {
+        MessagePackReader reader = new(payload);
+        int count = reader.ReadMapHeader();
+        WebSocketOpCode op = default;
+        ReadOnlyMemory<byte> data = default;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            if (key == "op")
+            {
+                op = (WebSocketOpCode)reader.ReadInt32();
+                continue;
+            }
+
+            if (key == "d")
+            {
+                data = ReadRawValue(ref reader);
+                continue;
+            }
+
+            reader.Skip();
+        }
+
+        return new IncomingMessage<ReadOnlyMemory<byte>>(op, data);
+    }
+
+    private static byte[] SerializeOutgoingEnvelope<T>(
+        OutgoingMessage<T> message,
+        CancellationToken cancellationToken
+    )
+    {
+        ArrayBufferWriter<byte> buffer = new();
+        MessagePackWriter writer = new(buffer);
+
+        writer.WriteMapHeader(2);
+        writer.Write("op");
+        writer.Write((int)message.Op);
+        writer.Write("d");
+
+        if (message.D is RequestBatchPayload batchPayload)
+        {
+            SerializeRequestBatchPayload(ref writer, batchPayload, cancellationToken);
+            writer.Flush();
+            return [.. buffer.WrittenSpan];
+        }
+
+        byte[] payloadBytes = MessagePackSerializer.Serialize(message.D, s_msgPackOptions, cancellationToken);
+        writer.WriteRaw(payloadBytes);
+        writer.Flush();
+
+        return [.. buffer.WrittenSpan];
+    }
+
+    private static ReadOnlyMemory<byte> ReadRawValue(ref MessagePackReader reader)
+    {
+        MessagePackReader clone = reader;
+        clone.Skip();
+        ReadOnlySequence<byte> sequence = reader.Sequence.Slice(reader.Position, clone.Position);
+        byte[] raw = new byte[checked((int)sequence.Length)];
+        sequence.CopyTo(raw);
+        reader = clone;
+        return raw;
+    }
+
+    private static EventPayloadBase<object> DeserializeEventPayloadBase(ReadOnlyMemory<byte> raw)
+    {
+        MessagePackReader reader = new(raw);
+        int count = reader.ReadMapHeader();
+
+        string? eventType = null;
+        int eventIntent = 0;
+        object? eventData = null;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "eventType":
+                    eventType = reader.ReadString();
+                    break;
+                case "eventIntent":
+                    eventIntent = reader.ReadInt32();
+                    break;
+                case "eventData":
+                    eventData = ReadRawValue(ref reader);
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new EventPayloadBase<object>(eventType ?? string.Empty, eventIntent, eventData);
+    }
+
+    private static IFormatterResolver[] CreateResolverChain()
+    {
+        return
+        [
+            MsgPackJsonElementResolver.Instance,
+            MsgPackStubExtensionDataResolver.Instance,
+            ObsWebSocketMsgPackResolver.Instance,
+            BuiltinResolver.Instance,
+            SourceGeneratedFormatterResolver.Instance,
+            PrimitiveObjectResolver.Instance,
+        ];
+    }
+
+    private static RequestBatchResponsePayload<object> DeserializeRequestBatchResponsePayload(
+        ReadOnlyMemory<byte> raw
+    )
+    {
+        MessagePackReader reader = new(raw);
+        int count = reader.ReadMapHeader();
+
+        string? requestId = null;
+        List<RequestResponsePayload<object>> results = [];
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "requestId":
+                    requestId = reader.ReadString();
+                    break;
+                case "results":
+                {
+                    int resultCount = reader.ReadArrayHeader();
+                    for (int r = 0; r < resultCount; r++)
+                    {
+                        results.Add(DeserializeRequestResponsePayload(ref reader));
+                    }
+
+                    break;
+                }
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new RequestBatchResponsePayload<object>(requestId ?? string.Empty, results);
+    }
+
+    private static void SerializeRequestBatchPayload(
+        ref MessagePackWriter writer,
+        RequestBatchPayload payload,
+        CancellationToken cancellationToken
+    )
+    {
+        writer.WriteMapHeader(4);
+        writer.Write("requestId");
+        writer.Write(payload.RequestId);
+        writer.Write("haltOnFailure");
+        if (payload.HaltOnFailure.HasValue)
+        {
+            writer.Write(payload.HaltOnFailure.Value);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
+
+        writer.Write("executionType");
+        if (payload.ExecutionType.HasValue)
+        {
+            writer.Write((int)payload.ExecutionType.Value);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
+
+        writer.Write("requests");
+        writer.WriteArrayHeader(payload.Requests.Count);
+        foreach (RequestPayload request in payload.Requests)
+        {
+            SerializeRequestPayload(ref writer, request, cancellationToken);
+        }
+    }
+
+    private static void SerializeRequestPayload(
+        ref MessagePackWriter writer,
+        RequestPayload request,
+        CancellationToken cancellationToken
+    )
+    {
+        writer.WriteMapHeader(3);
+        writer.Write("requestType");
+        writer.Write(request.RequestType);
+        writer.Write("requestId");
+        writer.Write(request.RequestId);
+        writer.Write("requestData");
+        if (request.RequestData.HasValue)
+        {
+            byte[] raw = MessagePackSerializer.Serialize(
+                request.RequestData.Value,
+                s_msgPackOptions,
+                cancellationToken
+            );
+            writer.WriteRaw(raw);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
+    }
+
+    private static RequestResponsePayload<object> DeserializeRequestResponsePayload(
+        ref MessagePackReader reader
+    )
+    {
+        int count = reader.ReadMapHeader();
+
+        string? requestType = null;
+        string? requestId = null;
+        Protocol.RequestStatus requestStatus = new(false, 0, "Missing requestStatus");
+        object? responseData = null;
+
+        for (int i = 0; i < count; i++)
+        {
+            string? key = reader.ReadString();
+            switch (key)
+            {
+                case "requestType":
+                    requestType = reader.ReadString();
+                    break;
+                case "requestId":
+                    requestId = reader.ReadString();
+                    break;
+                case "requestStatus":
+                {
+                    ReadOnlyMemory<byte> statusRaw = ReadRawValue(ref reader);
+                    requestStatus = MessagePackSerializer.Deserialize<Protocol.RequestStatus>(
+                        statusRaw,
+                        s_msgPackOptions
+                    );
+                    break;
+                }
+                case "responseData":
+                    responseData = ReadRawValue(ref reader);
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        return new RequestResponsePayload<object>(
+            requestType ?? string.Empty,
+            requestId ?? string.Empty,
+            requestStatus,
+            responseData
+        );
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -23,8 +23,8 @@ public class ObsWebSocketDiTests
     {
         ServiceCollection services = new();
         // Add minimal logging provider (NullLogger) for tests not verifying log output
-        services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         return services;
     }
 
@@ -39,7 +39,7 @@ public class ObsWebSocketDiTests
         ServiceCollection services = CreateServiceCollectionWithLogging();
 
         // Act
-        services.AddObsWebSocketClient(); // Register the client and its dependencies
+        _ = services.AddObsWebSocketClient(); // Register the client and its dependencies
         ServiceProvider provider = services.BuildServiceProvider(); // Build the container
 
         // Assert
@@ -53,7 +53,7 @@ public class ObsWebSocketDiTests
         // Verify concrete implementations are registered (as singletons)
         Assert.IsNotNull(provider.GetService<JsonMessageSerializer>());
         Assert.IsNotNull(provider.GetService<MsgPackMessageSerializer>());
-        Assert.IsInstanceOfType<WebSocketConnectionFactory>(
+        _ = Assert.IsInstanceOfType<WebSocketConnectionFactory>(
             provider.GetRequiredService<IWebSocketConnectionFactory>()
         );
 
@@ -80,7 +80,7 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        services.AddObsWebSocketClient(); // Use default options
+        _ = services.AddObsWebSocketClient(); // Use default options
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -92,14 +92,14 @@ public class ObsWebSocketDiTests
         // Assert
         // Check the resolved interface type
         Assert.IsNotNull(resolvedSerializer);
-        Assert.IsInstanceOfType<JsonMessageSerializer>(resolvedSerializer);
+        _ = Assert.IsInstanceOfType<JsonMessageSerializer>(resolvedSerializer);
 
         // Check the serializer injected into the client instance
         Assert.IsNotNull(resolvedClient);
         IWebSocketMessageSerializer? injectedSerializer =
             TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
         Assert.IsNotNull(injectedSerializer);
-        Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
+        _ = Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.json", injectedSerializer.ProtocolSubProtocol);
     }
 
@@ -111,7 +111,7 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        services.AddObsWebSocketClient(options => options.Format = SerializationFormat.Json); // Explicitly configure JSON
+        _ = services.AddObsWebSocketClient(options => options.Format = SerializationFormat.Json); // Explicitly configure JSON
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -121,12 +121,12 @@ public class ObsWebSocketDiTests
 
         // Assert
         Assert.IsNotNull(resolvedSerializer);
-        Assert.IsInstanceOfType<JsonMessageSerializer>(resolvedSerializer);
+        _ = Assert.IsInstanceOfType<JsonMessageSerializer>(resolvedSerializer);
         Assert.IsNotNull(resolvedClient);
         IWebSocketMessageSerializer? injectedSerializer =
             TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
         Assert.IsNotNull(injectedSerializer);
-        Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
+        _ = Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.json", injectedSerializer.ProtocolSubProtocol);
     }
 
@@ -138,7 +138,7 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        services.AddObsWebSocketClient(options => options.Format = SerializationFormat.MsgPack); // Configure MsgPack
+        _ = services.AddObsWebSocketClient(options => options.Format = SerializationFormat.MsgPack); // Configure MsgPack
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -148,12 +148,12 @@ public class ObsWebSocketDiTests
 
         // Assert
         Assert.IsNotNull(resolvedSerializer);
-        Assert.IsInstanceOfType<MsgPackMessageSerializer>(resolvedSerializer);
+        _ = Assert.IsInstanceOfType<MsgPackMessageSerializer>(resolvedSerializer);
         Assert.IsNotNull(resolvedClient);
         IWebSocketMessageSerializer? injectedSerializer =
             TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
         Assert.IsNotNull(injectedSerializer);
-        Assert.IsInstanceOfType<MsgPackMessageSerializer>(injectedSerializer);
+        _ = Assert.IsInstanceOfType<MsgPackMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.msgpack", injectedSerializer.ProtocolSubProtocol);
     }
 
@@ -179,7 +179,7 @@ public class ObsWebSocketDiTests
 
         // Act
         // Configure all options via the action
-        services.AddObsWebSocketClient(options =>
+        _ = services.AddObsWebSocketClient(options =>
         {
             options.ServerUri = testUri;
             options.Password = testPassword;
@@ -225,7 +225,7 @@ public class ObsWebSocketDiTests
         ServiceCollection services = CreateServiceCollectionWithLogging();
 
         // Act
-        services.AddObsWebSocketClient(); // Call without configuration action
+        _ = services.AddObsWebSocketClient(); // Call without configuration action
         ServiceProvider provider = services.BuildServiceProvider();
         IOptions<ObsWebSocketClientOptions>? resolvedOptions = provider.GetService<
             IOptions<ObsWebSocketClientOptions>
@@ -263,7 +263,7 @@ public class ObsWebSocketDiTests
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
         // Configure *without* setting ServerUri
-        services.AddObsWebSocketClient(opts =>
+        _ = services.AddObsWebSocketClient(opts =>
         {
             opts.Password = "abc";
         });
@@ -272,10 +272,11 @@ public class ObsWebSocketDiTests
 
         // Act & Assert
         // Expect ArgumentNullException when ConnectAsync is called without ServerUri
-        ArgumentNullException ex = await Assert.ThrowsExceptionAsync<ArgumentNullException>(() =>
+        ArgumentNullException ex = await Assert.ThrowsExactlyAsync<ArgumentNullException>(() =>
             client.ConnectAsync()
         );
         // Verify the exception parameter name points to the missing option
         Assert.AreEqual("ServerUri", ex.ParamName);
     }
 }
+

@@ -28,19 +28,19 @@ public static class ObsWebSocketServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Ensure Options infrastructure is registered
-        services.AddOptions();
+        _ = services.AddOptions();
 
         // Configure options if an action is provided
         if (configureOptions != null)
         {
-            services.Configure(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
         services.TryAddSingleton<JsonMessageSerializer>();
         services.TryAddSingleton<MsgPackMessageSerializer>();
 
         // This factory determines which concrete serializer to use based on options.
-        services.AddSingleton<IWebSocketMessageSerializer>(sp =>
+        _ = services.AddSingleton<IWebSocketMessageSerializer>(sp =>
         {
             ObsWebSocketClientOptions options = sp.GetRequiredService<
                 IOptions<ObsWebSocketClientOptions>

@@ -1,15 +1,18 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Buffers;
+using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
+using Spectre.Console;
 
 namespace ObsWebSocket.Example;
 
@@ -17,18 +20,21 @@ internal sealed partial class Worker(
     ILogger<Worker> logger,
     ObsWebSocketClient obsClient,
     IOptions<ObsWebSocketClientOptions> obsOptions,
+    IOptions<ExampleValidationOptions> validationOptions,
+    ExampleStartupCommandOptions startupCommandOptions,
+    ILoggerFactory loggerFactory,
+    IWebSocketConnectionFactory connectionFactory,
     IHostApplicationLifetime lifetime
 ) : BackgroundService
 {
     private readonly ILogger<Worker> _logger = logger;
     private readonly ObsWebSocketClient _obsClient = obsClient;
+    private readonly ObsWebSocketClientOptions _baseOptions = obsOptions.Value;
+    private readonly ExampleValidationOptions _validationOptions = validationOptions.Value;
+    private readonly ExampleStartupCommandOptions _startupCommandOptions = startupCommandOptions;
+    private readonly ILoggerFactory _loggerFactory = loggerFactory;
+    private readonly IWebSocketConnectionFactory _connectionFactory = connectionFactory;
     private readonly IHostApplicationLifetime _lifetime = lifetime;
-
-    private static readonly JsonSerializerOptions s_serializerOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-    };
 
     // Store the *intended* subscription flags (initialized from options, updated by set-subs)
     // Note: The client doesn't currently expose the *actual* negotiated flags from the server.
@@ -61,12 +67,58 @@ internal sealed partial class Worker(
 
         try
         {
+            if (_validationOptions.RunValidationOnStartup)
+            {
+                _logger.LogInformation("Running startup transport validation suite...");
+                await RunTransportValidationSuiteAsync(stoppingToken).ConfigureAwait(false);
+            }
+
+            if (
+                string.Equals(
+                    _startupCommandOptions.Command,
+                    "run-transport-tests",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                string startupCommand = _startupCommandOptions.Command!;
+                _logger.LogInformation(
+                    "Running startup command: {Command}",
+                    startupCommand
+                );
+                await ProcessCommandAsync(
+                        startupCommand,
+                        _startupCommandOptions.Arguments,
+                        stoppingToken
+                    )
+                    .ConfigureAwait(false);
+                _lifetime.StopApplication();
+                return;
+            }
+
             // --- Connect to OBS ---
             // ConnectAsync now uses the IOptions internally
             await _obsClient.ConnectAsync(stoppingToken);
 
             if (_obsClient.IsConnected)
             {
+                if (!string.IsNullOrWhiteSpace(_startupCommandOptions.Command))
+                {
+                    string startupCommand = _startupCommandOptions.Command!;
+                    _logger.LogInformation(
+                        "Running startup command: {Command}",
+                        startupCommand
+                    );
+                    await ProcessCommandAsync(
+                            startupCommand,
+                            _startupCommandOptions.Arguments,
+                            stoppingToken
+                        )
+                        .ConfigureAwait(false);
+                    _lifetime.StopApplication();
+                    return;
+                }
+
                 await RunCommandLoopAsync(stoppingToken);
             }
             else
@@ -118,10 +170,11 @@ internal sealed partial class Worker(
     private async Task RunCommandLoopAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Command loop started. Type 'help' for commands, 'exit' to quit.");
+        RenderCommandHelp();
 
         while (!stoppingToken.IsCancellationRequested && _obsClient.IsConnected)
         {
-            Console.Write("> ");
+            AnsiConsole.Markup("[grey]> [/] ");
             string? commandLine = await Console.In.ReadLineAsync(stoppingToken);
             if (string.IsNullOrWhiteSpace(commandLine))
             {
@@ -186,25 +239,7 @@ internal sealed partial class Worker(
         switch (command)
         {
             case "help":
-                Console.WriteLine(
-                    """
-                    Available commands:
-                      help                      - Show this help
-                      exit                      - Exit the application
-                      status                    - Show connection status
-                      version                   - Get OBS & WebSocket version info
-                      scene                     - Get current program scene
-                      mute [input name]         - Toggle mute for the specified audio input
-                      unmute [input name]       - (Alias for mute)
-                      get-input-settings [scene name] [input name] - Get settings for an input
-                      set-text [scene] [input] [text...] - Set text for a Text (GDI+) source
-                      list-filters [source name] - List filters for a source (input/scene)
-                      toggle-filter [source] [filter] - Toggle enable state of a filter
-                      batch-example             - Run a sample batch request sequence
-                      list-subs                 - Show current event subscription flags (intended)
-                      set-subs <numeric_flags>  - Change event subscriptions via Reidentify
-                    """
-                );
+                RenderCommandHelp();
                 return false;
 
             case "exit":
@@ -213,7 +248,10 @@ internal sealed partial class Worker(
                 return true;
 
             case "status":
-                Console.WriteLine($"Client Connected: {_obsClient.IsConnected}");
+                RenderKeyValueTable(
+                    "Connection Status",
+                    [("Client Connected", _obsClient.IsConnected ? "Yes" : "No")]
+                );
                 return false;
 
             case "version":
@@ -222,22 +260,30 @@ internal sealed partial class Worker(
                 );
                 if (version is not null)
                 {
-                    Console.WriteLine($"OBS Version: {version.ObsVersion}");
-                    Console.WriteLine($"WebSocket Version: {version.ObsWebSocketVersion}");
-                    Console.WriteLine($"RPC Version: {version.RpcVersion}");
-                    Console.WriteLine(
-                        $"Platform: {version.Platform} ({version.PlatformDescription})"
+                    RenderKeyValueTable(
+                        "Version Info",
+                        [
+                            ("OBS Version", version.ObsVersion ?? "N/A"),
+                            ("WebSocket Version", version.ObsWebSocketVersion ?? "N/A"),
+                            ("RPC Version", version.RpcVersion.ToString()),
+                            (
+                                "Platform",
+                                $"{version.Platform ?? "N/A"} ({version.PlatformDescription ?? "N/A"})"
+                            ),
+                            (
+                                "Supported Image Formats",
+                                string.Join(", ", version.SupportedImageFormats ?? [])
+                            ),
+                            (
+                                "Available Requests",
+                                (version.AvailableRequests?.Count ?? 0).ToString()
+                            ),
+                        ]
                     );
-                    Console.WriteLine(
-                        $"Supported Image Formats: {string.Join(", ", version.SupportedImageFormats ?? [])}"
-                    );
-                    Console.WriteLine(
-                        $"Available Requests ({version.AvailableRequests?.Count ?? 0})"
-                    ); // Only show count
                 }
                 else
                 {
-                    Console.WriteLine("Could not get version info.");
+                    UiWarn("Could not get version info.");
                 }
 
                 return false;
@@ -247,10 +293,15 @@ internal sealed partial class Worker(
                     await _obsClient.GetCurrentProgramSceneAsync(
                         cancellationToken: cancellationToken
                     );
-                Console.WriteLine(
-                    scene is not null
-                        ? $"Current Program Scene: {scene.SceneName ?? "N/A"} (UUID: {scene.SceneUuid ?? "N/A"})"
-                        : "Could not get current scene."
+                if (scene is null)
+                {
+                    UiWarn("Could not get current scene.");
+                    return false;
+                }
+
+                RenderKeyValueTable(
+                    "Current Scene",
+                    [("Name", scene.SceneName ?? "N/A"), ("UUID", scene.SceneUuid ?? "N/A")]
                 );
                 return false;
 
@@ -258,7 +309,7 @@ internal sealed partial class Worker(
             case "unmute":
                 if (args.Length == 0)
                 {
-                    Console.WriteLine($"Usage: {command} [input name]");
+                    UiWarn($"Usage: {command} [input name]");
                     return false;
                 }
 
@@ -268,10 +319,14 @@ internal sealed partial class Worker(
                     new ToggleInputMuteRequestData(inputNameToMute),
                     cancellationToken: cancellationToken
                 );
-                Console.WriteLine(
-                    muteState is not null
-                        ? $"Input '{inputNameToMute}' is now {(muteState.InputMuted ? "MUTED" : "UNMUTED")}"
-                        : $"Could not toggle mute state for {inputNameToMute}. Does it exist?"
+                if (muteState is null)
+                {
+                    UiWarn($"Could not toggle mute state for {inputNameToMute}. Does it exist?");
+                    return false;
+                }
+
+                UiSuccess(
+                    $"Input '{inputNameToMute}' is now {(muteState.InputMuted ? "MUTED" : "UNMUTED")}"
                 );
                 return false;
 
@@ -279,7 +334,7 @@ internal sealed partial class Worker(
             case "get-input-settings":
                 if (args.Length < 2)
                 {
-                    Console.WriteLine("Usage: get-input-settings [scene name] [input name]");
+                    UiWarn("Usage: get-input-settings [scene name] [input name]");
                     return false;
                 }
 
@@ -300,17 +355,16 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken
                     );
 
-                    if (settings?.InputSettings is not null)
+                    if (settings?.InputSettings is JsonElement inputSettingsElement)
                     {
-                        Console.WriteLine($"--- Settings for '{inputForGetSettings}' ---");
-                        Console.WriteLine($"Kind: {settings.InputKind ?? "Unknown"}"); // Kind comes from response
-                        Console.WriteLine(
-                            JsonSerializer.Serialize(settings.InputSettings, s_serializerOptions)
+                        UiInfo(
+                            $"Settings for '{inputForGetSettings}' (kind: {settings.InputKind ?? "Unknown"})"
                         );
+                        RenderJsonPanel("Input Settings", inputSettingsElement.GetRawText());
                     }
                     else
                     {
-                        Console.WriteLine(
+                        UiWarn(
                             $"Could not get settings for input '{inputForGetSettings}'. It might not exist or have no specific settings."
                         );
                     }
@@ -325,7 +379,7 @@ internal sealed partial class Worker(
             case "set-text":
                 if (args.Length < 3)
                 {
-                    Console.WriteLine(
+                    UiWarn(
                         "Usage: set-text [scene name] [text source name] [new text...]"
                     );
                     return false;
@@ -352,9 +406,19 @@ internal sealed partial class Worker(
                     // Construct the settings object for Text (GDI+) source
                     // IMPORTANT: The exact property name ('text') depends on the input kind.
                     // Assume 'text' for 'text_gdiplus_v3'. Inspect with 'get-input-settings' if unsure.
-                    JsonElement newSettings = JsonSerializer.SerializeToElement(
-                        new { text = newText }
+                    ArrayBufferWriter<byte> textPayloadBuffer = new();
+                    using (Utf8JsonWriter writer = new(textPayloadBuffer))
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("text", newText);
+                        writer.WriteEndObject();
+                        writer.Flush();
+                    }
+
+                    using JsonDocument textPayloadDocument = JsonDocument.Parse(
+                        textPayloadBuffer.WrittenMemory
                     );
+                    JsonElement newSettings = textPayloadDocument.RootElement.Clone();
 
                     // Send the request
                     await _obsClient.SetInputSettingsAsync(
@@ -366,7 +430,7 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken
                     );
 
-                    Console.WriteLine(
+                    UiSuccess(
                         $"Successfully set text for '{inputForSetText}' to: '{newText}'"
                     );
                 }
@@ -390,7 +454,7 @@ internal sealed partial class Worker(
             case "list-filters":
                 if (args.Length == 0)
                 {
-                    Console.WriteLine("Usage: list-filters [source name]");
+                    UiWarn("Usage: list-filters [source name]");
                     return false;
                 }
 
@@ -402,17 +466,29 @@ internal sealed partial class Worker(
                     );
                 if (filterList?.Filters is not null && filterList.Filters.Count > 0)
                 {
-                    Console.WriteLine($"--- Filters for '{sourceForFilters}' ---");
+                    Table table = new() { Title = new TableTitle($"Filters for '{sourceForFilters}'") };
+                    _ = table.AddColumn("Index");
+                    _ = table.AddColumn("Name");
+                    _ = table.AddColumn("Kind");
+                    _ = table.AddColumn("Enabled");
                     foreach (Core.Protocol.Common.FilterStub filterElement in filterList.Filters)
                     {
-                        Console.WriteLine(
-                            $"  - [{filterElement.FilterIndex}] {filterElement.FilterName} ({filterElement.FilterKind}) - Enabled: {filterElement.FilterEnabled}"
+                        string filterIndex = filterElement.FilterIndex?.ToString() ?? "N/A";
+                        string filterName = Markup.Escape(filterElement.FilterName ?? "N/A") ?? "N/A";
+                        string filterKind = Markup.Escape(filterElement.FilterKind ?? "N/A") ?? "N/A";
+                        _ = table.AddRow(
+                            filterIndex,
+                            filterName,
+                            filterKind,
+                            filterElement.FilterEnabled == true ? "[green]Yes[/]" : "[grey]No[/]"
                         );
                     }
+
+                    AnsiConsole.Write(table);
                 }
                 else
                 {
-                    Console.WriteLine($"No filters found for source '{sourceForFilters}'.");
+                    UiInfo($"No filters found for source '{sourceForFilters}'.");
                 }
 
                 return false;
@@ -420,7 +496,7 @@ internal sealed partial class Worker(
             case "toggle-filter":
                 if (args.Length < 2)
                 {
-                    Console.WriteLine("Usage: toggle-filter [source name] [filter name]");
+                    UiWarn("Usage: toggle-filter [source name] [filter name]");
                     return false;
                 }
 
@@ -440,7 +516,7 @@ internal sealed partial class Worker(
 
                 if (currentFilterState is null)
                 {
-                    Console.WriteLine(
+                    UiWarn(
                         $"Could not find filter '{filterToToggle}' on source '{sourceForToggle}'."
                     );
                     return false;
@@ -458,27 +534,41 @@ internal sealed partial class Worker(
                     cancellationToken: cancellationToken
                 );
 
-                Console.WriteLine(
+                UiSuccess(
                     $"Filter '{filterToToggle}' on '{sourceForToggle}' toggled to {(newState ? "ENABLED" : "DISABLED")}"
                 );
                 return false;
 
             case "batch-example":
+            {
                 _logger.LogInformation("Running batch example...");
+                ArrayBufferWriter<byte> batchSettingsBuffer = new();
+                using (Utf8JsonWriter batchSettingsWriter = new(batchSettingsBuffer))
+                {
+                    batchSettingsWriter.WriteStartObject();
+                    batchSettingsWriter.WriteString("text", "Batch updated!");
+                    batchSettingsWriter.WriteEndObject();
+                    batchSettingsWriter.Flush();
+                }
+
+                using JsonDocument batchSettingsDocument = JsonDocument.Parse(
+                    batchSettingsBuffer.WrittenMemory
+                );
+                JsonElement batchSettingsPayload = batchSettingsDocument.RootElement.Clone();
+
                 List<BatchRequestItem> batchItems =
                 [
                     new("GetVersion", null),
                     new("GetCurrentProgramScene", null),
-                    new("GetInputList", new { inputKind = "text_gdiplus_v3" }), // Get only text inputs
-                    new("Sleep", new { sleepMillis = 100 }), // Wait 100ms
+                    new("GetInputList", new GetInputListRequestData("text_gdiplus_v3")),
+                    new("Sleep", new SleepRequestData(sleepMillis: 100)),
                     new(
                         "SetInputSettings", // Example: Set specific text source's text (requires knowing name)
-                        new
-                        {
-                            inputName = "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
-                            inputSettings = new { text = "Batch updated!" },
-                            overlay = true,
-                        }
+                        new SetInputSettingsRequestData(
+                            batchSettingsPayload,
+                            inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
+                            overlay: true
+                        )
                     ),
                 ];
 
@@ -489,55 +579,81 @@ internal sealed partial class Worker(
                     cancellationToken: cancellationToken
                 );
 
-                Console.WriteLine($"--- Batch Results ({batchResults.Count} items) ---");
+                Table batchTable = new() { Title = new TableTitle($"Batch Results ({batchResults.Count} items)") };
+                _ = batchTable.AddColumn("Request");
+                _ = batchTable.AddColumn("Status");
+                _ = batchTable.AddColumn("Code");
+                _ = batchTable.AddColumn("Details");
                 foreach (RequestResponsePayload<object> result in batchResults)
                 {
-                    Console.WriteLine(
-                        $"  [{result.RequestType} / {result.RequestId[(result.RequestId.LastIndexOf('_') + 1)..]}]: {(result.RequestStatus.Result ? "Success" : "Failed")} (Code: {result.RequestStatus.Code})"
-                    );
+                    string shortId = result.RequestId[(result.RequestId.LastIndexOf('_') + 1)..];
+                    string status = result.RequestStatus.Result ? "[green]Success[/]" : "[red]Failed[/]";
+                    string details = string.Empty;
                     if (!result.RequestStatus.Result)
                     {
-                        Console.WriteLine($"      Error: {result.RequestStatus.Comment ?? "N/A"}");
+                        details = $"Error: {Markup.Escape(result.RequestStatus.Comment ?? "N/A")}";
                     }
                     else if (result.ResponseData is not null)
                     {
-                        // Attempt to pretty print response data
                         string responseJson = "Could not serialize response data";
                         try
                         {
-                            responseJson = JsonSerializer.Serialize(
-                                result.ResponseData,
-                                s_serializerOptions
-                            );
+                            responseJson =
+                                result.ResponseData is JsonElement jsonElement
+                                    ? jsonElement.GetRawText()
+                                    : result.ResponseData.ToString() ?? string.Empty;
                         }
                         catch
                         { /* Ignore serialization errors for logging */
                         }
 
-                        Console.WriteLine($"      Response:\n{responseJson}\n");
+                        details =
+                            responseJson.Length > 140
+                                ? $"{Markup.Escape(responseJson[..140])}..."
+                                : Markup.Escape(responseJson);
                     }
+
+                    _ = batchTable.AddRow(
+                        $"{Markup.Escape(result.RequestType ?? "N/A")} / {Markup.Escape(shortId)}",
+                        status,
+                        result.RequestStatus.Code.ToString(),
+                        details
+                    );
                 }
+                AnsiConsole.Write(batchTable);
 
                 _logger.LogInformation("Batch example finished.");
                 return false;
+            }
+
+            case "run-transport-tests":
+                await RunTransportValidationSuiteAsync(cancellationToken).ConfigureAwait(false);
+                return false;
 
             case "list-subs":
-                Console.WriteLine(
-                    $"Current Intended Event Subscriptions: {_currentSubscriptionFlags} ({(EventSubscription)_currentSubscriptionFlags})"
-                );
-                Console.WriteLine(
-                    "Note: This reflects the last requested flags, not necessarily the flags acknowledged by the server."
+                RenderKeyValueTable(
+                    "Event Subscriptions",
+                    [
+                        (
+                            "Current Intended Flags",
+                            $"{_currentSubscriptionFlags} ({(EventSubscription)_currentSubscriptionFlags})"
+                        ),
+                        (
+                            "Note",
+                            "Reflects last requested flags, not server-acknowledged state."
+                        ),
+                    ]
                 );
                 return false;
 
             case "set-subs":
                 if (args.Length == 0 || !uint.TryParse(args[0], out uint newFlags))
                 {
-                    Console.WriteLine("Usage: set-subs <numeric_flags>");
-                    Console.WriteLine(
+                    UiWarn("Usage: set-subs <numeric_flags>");
+                    UiInfo(
                         "Example: set-subs 65 (General | Scenes | Inputs, 1 | 4 | 8 = 13)"
                     );
-                    Console.WriteLine(
+                    UiInfo(
                         "See ObsWebSocket.Core.Protocol.Generated.EventSubscription for flags."
                     );
                     return false;
@@ -549,11 +665,11 @@ internal sealed partial class Worker(
                     (EventSubscription)newFlags
                 );
                 await _obsClient.ReidentifyAsync(
-                    (uint)newFlags,
+                    newFlags,
                     cancellationToken: cancellationToken
                 );
                 _currentSubscriptionFlags = newFlags; // Update our stored value *after* successful re-identify
-                Console.WriteLine(
+                UiSuccess(
                     $"Re-identified successfully. Intended subscriptions set to: {_currentSubscriptionFlags} ({(EventSubscription)_currentSubscriptionFlags})"
                 );
                 return false;
@@ -564,10 +680,473 @@ internal sealed partial class Worker(
             // --- End of New Commands ---
 
             default:
-                Console.WriteLine($"Unknown command: '{command}'. Type 'help'.");
+                UiWarn($"Unknown command: '{command}'. Type 'help'.");
                 return false;
         }
     }
+
+    private async Task RunTransportValidationSuiteAsync(CancellationToken cancellationToken)
+    {
+        int iterations = Math.Max(1, _validationOptions.ValidationIterations);
+        Rule rule = new("[cyan]Transport Validation[/]")
+        {
+            Justification = Justify.Left
+        };
+        AnsiConsole.Write(rule);
+        for (int i = 0; i < iterations; i++)
+        {
+            _logger.LogInformation(
+                "Running transport validation iteration {Current}/{Total} (JSON then MsgPack)...",
+                i + 1,
+                iterations
+            );
+            UiInfo($"Iteration {i + 1}/{iterations}: JSON then MsgPack");
+            await RunTransportValidationCycleAsync(SerializationFormat.Json, cancellationToken)
+                .ConfigureAwait(false);
+            await RunTransportValidationCycleAsync(SerializationFormat.MsgPack, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async Task RunTransportValidationCycleAsync(
+        SerializationFormat format,
+        CancellationToken cancellationToken
+    )
+    {
+        ObsWebSocketClientOptions cycleOptions = CloneOptionsForFormat(format);
+        IWebSocketMessageSerializer serializer = CreateSerializer(format);
+
+        await using ObsWebSocketClient cycleClient = new(
+            _loggerFactory.CreateLogger<ObsWebSocketClient>(),
+            serializer,
+            Options.Create(cycleOptions),
+            _connectionFactory
+        );
+
+        await cycleClient.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            GetVersionResponseData? version = await cycleClient
+                .GetVersionAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            if (
+                version is null
+                || string.IsNullOrWhiteSpace(version.ObsVersion)
+                || string.IsNullOrWhiteSpace(version.ObsWebSocketVersion)
+                || version.RpcVersion <= 0
+            )
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Invalid GetVersion response. ObsVersion='{version?.ObsVersion}', ObsWebSocketVersion='{version?.ObsWebSocketVersion}', RpcVersion={version?.RpcVersion}."
+                );
+            }
+
+            GetVersionResponseData validatedVersion = version;
+
+            _logger.LogInformation(
+                "[{Format}] Connected to OBS {ObsVersion} (RPC {RpcVersion})",
+                format,
+                validatedVersion.ObsVersion,
+                validatedVersion.RpcVersion
+            );
+
+            GetSceneListResponseData? scenes = await cycleClient
+                .GetSceneListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetSceneList returned no scenes."
+                );
+            }
+
+            _logger.LogInformation(
+                "[{Format}] Scene stubs deserialized: {SceneCount}",
+                format,
+                scenes?.Scenes?.Count ?? 0
+            );
+            int sceneCount = scenes?.Scenes?.Count ?? 0;
+
+            GetInputListResponseData? inputs = await cycleClient
+                .GetInputListAsync(new GetInputListRequestData(), cancellationToken)
+                .ConfigureAwait(false);
+            if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetInputList returned no inputs."
+                );
+            }
+
+            _logger.LogInformation(
+                "[{Format}] Input stubs deserialized: {InputCount}",
+                format,
+                inputs?.Inputs?.Count ?? 0
+            );
+            int inputCount = inputs?.Inputs?.Count ?? 0;
+
+            int filterCount = 0;
+            string? inputName = inputs?.Inputs?.FirstOrDefault()?.InputName;
+            if (!string.IsNullOrWhiteSpace(inputName))
+            {
+                GetSourceFilterListResponseData? filters = await cycleClient
+                    .GetSourceFilterListAsync(
+                        new GetSourceFilterListRequestData(inputName),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                _logger.LogInformation(
+                    "[{Format}] Filter stubs deserialized for '{InputName}': {FilterCount}",
+                    format,
+                    inputName,
+                    filters?.Filters?.Count ?? 0
+                );
+                filterCount = filters?.Filters?.Count ?? 0;
+            }
+
+            GetSourceFilterKindListResponseData? filterKinds = await cycleClient
+                .GetSourceFilterKindListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (filterKinds?.SourceFilterKinds is null || filterKinds.SourceFilterKinds.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetSourceFilterKindList returned no filter kinds."
+                );
+            }
+
+            _logger.LogInformation(
+                "[{Format}] Filter kind entries: {KindCount}",
+                format,
+                filterKinds?.SourceFilterKinds?.Count ?? 0
+            );
+            int filterKindCount = filterKinds?.SourceFilterKinds?.Count ?? 0;
+
+            (
+                bool extensionDataObserved,
+                bool extensionDataValid,
+                int extensionBagCount,
+                int extensionEntryCount
+            ) = ValidateStubExtensionData(scenes, inputs, inputName, format);
+
+            if (extensionDataObserved && !extensionDataValid)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Stub ExtensionData validation failed."
+                );
+            }
+
+            string testId = $"{format}-custom-{Guid.NewGuid():N}";
+            JsonElement customPayload = JsonDocument
+                .Parse(
+                    $$"""
+                    {
+                      "testId": "{{testId}}",
+                      "format": "{{format}}",
+                      "nested": {
+                        "enabled": true,
+                        "levels": [1, 2, 3]
+                      }
+                    }
+                    """
+                )
+                .RootElement.Clone();
+
+            Task<CustomEventEventArgs?> waitForCustomEvent = cycleClient.WaitForEventAsync<
+                CustomEventEventArgs
+            >(
+                predicate: _ => true,
+                timeout: TimeSpan.FromSeconds(2),
+                cancellationToken: cancellationToken
+            );
+
+            await cycleClient
+                .BroadcastCustomEventAsync(
+                    new BroadcastCustomEventRequestData(customPayload),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            CustomEventEventArgs? customEvent = await waitForCustomEvent.ConfigureAwait(false);
+            bool customEventVerified = false;
+            if (
+                customEvent?.EventData.EventData is JsonElement receivedCustomData
+                && TryFindCustomEventPayloadByTestId(
+                    receivedCustomData,
+                    testId,
+                    out JsonElement actualCustomData
+                )
+                && actualCustomData.GetProperty("testId").GetString() == testId
+                && actualCustomData.GetProperty("nested").GetProperty("enabled").GetBoolean()
+                && actualCustomData.GetProperty("nested").GetProperty("levels").GetArrayLength() == 3
+            )
+            {
+                customEventVerified = true;
+                _logger.LogInformation(
+                    "[{Format}] CustomEvent roundtrip verified with testId {TestId}.",
+                    format,
+                    testId
+                );
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[{Format}] CustomEvent payload verification skipped (event received: {Received}).",
+                    format,
+                    customEvent is not null
+                );
+            }
+
+            List<RequestResponsePayload<object>> batch = await cycleClient
+                .CallBatchAsync(
+                    [new("GetVersion", null), new("GetSceneList", null)],
+                    executionType: RequestBatchExecutionType.SerialRealtime,
+                    haltOnFailure: false,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+            if (batch.Count != 2 || batch.Any(result => !result.RequestStatus.Result))
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Batch validation failed. Count={batch.Count}."
+                );
+            }
+
+            _logger.LogInformation("[{Format}] Batch call results: {ResultCount}", format, batch.Count);
+
+            Table summary = new() { Title = new TableTitle($"{format} Validation Summary") };
+            _ = summary.AddColumn("Check");
+            _ = summary.AddColumn("Result");
+            _ = summary.AddRow("OBS Version", Markup.Escape(validatedVersion.ObsVersion ?? "N/A"));
+            _ = summary.AddRow("RPC", validatedVersion.RpcVersion.ToString());
+            _ = summary.AddRow("Scenes", sceneCount.ToString());
+            _ = summary.AddRow("Inputs", inputCount.ToString());
+            _ = summary.AddRow("Filters (first input)", filterCount.ToString());
+            _ = summary.AddRow("Filter Kinds", filterKindCount.ToString());
+            _ = summary.AddRow(
+                "Stub ExtensionData",
+                extensionDataObserved
+                    ? $"[green]Pass[/] ({extensionBagCount} bag(s), {extensionEntryCount} entries)"
+                    : "[yellow]Unverified[/]"
+            );
+            _ = summary.AddRow("CustomEvent", customEventVerified ? "[green]Pass[/]" : "[yellow]Unverified[/]");
+            _ = summary.AddRow("Batch", $"{batch.Count} result(s)");
+            AnsiConsole.Write(summary);
+        }
+        finally
+        {
+            if (cycleClient.IsConnected)
+            {
+                await cycleClient.DisconnectAsync(cancellationToken: CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private IWebSocketMessageSerializer CreateSerializer(SerializationFormat format) =>
+        format switch
+        {
+            SerializationFormat.MsgPack => new MsgPackMessageSerializer(
+                _loggerFactory.CreateLogger<MsgPackMessageSerializer>()
+            ),
+            _ => new JsonMessageSerializer(_loggerFactory.CreateLogger<JsonMessageSerializer>()),
+        };
+
+    private (
+        bool Observed,
+        bool Valid,
+        int ExtensionBagCount,
+        int ExtensionEntryCount
+    ) ValidateStubExtensionData(
+        GetSceneListResponseData? scenes,
+        GetInputListResponseData? inputs,
+        string? firstInputName,
+        SerializationFormat format
+    )
+    {
+        List<Dictionary<string, JsonElement>?> extensionBags =
+        [
+            ..(scenes?.Scenes ?? []).Select(scene => scene.ExtensionData),
+            ..(inputs?.Inputs ?? []).Select(input => input.ExtensionData),
+        ];
+
+        int extensionBagCount = extensionBags.Count(bag => bag is { Count: > 0 });
+        int extensionEntryCount = extensionBags
+            .Where(bag => bag is { Count: > 0 })
+            .Sum(bag => bag!.Count);
+
+        bool valid = true;
+        foreach (Dictionary<string, JsonElement>? bag in extensionBags.Where(bag => bag is { Count: > 0 }))
+        {
+            foreach ((string _, JsonElement value) in bag!)
+            {
+                if (!IsValidExtensionDataValue(value))
+                {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (!valid)
+            {
+                break;
+            }
+        }
+
+        bool observed = extensionBagCount > 0;
+        if (observed)
+        {
+            _logger.LogInformation(
+                "[{Format}] Stub ExtensionData validated: {BagCount} bag(s), {EntryCount} entries.",
+                format,
+                extensionBagCount,
+                extensionEntryCount
+            );
+        }
+        else
+        {
+            _logger.LogWarning(
+                "[{Format}] Stub ExtensionData was not present in GetSceneList/GetInputList responses for input '{InputName}'.",
+                format,
+                firstInputName ?? "N/A"
+            );
+        }
+
+        return (observed, valid, extensionBagCount, extensionEntryCount);
+    }
+
+    private static bool IsValidExtensionDataValue(JsonElement value)
+    {
+        try
+        {
+            if (value.ValueKind == JsonValueKind.Undefined)
+            {
+                return false;
+            }
+
+            _ = value.GetRawText();
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryFindCustomEventPayloadByTestId(
+        JsonElement source,
+        string testId,
+        out JsonElement payload
+    ) => TryFindCustomEventPayloadByTestIdCore(source, testId, depth: 0, out payload);
+
+    private static bool TryFindCustomEventPayloadByTestIdCore(
+        JsonElement source,
+        string testId,
+        int depth,
+        out JsonElement payload
+    )
+    {
+        payload = default;
+        if (depth > 8)
+        {
+            return false;
+        }
+
+        switch (source.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                if (
+                    source.TryGetProperty("testId", out JsonElement idProperty)
+                    && idProperty.ValueKind == JsonValueKind.String
+                    && string.Equals(idProperty.GetString(), testId, StringComparison.Ordinal)
+                )
+                {
+                    payload = source.Clone();
+                    return true;
+                }
+
+                foreach (JsonProperty property in source.EnumerateObject())
+                {
+                    if (
+                        TryFindCustomEventPayloadByTestIdCore(
+                            property.Value,
+                            testId,
+                            depth + 1,
+                            out payload
+                        )
+                    )
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            case JsonValueKind.Array:
+            {
+                foreach (JsonElement element in source.EnumerateArray())
+                {
+                    if (
+                        TryFindCustomEventPayloadByTestIdCore(element, testId, depth + 1, out payload)
+                    )
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            case JsonValueKind.String:
+            {
+                string? rawString = source.GetString();
+                if (string.IsNullOrWhiteSpace(rawString))
+                {
+                    return false;
+                }
+
+                string trimmed = rawString.Trim();
+                if (!trimmed.StartsWith('{') && !trimmed.StartsWith('['))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    using JsonDocument parsed = JsonDocument.Parse(trimmed);
+                    return TryFindCustomEventPayloadByTestIdCore(
+                        parsed.RootElement,
+                        testId,
+                        depth + 1,
+                        out payload
+                    );
+                }
+                catch (JsonException)
+                {
+                    return false;
+                }
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    private ObsWebSocketClientOptions CloneOptionsForFormat(SerializationFormat format) =>
+        new()
+        {
+            ServerUri = _baseOptions.ServerUri,
+            Password = _baseOptions.Password,
+            EventSubscriptions = _baseOptions.EventSubscriptions,
+            HandshakeTimeoutMs = _baseOptions.HandshakeTimeoutMs,
+            RequestTimeoutMs = _baseOptions.RequestTimeoutMs,
+            Format = format,
+            AutoReconnectEnabled = false,
+            InitialReconnectDelayMs = _baseOptions.InitialReconnectDelayMs,
+            MaxReconnectAttempts = _baseOptions.MaxReconnectAttempts,
+            ReconnectBackoffMultiplier = _baseOptions.ReconnectBackoffMultiplier,
+            MaxReconnectDelayMs = _baseOptions.MaxReconnectDelayMs,
+        };
 
     // --- Helper to find Scene Item ID ---
     private async Task<double> GetSceneItemIdAsync(
@@ -683,23 +1262,142 @@ internal sealed partial class Worker(
 
         // 3. Output the results as JSON
         _logger.LogInformation("Default settings retrieval complete. Outputting JSON...");
-        Console.WriteLine("\n--- FILTER DEFAULT SETTINGS START ---");
+        Rule settingsStartRule = new("[yellow]Filter Default Settings[/]")
+        {
+            Justification = Justify.Left
+        };
+        AnsiConsole.Write(settingsStartRule);
         try
         {
-            string jsonOutput = JsonSerializer.Serialize(filterDefaultSettings);
-            Console.WriteLine(jsonOutput);
+            ArrayBufferWriter<byte> outputBuffer = new();
+            using (Utf8JsonWriter writer = new(outputBuffer, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                foreach ((string filterKind, JsonElement? value) in filterDefaultSettings)
+                {
+                    writer.WritePropertyName(filterKind);
+                    if (value is JsonElement element)
+                    {
+                        element.WriteTo(writer);
+                    }
+                    else
+                    {
+                        writer.WriteNullValue();
+                    }
+                }
+
+                writer.WriteEndObject();
+                writer.Flush();
+            }
+
+            string jsonOutput = System.Text.Encoding.UTF8.GetString(outputBuffer.WrittenSpan);
+            RenderJsonPanel("Filter Kind Defaults", jsonOutput);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to serialize filter default settings results to JSON.");
-            Console.WriteLine("{\"error\": \"Failed to serialize results.\"}");
+            UiError("{\"error\": \"Failed to serialize results.\"}");
         }
-
-        Console.WriteLine("--- FILTER DEFAULT SETTINGS END ---\n");
 
         _logger.LogInformation("Default filter settings retrieval finished.");
         // No cleanup needed as we didn't add filters to the source
     }
+
+    private static void RenderCommandHelp()
+    {
+        Table commandTable = new() { Title = new TableTitle("Available Commands") };
+        _ = commandTable.AddColumn("Command");
+        _ = commandTable.AddColumn("Description");
+        _ = commandTable.AddRow(Markup.Escape("help"), Markup.Escape("Show this help"));
+        _ = commandTable.AddRow(Markup.Escape("exit"), Markup.Escape("Exit the application"));
+        _ = commandTable.AddRow(Markup.Escape("status"), Markup.Escape("Show connection status"));
+        _ = commandTable.AddRow(
+            Markup.Escape("version"),
+            Markup.Escape("Get OBS and WebSocket version info")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("scene"),
+            Markup.Escape("Get current program scene")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("mute [input name]"),
+            Markup.Escape("Toggle mute for audio input")
+        );
+        _ = commandTable.AddRow(Markup.Escape("unmute [input name]"), Markup.Escape("Alias for mute"));
+        _ = commandTable.AddRow(
+            Markup.Escape("get-input-settings [scene] [input]"),
+            Markup.Escape("Get settings for an input")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("set-text [scene] [input] [text...]"),
+            Markup.Escape("Set text on text source")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("list-filters [source]"),
+            Markup.Escape("List filters for source")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("toggle-filter [source] [filter]"),
+            Markup.Escape("Toggle filter enabled state")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("batch-example"),
+            Markup.Escape("Run sample batch request sequence")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("run-transport-tests"),
+            Markup.Escape("Run JSON + MsgPack validation cycles")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("list-subs"),
+            Markup.Escape("Show intended event subscription flags")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("set-subs <numeric_flags>"),
+            Markup.Escape("Reidentify with new event flags")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("get-all-filter-settings"),
+            Markup.Escape("Dump default settings for all filter kinds")
+        );
+        AnsiConsole.Write(commandTable);
+    }
+
+    private static void RenderKeyValueTable(string title, IReadOnlyList<(string Key, string Value)> rows)
+    {
+        Table table = new() { Title = new TableTitle(title) };
+        _ = table.AddColumn("Property");
+        _ = table.AddColumn("Value");
+        foreach ((string key, string value) in rows)
+        {
+            _ = table.AddRow(Markup.Escape(key), Markup.Escape(value));
+        }
+
+        AnsiConsole.Write(table);
+    }
+
+    private static void RenderJsonPanel(string title, string json)
+    {
+        Panel panel = new(new Markup(Markup.Escape(json)))
+        {
+            Header = new PanelHeader(title),
+            Border = BoxBorder.Rounded,
+            Expand = true,
+        };
+        AnsiConsole.Write(panel);
+    }
+
+    private static void UiInfo(string message) =>
+        AnsiConsole.MarkupLine($"[grey]{Markup.Escape(message)}[/]");
+
+    private static void UiWarn(string message) =>
+        AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(message)}[/]");
+
+    private static void UiSuccess(string message) =>
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(message)}[/]");
+
+    private static void UiError(string message) =>
+        AnsiConsole.MarkupLine($"[red]{Markup.Escape(message)}[/]");
 
     // --- Event Handlers ---
     private void OnObsConnecting(object? sender, ConnectingEventArgs e) =>
@@ -794,3 +1492,5 @@ internal sealed partial class Worker(
     [System.Text.RegularExpressions.GeneratedRegex(@"code (\d+):")]
     private static partial System.Text.RegularExpressions.Regex ObsErrorCodeRegex();
 }
+
+

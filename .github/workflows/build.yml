@@ -36,16 +36,36 @@ jobs:
       with:
         fetch-depth: 0 # Required for MinVer to determine the version from Git history
 
-    - name: Setup .NET 9 SDK
+    - name: Setup .NET 10 SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.x' # Use the specific .NET 9 SDK
+        dotnet-version: '10.x'
 
     - name: Restore dependencies
       run: dotnet restore ObsWebSocket.sln
 
     - name: Build Solution
       run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
+
+    - name: Restore Example for AOT RID graph
+      run: >
+        dotnet restore ObsWebSocket.Example/ObsWebSocket.Example.csproj
+        -p:TargetFramework=net10.0
+        --runtime linux-x64
+        -p:SelfContained=true
+        -p:PublishAot=true
+
+    - name: Native AOT Smoke Publish (ObsWebSocket.Example)
+      run: >
+        dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj
+        --configuration Release
+        --framework net10.0
+        --runtime linux-x64
+        --self-contained true
+        /p:PublishAot=true
+        /p:ILLinkTreatWarningsAsErrors=true
+        /p:IlcTreatWarningsAsErrors=true
+        /p:WarningsNotAsErrors=IL2104%3BIL3053
 
     - name: Run Unit Tests
       # Run tests specifically for the ObsWebSocket.Tests project

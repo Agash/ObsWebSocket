@@ -4,11 +4,20 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core;
 using ObsWebSocket.Example;
+using Spectre.Console;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+AnsiConsole.Write(
+    new Rule("[cyan]ObsWebSocket Example Tool[/]")
+    {
+        Justification = Justify.Left,
+    }
+);
 
 // Reads appsettings.json, environment variables, command-line args
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder
+    .Configuration.SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
@@ -16,6 +25,16 @@ builder.Logging.AddConsole();
 
 // Configure OBS WebSocket Client options from "Obs" section in appsettings.json
 builder.Services.Configure<ObsWebSocketClientOptions>(builder.Configuration.GetSection("Obs"));
+builder.Services.Configure<ExampleValidationOptions>(
+    builder.Configuration.GetSection("ExampleValidation")
+);
+builder.Services.AddSingleton(
+    new ExampleStartupCommandOptions
+    {
+        Command = args.Length > 0 ? args[0] : null,
+        Arguments = args.Length > 1 ? args[1..] : [],
+    }
+);
 
 // Add the ObsWebSocketClient and its dependencies
 builder.Services.AddObsWebSocketClient();
@@ -27,4 +46,4 @@ using IHost host = builder.Build();
 
 await host.RunAsync();
 
-Console.WriteLine("\nExample application finished.");
+AnsiConsole.MarkupLine("[grey]Example application finished.[/]");

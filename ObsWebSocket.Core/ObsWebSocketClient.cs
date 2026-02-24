@@ -103,9 +103,8 @@ public sealed partial class ObsWebSocketClient(
         TaskCreationOptions.RunContinuationsAsynchronously
     );
 
-    private static readonly JsonSerializerOptions s_payloadJsonOptions = new(
-        JsonSerializerDefaults.Web
-    );
+    private static readonly JsonSerializerOptions s_payloadJsonOptions =
+        ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options;
     #endregion
 
     #region Properties
@@ -288,7 +287,7 @@ public sealed partial class ObsWebSocketClient(
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "ReidentifyAsync failed.");
-            _identifiedTcs?.TrySetException(ex);
+            _ = (_identifiedTcs?.TrySetException(ex));
             throw ex is ObsWebSocketException or OperationCanceledException
                 ? ex
                 : new ObsWebSocketException($"Reidentify failed: {ex.Message}", ex);
@@ -296,7 +295,7 @@ public sealed partial class ObsWebSocketClient(
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
             _logger.LogWarning("ReidentifyAsync canceled due to client shutdown.");
-            _identifiedTcs?.TrySetCanceled(_clientLifetimeCts.Token);
+            _ = (_identifiedTcs?.TrySetCanceled(_clientLifetimeCts.Token));
             throw;
         }
         finally
@@ -398,7 +397,7 @@ public sealed partial class ObsWebSocketClient(
                 requestId
             );
 
-            tcs.TrySetException(ex); // Ensure TCS is completed on failure
+            _ = tcs.TrySetException(ex); // Ensure TCS is completed on failure
 
             throw;
         }
@@ -410,13 +409,13 @@ public sealed partial class ObsWebSocketClient(
                 requestId
             );
 
-            tcs.TrySetCanceled(_clientLifetimeCts.Token);
+            _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
 
             throw;
         }
         finally
         {
-            _pendingRequests.TryRemove(requestId, out _);
+            _ = _pendingRequests.TryRemove(requestId, out _);
         }
     }
 
@@ -513,7 +512,7 @@ public sealed partial class ObsWebSocketClient(
                 requestType,
                 requestId
             );
-            tcs.TrySetException(ex);
+            _ = tcs.TrySetException(ex);
             throw ex is ObsWebSocketException
                 ? ex
                 : new ObsWebSocketException($"Error in CallAsyncValue for '{requestType}'.", ex);
@@ -525,12 +524,12 @@ public sealed partial class ObsWebSocketClient(
                 requestType,
                 requestId
             );
-            tcs.TrySetCanceled(_clientLifetimeCts.Token);
+            _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
             throw;
         }
         finally
         {
-            _pendingRequests.TryRemove(requestId, out _);
+            _ = _pendingRequests.TryRemove(requestId, out _);
         }
     }
 
@@ -640,7 +639,7 @@ public sealed partial class ObsWebSocketClient(
                 "CallBatchAsync failed for batch {BatchRequestId}",
                 batchRequestId
             );
-            tcs.TrySetException(ex);
+            _ = tcs.TrySetException(ex);
             throw ex is ObsWebSocketException
                 ? ex
                 : new ObsWebSocketException($"Error in CallBatchAsync for '{batchRequestId}'.", ex);
@@ -648,12 +647,12 @@ public sealed partial class ObsWebSocketClient(
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
             _logger.LogWarning("CallBatchAsync for {BatchRequestId} canceled.", batchRequestId);
-            tcs.TrySetCanceled(_clientLifetimeCts.Token);
+            _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
             throw;
         }
         finally
         {
-            _pendingBatchRequests.TryRemove(batchRequestId, out _);
+            _ = _pendingBatchRequests.TryRemove(batchRequestId, out _);
         }
     }
 
@@ -797,7 +796,7 @@ public sealed partial class ObsWebSocketClient(
                                 $"Failed to connect after {attempt - 1} attempts.",
                                 _completionException
                             );
-                            initialTcs.TrySetException(_completionException); // Fail the initial connect TCS
+                            _ = initialTcs.TrySetException(_completionException); // Fail the initial connect TCS
                             break;
                         }
 
@@ -840,7 +839,7 @@ public sealed partial class ObsWebSocketClient(
                             _completionException = new TaskCanceledException(
                                 "Disconnect requested during connect."
                             );
-                            initialTcs.TrySetCanceled(loopToken); // Signal cancellation
+                            _ = initialTcs.TrySetCanceled(loopToken); // Signal cancellation
                             break;
                         }
 
@@ -866,7 +865,7 @@ public sealed partial class ObsWebSocketClient(
                         attempt
                     );
                     _completionException = null;
-                    initialTcs.TrySetResult(); // Signal successful initial connection
+                    _ = initialTcs.TrySetResult(); // Signal successful initial connection
                     attempt = 0; // Reset attempt count only on full success
                     currentDelayMs = options.InitialReconnectDelayMs;
 
@@ -884,7 +883,7 @@ public sealed partial class ObsWebSocketClient(
                         attempt
                     );
                     attemptException = ex;
-                    initialTcs.TrySetCanceled(loopToken); // Signal cancellation
+                    _ = initialTcs.TrySetCanceled(loopToken); // Signal cancellation
                     break;
                 }
                 catch (AuthenticationFailureException authEx)
@@ -896,7 +895,7 @@ public sealed partial class ObsWebSocketClient(
                     );
                     attemptException = authEx;
                     RaiseAuthenticationFailureEvent(options.ServerUri!, attempt, authEx);
-                    initialTcs.TrySetException(authEx); // Signal auth failure
+                    _ = initialTcs.TrySetException(authEx); // Signal auth failure
                     break; // Auth failure is fatal
                 }
                 catch (ConnectionAttemptFailedException connEx)
@@ -914,7 +913,7 @@ public sealed partial class ObsWebSocketClient(
                         && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
                     )
                     {
-                        initialTcs.TrySetException(connEx);
+                        _ = initialTcs.TrySetException(connEx);
                     }
                 }
                 catch (WebSocketException wsEx)
@@ -931,7 +930,7 @@ public sealed partial class ObsWebSocketClient(
                         && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
                     )
                     {
-                        initialTcs.TrySetException(
+                        _ = initialTcs.TrySetException(
                             new ConnectionAttemptFailedException(wsEx.Message, wsEx)
                         );
                     }
@@ -950,7 +949,7 @@ public sealed partial class ObsWebSocketClient(
                         && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
                     )
                     {
-                        initialTcs.TrySetException(
+                        _ = initialTcs.TrySetException(
                             new ConnectionAttemptFailedException(ex.Message, ex)
                         );
                     }
@@ -1000,13 +999,13 @@ public sealed partial class ObsWebSocketClient(
         {
             _logger.LogCritical(ex, "Catastrophic error in ConnectionLoopAsync.");
             _completionException = ex;
-            initialTcs.TrySetException(ex); // Ensure TCS is faulted
+            _ = initialTcs.TrySetException(ex); // Ensure TCS is faulted
         }
         finally
         {
             _logger.LogInformation("Exited connection loop. Finalizing state.");
             // If the loop exited without success/explicit failure setting the initial TCS, fail it now.
-            initialTcs.TrySetException(
+            _ = initialTcs.TrySetException(
                 _completionException
                     ?? new ObsWebSocketException(
                         "Connection loop exited unexpectedly before initial connection completed."
@@ -1181,8 +1180,8 @@ public sealed partial class ObsWebSocketClient(
             _webSocket = null; // Detach socket on failure
 
             // Ensure TCS are cleaned up on failure
-            _helloTcs?.TrySetException(ex);
-            _identifiedTcs?.TrySetException(ex);
+            _ = (_helloTcs?.TrySetException(ex));
+            _ = (_identifiedTcs?.TrySetException(ex));
             _helloTcs = null; // Clear fields after attempting to set exception
             _identifiedTcs = null;
 
@@ -1405,9 +1404,9 @@ public sealed partial class ObsWebSocketClient(
         CancellationToken tokenForFailure =
             receiveLoopCts?.Token ?? _clientLifetimeCts?.Token ?? CancellationToken.None;
 
-        _helloTcs?.TrySetException(reasonException);
+        _ = (_helloTcs?.TrySetException(reasonException));
         _helloTcs = null;
-        _identifiedTcs?.TrySetException(reasonException);
+        _ = (_identifiedTcs?.TrySetException(reasonException));
         _identifiedTcs = null;
 
         FailPendingRequests(_pendingRequests, reasonException, tokenForFailure);
@@ -1536,7 +1535,7 @@ public sealed partial class ObsWebSocketClient(
             case IncomingMessage<JsonElement> jsonMsg:
                 (opCode, payloadData) = (jsonMsg.Op, jsonMsg.D);
                 break;
-            case IncomingMessage<object> msgpackMsg:
+            case IncomingMessage<ReadOnlyMemory<byte>> msgpackMsg:
                 (opCode, payloadData) = (msgpackMsg.Op, msgpackMsg.D);
                 break;
             default:
@@ -1551,11 +1550,11 @@ public sealed partial class ObsWebSocketClient(
         {
             case WebSocketOpCode.Hello:
                 _logger.LogTrace("Processing Hello message.");
-                _helloTcs?.TrySetResult(messageObject);
+                _ = (_helloTcs?.TrySetResult(messageObject));
                 break;
             case WebSocketOpCode.Identified:
                 _logger.LogTrace("Processing Identified message.");
-                _identifiedTcs?.TrySetResult(messageObject);
+                _ = (_identifiedTcs?.TrySetResult(messageObject));
                 break;
             case WebSocketOpCode.Event:
                 HandleEventMessage(payloadData);
@@ -1603,7 +1602,7 @@ public sealed partial class ObsWebSocketClient(
                 )
             )
             {
-                tcs.TrySetResult(response);
+                _ = tcs.TrySetResult(response);
             }
             else
             {
@@ -1654,7 +1653,7 @@ public sealed partial class ObsWebSocketClient(
                 )
             )
             {
-                tcs.TrySetResult(response);
+                _ = tcs.TrySetResult(response);
             }
             else
             {
@@ -2179,7 +2178,7 @@ public sealed partial class ObsWebSocketClient(
         object? rawPayload = messageObject switch
         {
             IncomingMessage<JsonElement> jsonMsg => jsonMsg.D,
-            IncomingMessage<object> msgpackMsg => msgpackMsg.D,
+            IncomingMessage<ReadOnlyMemory<byte>> msgpackMsg => msgpackMsg.D,
             _ => throw new ObsWebSocketException(
                 $"Unexpected message type during {messageName} handshake: {messageObject.GetType().Name}"
             ),
@@ -2189,7 +2188,16 @@ public sealed partial class ObsWebSocketClient(
             ?? throw new ObsWebSocketException($"Received null or invalid {messageName} payload.");
     }
 
-    private static JsonElement? SerializeRequestData(string _, object? requestData)
+    /// <summary>
+    /// Serializes request payload data into a <see cref="JsonElement"/> for embedding in <see cref="RequestPayload"/>.
+    /// </summary>
+    /// <param name="requestContext">Request context used for exception messages.</param>
+    /// <param name="requestData">The request payload object.</param>
+    /// <remarks>
+    /// In Native AOT, arbitrary objects passed through the batch API path may fail if they are not registered
+    /// in <see cref="ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext"/>.
+    /// </remarks>
+    private static JsonElement? SerializeRequestData(string requestContext, object? requestData)
     {
         if (requestData is null)
         {
@@ -2200,7 +2208,17 @@ public sealed partial class ObsWebSocketClient(
         {
             return requestData is JsonElement element
                 ? element
-                : JsonSerializer.SerializeToElement(requestData, s_payloadJsonOptions);
+                : JsonSerializer.SerializeToElement(
+                    requestData,
+                    s_payloadJsonOptions.GetTypeInfo(requestData.GetType())
+                );
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize request data for {requestContext}. In Native AOT builds, request data must be null, JsonElement, or a generated *RequestData record registered in ObsWebSocketJsonContext.",
+                ex
+            );
         }
         catch (Exception ex)
         {
@@ -2419,17 +2437,10 @@ public sealed partial class ObsWebSocketClient(
             ex.GetType().Name
         );
         bool isCancellation = ex is OperationCanceledException;
-        foreach ((string _, TaskCompletionSource<object> tcs) in requestsToFail)
+        foreach ((_, TaskCompletionSource<object> tcs) in requestsToFail)
         {
             CancellationToken tokenToUse = isCancellation ? ct : CancellationToken.None;
-            if (isCancellation)
-            {
-                tcs.TrySetCanceled(tokenToUse);
-            }
-            else
-            {
-                tcs.TrySetException(ex);
-            }
+            _ = isCancellation ? tcs.TrySetCanceled(tokenToUse) : tcs.TrySetException(ex);
         }
     }
 

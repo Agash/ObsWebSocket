@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Moq;
@@ -53,7 +53,7 @@ public class ObsWebSocketClientRequestTests
         string? capturedRequestId = null;
 
         // Mock the SendAsync call to capture the request ID and simulate a successful response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -91,14 +91,14 @@ public class ObsWebSocketClientRequestTests
                             ),
                             ResponseData: rawResponseData.Value // Pass the JsonElement payload
                         );
-                        TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
+                        _ = TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
                     }
                 }
             )
             .Returns(ValueTask.CompletedTask);
 
         // Mock the DeserializePayload call for the specific response type
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<GetVersionResponseData>(
                     It.Is<object>(o =>
@@ -175,7 +175,7 @@ public class ObsWebSocketClientRequestTests
         byte[]? sentRequestBytes = null; // Capture raw bytes for deeper inspection if needed
 
         // Mock SendAsync to capture ID and simulate success response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -209,14 +209,14 @@ public class ObsWebSocketClientRequestTests
                             ),
                             ResponseData: rawResponseData // null
                         );
-                        TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
+                        _ = TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
                     }
                 }
             )
             .Returns(ValueTask.CompletedTask);
 
         // Mock the DeserializePayload call for the response (expecting null or default for object)
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializePayload<object>(It.IsAny<object>()))
             .Returns((object?)null); // Explicitly return null for clarity
 
@@ -279,7 +279,7 @@ public class ObsWebSocketClientRequestTests
         string? capturedRequestId = null;
 
         // Mock SendAsync
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -312,14 +312,14 @@ public class ObsWebSocketClientRequestTests
                             ),
                             ResponseData: rawResponseData.Value // Pass JsonElement payload
                         );
-                        TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
+                        _ = TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
                     }
                 }
             )
             .Returns(ValueTask.CompletedTask);
 
         // Mock the specific response DTO deserialization
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<GetInputMuteResponseData>(
                     It.Is<object>(o =>
@@ -398,7 +398,7 @@ public class ObsWebSocketClientRequestTests
         string? capturedRequestId = null;
 
         // Mock SendAsync to simulate the failure response
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -429,20 +429,20 @@ public class ObsWebSocketClientRequestTests
                             RequestStatus: failureStatus, // The failure status
                             ResponseData: rawResponseData
                         );
-                        TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
+                        _ = TestUtils.SimulateIncomingResponse(client, capturedRequestId, response);
                     }
                 }
             )
             .Returns(ValueTask.CompletedTask);
 
         // Mock DeserializePayload for the s_expectedFailNoRetryLog (but not received) success payload type - It should return null/default
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializePayload<GetVersionResponseData>(It.IsAny<object>()))
             .Returns((GetVersionResponseData?)null);
 
         // Act & Assert
         // Verify that calling the client method throws the correct exception
-        ObsWebSocketException ex = await Assert.ThrowsExceptionAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
             async () => await client.GetVersionAsync() // Call the specific extension method
         );
 
@@ -504,7 +504,7 @@ public class ObsWebSocketClientRequestTests
         string? capturedRequestId = null;
 
         // Mock SendAsync: Capture request ID but DO NOT simulate a response coming back
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws =>
                 ws.SendAsync(
                     It.IsAny<ReadOnlyMemory<byte>>(),
@@ -534,11 +534,11 @@ public class ObsWebSocketClientRequestTests
 
         // Act & Assert
         // Expect TaskCanceledException because the CancellationToken passed to GetVersionAsync will be cancelled.
-        await Assert.ThrowsExceptionAsync<TaskCanceledException>(
+        _ = await Assert.ThrowsExactlyAsync<TaskCanceledException>(
             async () =>
             {
                 using CancellationTokenSource cts = new(timeoutMs); // Create token source with short delay
-                await client.GetVersionAsync(cts.Token); // Pass the token
+                _ = await client.GetVersionAsync(cts.Token); // Pass the token
             },
             "Expected TaskCanceledException when caller token times out."
         );
@@ -626,3 +626,4 @@ public class ObsWebSocketClientRequestTests
         } // Ignore errors
     }
 }
+

@@ -54,7 +54,7 @@ public class ObsWebSocketClientEventTests
             TaskCreationOptions.RunContinuationsAsynchronously
         );
 
-        mockWebSocket
+        _ = mockWebSocket
             .Setup(ws => ws.ReceiveAsync(It.IsAny<Memory<byte>>(), It.IsAny<CancellationToken>()))
             .Returns(
                 (Memory<byte> buffer, CancellationToken ct) =>
@@ -86,10 +86,10 @@ public class ObsWebSocketClientEventTests
                             $"--> ReceiveAsync Mock: Blocking call {receiveCallCount}."
                         );
                         // Register cancellation to ensure the TCS doesn't block indefinitely if the test is cancelled
-                        ct.Register(() =>
+                        _ = ct.Register(() =>
                         {
                             Debug.WriteLine("--> ReceiveAsync block cancelled by token.");
-                            blockTcs.TrySetCanceled(ct);
+                            _ = blockTcs.TrySetCanceled(ct);
                         });
                         // Return the TCS task, which will complete only when set (or cancelled)
                         return new ValueTask<ValueWebSocketReceiveResult>(
@@ -198,8 +198,18 @@ public class ObsWebSocketClientEventTests
             Mock<IWebSocketConnection>? mockWebSocket
         ) = TestUtils.SetupConnectedClientForceState();
 
-        SceneStub scene1Data = new("Scene 1", Guid.NewGuid().ToString(), 1);
-        SceneStub scene2Data = new("Scene 2", Guid.NewGuid().ToString(), 2);
+        SceneStub scene1Data = new()
+        {
+            SceneName = "Scene 1",
+            SceneUuid = Guid.NewGuid().ToString(),
+            SceneIndex = 1,
+        };
+        SceneStub scene2Data = new()
+        {
+            SceneName = "Scene 2",
+            SceneUuid = Guid.NewGuid().ToString(),
+            SceneIndex = 2,
+        };
 
         List<SceneStub> sceneListElements = [scene1Data, scene2Data];
 
@@ -228,14 +238,14 @@ public class ObsWebSocketClientEventTests
         client.SceneListChanged += (_, args) =>
         {
             receivedArgs = args;
-            eventReceivedSignal.TrySetResult();
+            _ = eventReceivedSignal.TrySetResult();
         };
 
         // Mock Serializer
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
             )
@@ -246,7 +256,7 @@ public class ObsWebSocketClientEventTests
                     innerEventDataJsonElement
                 )
             );
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<SceneListChangedPayload>(
                     It.Is<object>(o =>
@@ -259,8 +269,8 @@ public class ObsWebSocketClientEventTests
 
         // Mock WebSocket
         mockWebSocket.Reset(); // Reset setups from helper
-        mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
-        SetupSingleReceiveAndBlock(mockWebSocket, messageBytes); // Setup receive sequence
+        _ = mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = SetupSingleReceiveAndBlock(mockWebSocket, messageBytes); // Setup receive sequence
 
         // Act
         Task receiveLoopTask = StartReceiveLoopAsync(client);
@@ -339,14 +349,14 @@ public class ObsWebSocketClientEventTests
         client.StudioModeStateChanged += (_, args) =>
         {
             receivedArgs = args;
-            eventReceivedSignal.TrySetResult();
+            _ = eventReceivedSignal.TrySetResult();
         };
 
         // Mock Serializer
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
             )
@@ -357,7 +367,7 @@ public class ObsWebSocketClientEventTests
                     innerEventDataJsonElement
                 )
             );
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<StudioModeStateChangedPayload>(
                     It.Is<object>(o =>
@@ -370,8 +380,8 @@ public class ObsWebSocketClientEventTests
 
         // Mock WebSocket
         mockWebSocket.Reset();
-        mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
-        SetupSingleReceiveAndBlock(mockWebSocket, messageBytes);
+        _ = mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = SetupSingleReceiveAndBlock(mockWebSocket, messageBytes);
 
         // Act
         Task receiveLoopTask = StartReceiveLoopAsync(client);
@@ -451,15 +461,15 @@ public class ObsWebSocketClientEventTests
         client.ExitStarted += (_, args) =>
         {
             receivedArgs = args;
-            eventReceivedSignal.TrySetResult();
+            _ = eventReceivedSignal.TrySetResult();
         };
 
         // Mock Serializer
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Mock only the base deserialization, as EventData is null
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
             )
@@ -469,8 +479,8 @@ public class ObsWebSocketClientEventTests
 
         // Mock WebSocket
         mockWebSocket.Reset();
-        mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
-        SetupSingleReceiveAndBlock(mockWebSocket, messageBytes);
+        _ = mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = SetupSingleReceiveAndBlock(mockWebSocket, messageBytes);
 
         // Act
         Task receiveLoopTask = StartReceiveLoopAsync(client);
@@ -544,11 +554,11 @@ public class ObsWebSocketClientEventTests
         );
 
         // --- Mock Serializer ---
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Mock ONLY the base deserialization
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
             )
@@ -556,7 +566,7 @@ public class ObsWebSocketClientEventTests
 
         // --- Mock WebSocket ---
         mockWebSocket.Reset();
-        mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
         TaskCompletionSource<ValueWebSocketReceiveResult> blockTcs = SetupSingleReceiveAndBlock(
             mockWebSocket,
             messageBytes
@@ -657,11 +667,11 @@ public class ObsWebSocketClientEventTests
         );
 
         // --- Mock Serializer ---
-        mockSerializer
+        _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Base deserialization succeeds
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
             )
@@ -673,7 +683,7 @@ public class ObsWebSocketClientEventTests
                 )
             );
         // Specific payload deserialization *throws*
-        mockSerializer
+        _ = mockSerializer
             .Setup(s =>
                 s.DeserializePayload<StudioModeStateChangedPayload>(
                     It.Is<object>(o => o is JsonElement)
@@ -683,7 +693,7 @@ public class ObsWebSocketClientEventTests
 
         // --- Mock WebSocket ---
         mockWebSocket.Reset();
-        mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
+        _ = mockWebSocket.SetupGet(c => c.State).Returns(WebSocketState.Open);
         TaskCompletionSource<ValueWebSocketReceiveResult> blockTcs = SetupSingleReceiveAndBlock(
             mockWebSocket,
             messageBytes
