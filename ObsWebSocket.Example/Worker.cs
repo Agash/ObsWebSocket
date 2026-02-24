@@ -820,6 +820,20 @@ internal sealed partial class Worker(
             );
             int filterKindCount = filterKinds?.SourceFilterKinds?.Count ?? 0;
 
+            (
+                bool extensionDataObserved,
+                bool extensionDataValid,
+                int extensionBagCount,
+                int extensionEntryCount
+            ) = ValidateStubExtensionData(scenes, inputs, inputName, format);
+
+            if (extensionDataObserved && !extensionDataValid)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Stub ExtensionData validation failed."
+                );
+            }
+
             string testId = $"{format}-custom-{Guid.NewGuid():N}";
             JsonElement customPayload = JsonDocument
                 .Parse(
@@ -907,6 +921,12 @@ internal sealed partial class Worker(
             _ = summary.AddRow("Inputs", inputCount.ToString());
             _ = summary.AddRow("Filters (first input)", filterCount.ToString());
             _ = summary.AddRow("Filter Kinds", filterKindCount.ToString());
+            _ = summary.AddRow(
+                "Stub ExtensionData",
+                extensionDataObserved
+                    ? $"[green]Pass[/] ({extensionBagCount} bag(s), {extensionEntryCount} entries)"
+                    : "[yellow]Unverified[/]"
+            );
             _ = summary.AddRow("CustomEvent", customEventVerified ? "[green]Pass[/]" : "[yellow]Unverified[/]");
             _ = summary.AddRow("Batch", $"{batch.Count} result(s)");
             AnsiConsole.Write(summary);
@@ -929,6 +949,87 @@ internal sealed partial class Worker(
             ),
             _ => new JsonMessageSerializer(_loggerFactory.CreateLogger<JsonMessageSerializer>()),
         };
+
+    private (
+        bool Observed,
+        bool Valid,
+        int ExtensionBagCount,
+        int ExtensionEntryCount
+    ) ValidateStubExtensionData(
+        GetSceneListResponseData? scenes,
+        GetInputListResponseData? inputs,
+        string? firstInputName,
+        SerializationFormat format
+    )
+    {
+        List<Dictionary<string, JsonElement>?> extensionBags =
+        [
+            ..(scenes?.Scenes ?? []).Select(scene => scene.ExtensionData),
+            ..(inputs?.Inputs ?? []).Select(input => input.ExtensionData),
+        ];
+
+        int extensionBagCount = extensionBags.Count(bag => bag is { Count: > 0 });
+        int extensionEntryCount = extensionBags
+            .Where(bag => bag is { Count: > 0 })
+            .Sum(bag => bag!.Count);
+
+        bool valid = true;
+        foreach (Dictionary<string, JsonElement>? bag in extensionBags.Where(bag => bag is { Count: > 0 }))
+        {
+            foreach ((string _, JsonElement value) in bag!)
+            {
+                if (!IsValidExtensionDataValue(value))
+                {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (!valid)
+            {
+                break;
+            }
+        }
+
+        bool observed = extensionBagCount > 0;
+        if (observed)
+        {
+            _logger.LogInformation(
+                "[{Format}] Stub ExtensionData validated: {BagCount} bag(s), {EntryCount} entries.",
+                format,
+                extensionBagCount,
+                extensionEntryCount
+            );
+        }
+        else
+        {
+            _logger.LogWarning(
+                "[{Format}] Stub ExtensionData was not present in GetSceneList/GetInputList responses for input '{InputName}'.",
+                format,
+                firstInputName ?? "N/A"
+            );
+        }
+
+        return (observed, valid, extensionBagCount, extensionEntryCount);
+    }
+
+    private static bool IsValidExtensionDataValue(JsonElement value)
+    {
+        try
+        {
+            if (value.ValueKind == JsonValueKind.Undefined)
+            {
+                return false;
+            }
+
+            _ = value.GetRawText();
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
 
     private static bool TryFindCustomEventPayloadByTestId(
         JsonElement source,

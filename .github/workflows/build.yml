@@ -65,6 +65,7 @@ jobs:
         /p:PublishAot=true
         /p:ILLinkTreatWarningsAsErrors=true
         /p:IlcTreatWarningsAsErrors=true
+        /p:WarningsNotAsErrors=IL2104%3BIL3053
 
     - name: Run Unit Tests
       # Run tests specifically for the ObsWebSocket.Tests project

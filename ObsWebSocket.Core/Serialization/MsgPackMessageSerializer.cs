@@ -1,6 +1,5 @@
 using System.Buffers;
 using MessagePack;
-using MessagePack.ImmutableCollection;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Protocol;
@@ -275,10 +274,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             MsgPackStubExtensionDataResolver.Instance,
             ObsWebSocketMsgPackResolver.Instance,
             BuiltinResolver.Instance,
-            AttributeFormatterResolver.Instance,
             SourceGeneratedFormatterResolver.Instance,
-            ImmutableCollectionResolver.Instance,
-            StandardResolver.Instance,
             PrimitiveObjectResolver.Instance,
         ];
     }
