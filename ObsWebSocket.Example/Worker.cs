@@ -734,8 +734,8 @@ internal sealed partial class Worker(
             >(
                 predicate: evt =>
                     evt.EventData.EventData is { } data
-                    && data.ValueKind == JsonValueKind.Object
-                    && data.TryGetProperty("testId", out JsonElement idProp)
+                    && TryGetCustomEventPayload(data, out JsonElement actualPayload)
+                    && actualPayload.TryGetProperty("testId", out JsonElement idProp)
                     && idProp.GetString() == testId,
                 timeout: TimeSpan.FromSeconds(5),
                 cancellationToken: cancellationToken
@@ -756,12 +756,17 @@ internal sealed partial class Worker(
                 );
             }
 
+            if (!TryGetCustomEventPayload(receivedCustomData, out JsonElement actualCustomData))
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] CustomEvent payload shape/content mismatch."
+                );
+            }
+
             if (
-                receivedCustomData.GetProperty("testId").GetString() != testId
-                || receivedCustomData.GetProperty("nested").GetProperty("enabled").GetBoolean()
-                    != true
-                || receivedCustomData.GetProperty("nested").GetProperty("levels").GetArrayLength()
-                    != 3
+                actualCustomData.GetProperty("testId").GetString() != testId
+                || actualCustomData.GetProperty("nested").GetProperty("enabled").GetBoolean() != true
+                || actualCustomData.GetProperty("nested").GetProperty("levels").GetArrayLength() != 3
             )
             {
                 throw new InvalidOperationException(
@@ -810,6 +815,33 @@ internal sealed partial class Worker(
             ),
             _ => new JsonMessageSerializer(_loggerFactory.CreateLogger<JsonMessageSerializer>()),
         };
+
+    private static bool TryGetCustomEventPayload(JsonElement source, out JsonElement payload)
+    {
+        payload = default;
+        if (source.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (source.TryGetProperty("testId", out _))
+        {
+            payload = source;
+            return true;
+        }
+
+        if (
+            source.TryGetProperty("eventData", out JsonElement nested)
+            && nested.ValueKind == JsonValueKind.Object
+            && nested.TryGetProperty("testId", out _)
+        )
+        {
+            payload = nested;
+            return true;
+        }
+
+        return false;
+    }
 
     private ObsWebSocketClientOptions CloneOptionsForFormat(SerializationFormat format) =>
         new()
