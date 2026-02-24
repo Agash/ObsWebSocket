@@ -15,7 +15,9 @@ AnsiConsole.Write(
 );
 
 // Reads appsettings.json, environment variables, command-line args
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder
+    .Configuration.SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
@@ -25,6 +27,13 @@ builder.Logging.AddConsole();
 builder.Services.Configure<ObsWebSocketClientOptions>(builder.Configuration.GetSection("Obs"));
 builder.Services.Configure<ExampleValidationOptions>(
     builder.Configuration.GetSection("ExampleValidation")
+);
+builder.Services.AddSingleton(
+    new ExampleStartupCommandOptions
+    {
+        Command = args.Length > 0 ? args[0] : null,
+        Arguments = args.Length > 1 ? args[1..] : [],
+    }
 );
 
 // Add the ObsWebSocketClient and its dependencies

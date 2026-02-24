@@ -88,7 +88,7 @@ internal static partial class Emitter
                     currentNode = newNode;
                 }
             }
-            NextFieldPass1:
+        NextFieldPass1:
             ;
         }
 

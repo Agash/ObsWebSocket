@@ -238,7 +238,7 @@ internal static partial class Emitter
                     // Map specifically named 'Object' field to Stub record
                     // Use the fully qualified name to avoid potential namespace conflicts
                     return ($"{GeneratedCommonNamespace}.SceneItemTransformStub?", false);
-                // Add other specific 'Object' mappings here if needed in the future
+                    // Add other specific 'Object' mappings here if needed in the future
             }
             // If not handled above, it falls through to the general 'Object'/'Any' handling below
         }

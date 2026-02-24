@@ -21,6 +21,7 @@ internal sealed partial class Worker(
     ObsWebSocketClient obsClient,
     IOptions<ObsWebSocketClientOptions> obsOptions,
     IOptions<ExampleValidationOptions> validationOptions,
+    ExampleStartupCommandOptions startupCommandOptions,
     ILoggerFactory loggerFactory,
     IWebSocketConnectionFactory connectionFactory,
     IHostApplicationLifetime lifetime
@@ -30,6 +31,7 @@ internal sealed partial class Worker(
     private readonly ObsWebSocketClient _obsClient = obsClient;
     private readonly ObsWebSocketClientOptions _baseOptions = obsOptions.Value;
     private readonly ExampleValidationOptions _validationOptions = validationOptions.Value;
+    private readonly ExampleStartupCommandOptions _startupCommandOptions = startupCommandOptions;
     private readonly ILoggerFactory _loggerFactory = loggerFactory;
     private readonly IWebSocketConnectionFactory _connectionFactory = connectionFactory;
     private readonly IHostApplicationLifetime _lifetime = lifetime;
@@ -71,12 +73,52 @@ internal sealed partial class Worker(
                 await RunTransportValidationSuiteAsync(stoppingToken).ConfigureAwait(false);
             }
 
+            if (
+                string.Equals(
+                    _startupCommandOptions.Command,
+                    "run-transport-tests",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                string startupCommand = _startupCommandOptions.Command!;
+                _logger.LogInformation(
+                    "Running startup command: {Command}",
+                    startupCommand
+                );
+                await ProcessCommandAsync(
+                        startupCommand,
+                        _startupCommandOptions.Arguments,
+                        stoppingToken
+                    )
+                    .ConfigureAwait(false);
+                _lifetime.StopApplication();
+                return;
+            }
+
             // --- Connect to OBS ---
             // ConnectAsync now uses the IOptions internally
             await _obsClient.ConnectAsync(stoppingToken);
 
             if (_obsClient.IsConnected)
             {
+                if (!string.IsNullOrWhiteSpace(_startupCommandOptions.Command))
+                {
+                    string startupCommand = _startupCommandOptions.Command!;
+                    _logger.LogInformation(
+                        "Running startup command: {Command}",
+                        startupCommand
+                    );
+                    await ProcessCommandAsync(
+                            startupCommand,
+                            _startupCommandOptions.Arguments,
+                            stoppingToken
+                        )
+                        .ConfigureAwait(false);
+                    _lifetime.StopApplication();
+                    return;
+                }
+
                 await RunCommandLoopAsync(stoppingToken);
             }
             else

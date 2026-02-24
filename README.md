@@ -128,6 +128,8 @@ Batch API note (AOT-safe path):
 
 - Interactive mode: starts a command loop (`help`, `version`, `scene`, `batch-example`, etc.)
 - Transport validation mode: runs JSON + MsgPack validation cycles (scene/input/filter stub-heavy calls), then enters the interactive loop
+- One-shot mode: pass a command as process arguments to run it directly and exit (for CI/automation), for example:
+  - `ObsWebSocket.Example run-transport-tests`
 
 `appsettings.json`:
 

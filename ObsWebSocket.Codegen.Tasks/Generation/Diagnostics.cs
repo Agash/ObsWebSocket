@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 
 namespace ObsWebSocket.Codegen.Tasks.Generation;
@@ -6,11 +5,6 @@ namespace ObsWebSocket.Codegen.Tasks.Generation;
 /// <summary>
 /// Contains DiagnosticDescriptor constants for reporting errors and warnings during source generation.
 /// </summary>
-[SuppressMessage(
-    "StyleCop.CSharp.OrderingRules",
-    "SA1202:Elements must be ordered by access",
-    Justification = "Constants grouped logically."
-)]
 internal static class Diagnostics
 {
     private const string Category = "ObsWebSocketGenerator";

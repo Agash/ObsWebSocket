@@ -11,7 +11,17 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
 
     private MsgPackJsonElementResolver() { }
 
-    public IMessagePackFormatter<T>? GetFormatter<T>() => typeof(T) == typeof(JsonElement) ? (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance : null;
+    public IMessagePackFormatter<T>? GetFormatter<T>()
+    {
+        if (typeof(T) == typeof(JsonElement))
+        {
+            return (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance;
+        }
+
+        return typeof(T) == typeof(JsonElement?)
+            ? (IMessagePackFormatter<T>)(object)NullableJsonElementFormatter.Instance
+            : null;
+    }
 
     internal sealed class JsonElementFormatter : IMessagePackFormatter<JsonElement>
     {
@@ -63,6 +73,39 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
             sequence.CopyTo(raw);
             reader = clone;
             return raw;
+        }
+    }
+
+    internal sealed class NullableJsonElementFormatter : IMessagePackFormatter<JsonElement?>
+    {
+        public static readonly NullableJsonElementFormatter Instance = new();
+
+        public void Serialize(
+            ref MessagePackWriter writer,
+            JsonElement? value,
+            MessagePackSerializerOptions options
+        )
+        {
+            if (!value.HasValue || value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            {
+                writer.WriteNil();
+                return;
+            }
+
+            JsonElementFormatter.Instance.Serialize(ref writer, value.Value, options);
+        }
+
+        public JsonElement? Deserialize(
+            ref MessagePackReader reader,
+            MessagePackSerializerOptions options
+        )
+        {
+            if (reader.TryReadNil())
+            {
+                return null;
+            }
+
+            return JsonElementFormatter.Instance.Deserialize(ref reader, options);
         }
     }
 }

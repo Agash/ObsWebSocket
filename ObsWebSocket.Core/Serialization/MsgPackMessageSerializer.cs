@@ -1,6 +1,6 @@
 using System.Buffers;
-using System.Runtime.CompilerServices;
 using MessagePack;
+using MessagePack.ImmutableCollection;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Protocol;
@@ -210,6 +210,13 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         writer.Write((int)message.Op);
         writer.Write("d");
 
+        if (message.D is RequestBatchPayload batchPayload)
+        {
+            SerializeRequestBatchPayload(ref writer, batchPayload, cancellationToken);
+            writer.Flush();
+            return [.. buffer.WrittenSpan];
+        }
+
         byte[] payloadBytes = MessagePackSerializer.Serialize(message.D, s_msgPackOptions, cancellationToken);
         writer.WriteRaw(payloadBytes);
         writer.Flush();
@@ -262,25 +269,18 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
     private static IFormatterResolver[] CreateResolverChain()
     {
-        List<IFormatterResolver> resolvers =
+        return
         [
             MsgPackJsonElementResolver.Instance,
             MsgPackStubExtensionDataResolver.Instance,
             ObsWebSocketMsgPackResolver.Instance,
             BuiltinResolver.Instance,
             AttributeFormatterResolver.Instance,
+            SourceGeneratedFormatterResolver.Instance,
+            ImmutableCollectionResolver.Instance,
             StandardResolver.Instance,
             PrimitiveObjectResolver.Instance,
         ];
-
-        if (RuntimeFeature.IsDynamicCodeSupported)
-        {
-            resolvers.Add(DynamicObjectResolverAllowPrivate.Instance);
-            resolvers.Add(DynamicGenericResolver.Instance);
-            resolvers.Add(DynamicUnionResolver.Instance);
-        }
-
-        return [.. resolvers];
     }
 
     private static RequestBatchResponsePayload<object> DeserializeRequestBatchResponsePayload(
@@ -318,6 +318,70 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
 
         return new RequestBatchResponsePayload<object>(requestId ?? string.Empty, results);
+    }
+
+    private static void SerializeRequestBatchPayload(
+        ref MessagePackWriter writer,
+        RequestBatchPayload payload,
+        CancellationToken cancellationToken
+    )
+    {
+        writer.WriteMapHeader(4);
+        writer.Write("requestId");
+        writer.Write(payload.RequestId);
+        writer.Write("haltOnFailure");
+        if (payload.HaltOnFailure.HasValue)
+        {
+            writer.Write(payload.HaltOnFailure.Value);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
+
+        writer.Write("executionType");
+        if (payload.ExecutionType.HasValue)
+        {
+            writer.Write((int)payload.ExecutionType.Value);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
+
+        writer.Write("requests");
+        writer.WriteArrayHeader(payload.Requests.Count);
+        foreach (RequestPayload request in payload.Requests)
+        {
+            SerializeRequestPayload(ref writer, request, cancellationToken);
+        }
+    }
+
+    private static void SerializeRequestPayload(
+        ref MessagePackWriter writer,
+        RequestPayload request,
+        CancellationToken cancellationToken
+    )
+    {
+        writer.WriteMapHeader(3);
+        writer.Write("requestType");
+        writer.Write(request.RequestType);
+        writer.Write("requestId");
+        writer.Write(request.RequestId);
+        writer.Write("requestData");
+        if (request.RequestData.HasValue)
+        {
+            byte[] raw = MessagePackSerializer.Serialize(
+                request.RequestData.Value,
+                s_msgPackOptions,
+                cancellationToken
+            );
+            writer.WriteRaw(raw);
+        }
+        else
+        {
+            writer.WriteNil();
+        }
     }
 
     private static RequestResponsePayload<object> DeserializeRequestResponsePayload(

@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
@@ -22,10 +21,7 @@ internal sealed class GenerationContext
         _sources[relativePath] = sourceText.ToString();
     }
 
-    public void ReportDiagnostic(Diagnostic diagnostic)
-    {
-        _diagnostics.Add(diagnostic);
-    }
+    public void ReportDiagnostic(Diagnostic diagnostic) => _diagnostics.Add(diagnostic);
 
     private static string ResolveOutputPath(string hintName, string source)
     {
@@ -61,16 +57,10 @@ internal sealed class GenerationContext
             return Path.Combine("Protocol", "Generated", fileName);
         }
 
-        if (namespaceLine.Contains("ObsWebSocket.Core.Events.Generated", StringComparison.Ordinal))
-        {
-            return Path.Combine("Events", "Generated", fileName);
-        }
-
-        if (namespaceLine.Contains("ObsWebSocket.Core.Serialization", StringComparison.Ordinal))
-        {
-            return Path.Combine("Serialization", fileName);
-        }
-
-        return Path.Combine("Client", fileName);
+        return namespaceLine.Contains("ObsWebSocket.Core.Events.Generated", StringComparison.Ordinal)
+            ? Path.Combine("Events", "Generated", fileName)
+            : namespaceLine.Contains("ObsWebSocket.Core.Serialization", StringComparison.Ordinal)
+            ? Path.Combine("Serialization", fileName)
+            : Path.Combine("Client", fileName);
     }
 }

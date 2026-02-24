@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using MessagePack;
@@ -45,6 +46,47 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
         if (type == typeof(TransitionStub))
         {
             return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<TransitionStub>();
+        }
+
+        if (type == typeof(List<SceneStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneStub>>();
+        }
+
+        if (type == typeof(List<SceneItemStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>();
+        }
+
+        if (type == typeof(List<FilterStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<FilterStub>>();
+        }
+
+        if (type == typeof(List<InputStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<InputStub>>();
+        }
+
+        if (type == typeof(List<TransitionStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>();
+        }
+
+        if (type == typeof(List<OutputStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<OutputStub>>();
+        }
+
+        if (type == typeof(List<MonitorStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>();
+        }
+
+        if (type == typeof(List<PropertyItemStub>))
+        {
+            return (IMessagePackFormatter<T>)(object)
+                new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>();
         }
 
         return type == typeof(OutputStub)

@@ -44,10 +44,10 @@ internal static class ProtocolCodegenRunner
             if (errors.Length > 0)
             {
                 StringBuilder builder = new();
-                builder.AppendLine("Code generation failed:");
+                _ = builder.AppendLine("Code generation failed:");
                 foreach (Diagnostic diagnostic in errors)
                 {
-                    builder.AppendLine(diagnostic.ToString());
+                    _ = builder.AppendLine(diagnostic.ToString());
                 }
 
                 logError?.Invoke(builder.ToString());
@@ -68,17 +68,17 @@ internal static class ProtocolCodegenRunner
 
     private static async Task DownloadProtocolAsync(string protocolPath, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(protocolPath)!);
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(protocolPath)!);
         using HttpClient http = new();
         using HttpResponseMessage response = await http.GetAsync(ProtocolUrl, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         string protocolJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         await File.WriteAllTextAsync(protocolPath, protocolJson, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
     }
 
     private static void WriteSources(string outputDirectory, IReadOnlyDictionary<string, string> sources)
     {
-        Directory.CreateDirectory(outputDirectory);
+        _ = Directory.CreateDirectory(outputDirectory);
 
         HashSet<string> generatedRelativePaths = sources.Keys
             .Select(NormalizeRelativePath)
@@ -97,15 +97,12 @@ internal static class ProtocolCodegenRunner
         {
             string normalizedRelativePath = NormalizeRelativePath(relativePath);
             string outputPath = Path.Combine(outputDirectory, normalizedRelativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
             File.WriteAllText(outputPath, source, new UTF8Encoding(false));
         }
     }
 
-    private static string NormalizeRelativePath(string path)
-    {
-        return path
+    private static string NormalizeRelativePath(string path) => path
             .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
             .TrimStart(Path.DirectorySeparatorChar);
-    }
 }
