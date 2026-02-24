@@ -1,4 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project
+  Sdk="Microsoft.NET.Sdk"
+  TreatAsLocalProperty="PublishAot;SelfContained;RuntimeIdentifier"
+>
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -12,6 +15,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <!-- Suppress NU5128: Some target frameworks are not supported by the nuspec -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <PublishAot>false</PublishAot>
+    <IsPublishable>false</IsPublishable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference
@@ -166,3 +171,5 @@
     />
   </Target>
 </Project>
+
+
