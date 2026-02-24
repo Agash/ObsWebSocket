@@ -42,10 +42,6 @@ internal static partial class Emitter
             AddFixedType("ObsWebSocket.Core.Protocol.RequestPayload");
             AddFixedType("ObsWebSocket.Core.Protocol.RequestBatchPayload");
             AddFixedType("ObsWebSocket.Core.Protocol.RequestStatus");
-            AddFixedType("ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.RequestPayload>");
-            AddFixedType("ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.IdentifyPayload>");
-            AddFixedType("ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.ReidentifyPayload>");
-            AddFixedType("ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.RequestBatchPayload>");
 
             if (protocol.Requests is not null)
             {

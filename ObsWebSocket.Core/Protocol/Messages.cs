@@ -11,7 +11,7 @@ namespace ObsWebSocket.Core.Protocol;
 /// <typeparam name="T">The type of the data payload.</typeparam>
 /// <param name="Op">The operation code.</param>
 /// <param name="D">The data payload.</param>
-[MessagePackObject]
+[MessagePackObject(SuppressSourceGeneration = true)]
 public record OutgoingMessage<T>(
     [property: JsonPropertyName("op"), Key("op")] WebSocketOpCode Op,
     [property: JsonPropertyName("d"), Key("d")] T D
@@ -24,7 +24,7 @@ public record OutgoingMessage<T>(
 /// <typeparam name="TData">The type representing the raw data payload 'd'.</typeparam>
 /// <param name="Op">The operation code.</param>
 /// <param name="D">The raw data payload.</param>
-[MessagePackObject]
+[MessagePackObject(SuppressSourceGeneration = true)]
 public record IncomingMessage<TData>(
     [property: JsonPropertyName("op"), Key("op")] WebSocketOpCode Op,
     [property: JsonPropertyName("d"), Key("d")] TData D
@@ -93,7 +93,7 @@ internal record RequestPayload(
 /// <param name="RequestId">The original request identifier string.</param>
 /// <param name="RequestStatus">The status of the request processing.</param>
 /// <param name="ResponseData">The raw response data payload, or default if none.</param>
-[MessagePackObject]
+[MessagePackObject(SuppressSourceGeneration = true)]
 public record RequestResponsePayload<TData>(
     [property: JsonPropertyName("requestType"), Key("requestType")] string RequestType,
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
@@ -133,7 +133,7 @@ public record RequestStatus(
 /// <param name="EventType">The unique event type string.</param>
 /// <param name="EventIntent">Bitmask indicating the subscription intents that triggered this event.</param>
 /// <param name="EventData">The specific data associated with the event, or default if none.</param>
-[MessagePackObject]
+[MessagePackObject(SuppressSourceGeneration = true)]
 public record EventPayloadBase<TData>(
     [property: JsonPropertyName("eventType"), Key("eventType")] string EventType,
     [property: JsonPropertyName("eventIntent"), Key("eventIntent")] int EventIntent,
@@ -176,7 +176,7 @@ internal record RequestBatchPayload(
     [property: JsonPropertyName("requests"), Key("requests")] List<RequestPayload> Requests
 );
 
-[MessagePackObject(AllowPrivate = true)]
+[MessagePackObject(AllowPrivate = true, SuppressSourceGeneration = true)]
 internal record RequestBatchResponsePayload<TData>(
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
     [property: JsonPropertyName("results"), Key("results")] List<RequestResponsePayload<TData>> Results

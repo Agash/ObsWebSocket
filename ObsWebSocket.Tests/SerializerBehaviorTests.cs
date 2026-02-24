@@ -511,18 +511,6 @@ public class SerializerBehaviorTests
             typeof(RequestBatchPayload)
         );
         requiredTypes.Add(typeof(ObsWebSocket.Core.Protocol.RequestStatus));
-        requiredTypes.Add(
-            typeof(OutgoingMessage<RequestPayload>)
-        );
-        requiredTypes.Add(
-            typeof(OutgoingMessage<IdentifyPayload>)
-        );
-        requiredTypes.Add(
-            typeof(OutgoingMessage<ReidentifyPayload>)
-        );
-        requiredTypes.Add(
-            typeof(OutgoingMessage<RequestBatchPayload>)
-        );
 
         List<string> missing = [];
         foreach (Type type in requiredTypes.Distinct())

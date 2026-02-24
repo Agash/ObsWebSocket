@@ -36,11 +36,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
-            byte[] serializedData = MessagePackSerializer.Serialize(
-                message,
-                s_msgPackOptions,
-                cancellationToken
-            );
+            byte[] serializedData = SerializeOutgoingEnvelope(message, cancellationToken);
             return Task.FromResult(serializedData);
         }
         catch (MessagePackSerializationException ex)
@@ -199,6 +195,26 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
 
         return new IncomingMessage<ReadOnlyMemory<byte>>(op, data);
+    }
+
+    private static byte[] SerializeOutgoingEnvelope<T>(
+        OutgoingMessage<T> message,
+        CancellationToken cancellationToken
+    )
+    {
+        ArrayBufferWriter<byte> buffer = new();
+        MessagePackWriter writer = new(buffer);
+
+        writer.WriteMapHeader(2);
+        writer.Write("op");
+        writer.Write((int)message.Op);
+        writer.Write("d");
+
+        byte[] payloadBytes = MessagePackSerializer.Serialize(message.D, s_msgPackOptions, cancellationToken);
+        writer.WriteRaw(payloadBytes);
+        writer.Flush();
+
+        return [.. buffer.WrittenSpan];
     }
 
     private static ReadOnlyMemory<byte> ReadRawValue(ref MessagePackReader reader)

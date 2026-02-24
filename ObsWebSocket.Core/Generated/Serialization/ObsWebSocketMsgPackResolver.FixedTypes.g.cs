@@ -18,10 +18,6 @@ internal static partial class ObsWebSocketMsgPackResolverCore
             type == typeof(ObsWebSocket.Core.Protocol.ReidentifyPayload) ||
             type == typeof(ObsWebSocket.Core.Protocol.RequestPayload) ||
             type == typeof(ObsWebSocket.Core.Protocol.RequestBatchPayload) ||
-            type == typeof(ObsWebSocket.Core.Protocol.RequestStatus) ||
-            type == typeof(ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.RequestPayload>) ||
-            type == typeof(ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.IdentifyPayload>) ||
-            type == typeof(ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.ReidentifyPayload>) ||
-            type == typeof(ObsWebSocket.Core.Protocol.OutgoingMessage<ObsWebSocket.Core.Protocol.RequestBatchPayload>);
+            type == typeof(ObsWebSocket.Core.Protocol.RequestStatus);
     }
 }
