@@ -14,6 +14,7 @@ internal static class ProtocolCodegenRunner
         bool downloadIfMissing,
         CancellationToken cancellationToken,
         Action<string>? logInfo = null,
+        Action<string>? logWarning = null,
         Action<string>? logError = null
     )
     {
@@ -41,6 +42,8 @@ internal static class ProtocolCodegenRunner
             (IReadOnlyDictionary<string, string> sources, IReadOnlyList<Diagnostic> diagnostics) = ProtocolCodeGenerator.Generate(protocolJson);
 
             Diagnostic[] errors = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)];
+            Diagnostic[] warnings = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)];
+            Diagnostic[] infos = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Info)];
             if (errors.Length > 0)
             {
                 StringBuilder builder = new();
@@ -52,6 +55,16 @@ internal static class ProtocolCodegenRunner
 
                 logError?.Invoke(builder.ToString());
                 return 1;
+            }
+
+            foreach (Diagnostic warning in warnings)
+            {
+                logWarning?.Invoke(warning.ToString());
+            }
+
+            foreach (Diagnostic info in infos)
+            {
+                logInfo?.Invoke(info.ToString());
             }
 
             WriteSources(fullOutputDirectory, sources);

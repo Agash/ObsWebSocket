@@ -20,6 +20,7 @@ public sealed class GenerateObsWebSocketSourcesTask : Microsoft.Build.Utilities.
                 downloadIfMissing: DownloadIfMissing,
                 cancellationToken: CancellationToken.None,
                 logInfo: message => Log.LogMessage(MessageImportance.High, message),
+                logWarning: message => Log.LogWarning(message),
                 logError: message => Log.LogError(message)
             )
             .GetAwaiter()
