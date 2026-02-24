@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
@@ -73,6 +73,8 @@ public sealed class ProtocolGenerator : IIncrementalGenerator
                     Emitter.GenerateEventArgs(spc, result.Definition);
                     Emitter.GenerateClientEventInfrastructure(spc, result.Definition);
                     Emitter.GenerateWaitForEventHelper(spc, result.Definition);
+                    Emitter.GenerateJsonSerializerContext(spc, result.Definition);
+                    Emitter.GenerateMsgPackResolver(spc, result.Definition);
                 }
             }
         );
@@ -149,3 +151,4 @@ public sealed class ProtocolGenerator : IIncrementalGenerator
         }
     }
 }
+

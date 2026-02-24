@@ -13,25 +13,24 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
     : IWebSocketMessageSerializer
 {
     private readonly ILogger _logger = logger;
-    private static readonly JsonSerializerOptions s_jsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions s_options = ObsWebSocketJsonContext.Default.Options;
 
     /// <inheritdoc/>
     public string ProtocolSubProtocol => "obswebsocket.json";
 
     /// <inheritdoc/>
-    public async Task<byte[]> SerializeAsync<T>(
+    public Task<byte[]> SerializeAsync<T>(
         OutgoingMessage<T> message,
         CancellationToken cancellationToken = default
     )
     {
         ArgumentNullException.ThrowIfNull(message);
+        cancellationToken.ThrowIfCancellationRequested();
         using MemoryStream memoryStream = new();
         try
         {
-            await JsonSerializer
-                .SerializeAsync(memoryStream, message, s_jsonOptions, cancellationToken)
-                .ConfigureAwait(false);
-            return memoryStream.ToArray();
+            JsonSerializer.Serialize(memoryStream, message, s_options);
+            return Task.FromResult(memoryStream.ToArray());
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
@@ -63,7 +62,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
             IncomingMessage<JsonElement>? message = await JsonSerializer
                 .DeserializeAsync<IncomingMessage<JsonElement>>(
                     messageStream,
-                    s_jsonOptions,
+                    s_options,
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -125,7 +124,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
 
         try
         {
-            return jsonElement.Deserialize<TPayload>(s_jsonOptions);
+            return jsonElement.Deserialize<TPayload>(s_options);
         }
         catch (Exception ex)
         {
@@ -168,7 +167,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         {
             // Deserialize will return default(TPayload) if JSON is null, which is valid for nullable structs,
             // but might be undesirable for non-nullable ones (though caught earlier if JSON is explicitly null).
-            return jsonElement.Deserialize<TPayload>(s_jsonOptions);
+            return jsonElement.Deserialize<TPayload>(s_options);
         }
         catch (Exception ex)
         {

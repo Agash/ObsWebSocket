@@ -374,6 +374,7 @@ internal static partial class Emitter
         mainBuilder.AppendLine("using System.Text.Json;");
         mainBuilder.AppendLine("using System.Text.Json.Serialization;");
         mainBuilder.AppendLine("using System.Diagnostics.CodeAnalysis;");
+        mainBuilder.AppendLine("using MessagePack;");
         mainBuilder.AppendLine($"using {GeneratedCommonNamespace};");
         if (!isNestedType)
         {
@@ -445,6 +446,7 @@ internal static partial class Emitter
         mainBuilder.AppendLine("#pragma warning disable CS8618");
 
         // --- Record Definition Start ---
+        mainBuilder.AppendLine("[MessagePackObject]");
         mainBuilder.AppendLine($"public sealed partial record {recordName}");
         mainBuilder.AppendLine("{");
         List<PropertyGenInfo> propertyInfos = [];
@@ -545,6 +547,7 @@ internal static partial class Emitter
             }
 
             mainBuilder.AppendLine($"    [JsonPropertyName(\"{originalName}\")]");
+            mainBuilder.AppendLine($"    [Key(\"{originalName}\")]");
             mainBuilder.Append("    public ");
             if (isConsideredRequired)
             {

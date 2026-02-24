@@ -103,9 +103,8 @@ public sealed partial class ObsWebSocketClient(
         TaskCreationOptions.RunContinuationsAsynchronously
     );
 
-    private static readonly JsonSerializerOptions s_payloadJsonOptions = new(
-        JsonSerializerDefaults.Web
-    );
+    private static readonly JsonSerializerOptions s_payloadJsonOptions =
+        ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options;
     #endregion
 
     #region Properties
@@ -1536,7 +1535,7 @@ public sealed partial class ObsWebSocketClient(
             case IncomingMessage<JsonElement> jsonMsg:
                 (opCode, payloadData) = (jsonMsg.Op, jsonMsg.D);
                 break;
-            case IncomingMessage<object> msgpackMsg:
+            case IncomingMessage<ReadOnlyMemory<byte>> msgpackMsg:
                 (opCode, payloadData) = (msgpackMsg.Op, msgpackMsg.D);
                 break;
             default:
@@ -2179,7 +2178,7 @@ public sealed partial class ObsWebSocketClient(
         object? rawPayload = messageObject switch
         {
             IncomingMessage<JsonElement> jsonMsg => jsonMsg.D,
-            IncomingMessage<object> msgpackMsg => msgpackMsg.D,
+            IncomingMessage<ReadOnlyMemory<byte>> msgpackMsg => msgpackMsg.D,
             _ => throw new ObsWebSocketException(
                 $"Unexpected message type during {messageName} handshake: {messageObject.GetType().Name}"
             ),
@@ -2189,7 +2188,16 @@ public sealed partial class ObsWebSocketClient(
             ?? throw new ObsWebSocketException($"Received null or invalid {messageName} payload.");
     }
 
-    private static JsonElement? SerializeRequestData(string _, object? requestData)
+    /// <summary>
+    /// Serializes request payload data into a <see cref="JsonElement"/> for embedding in <see cref="RequestPayload"/>.
+    /// </summary>
+    /// <param name="requestContext">Request context used for exception messages.</param>
+    /// <param name="requestData">The request payload object.</param>
+    /// <remarks>
+    /// In Native AOT, arbitrary objects passed through the batch API path may fail if they are not registered
+    /// in <see cref="ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext"/>.
+    /// </remarks>
+    private static JsonElement? SerializeRequestData(string requestContext, object? requestData)
     {
         if (requestData is null)
         {
@@ -2201,6 +2209,13 @@ public sealed partial class ObsWebSocketClient(
             return requestData is JsonElement element
                 ? element
                 : JsonSerializer.SerializeToElement(requestData, s_payloadJsonOptions);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize request data for {requestContext}. In Native AOT builds, request data must be null, JsonElement, or a generated *RequestData record registered in ObsWebSocketJsonContext.",
+                ex
+            );
         }
         catch (Exception ex)
         {

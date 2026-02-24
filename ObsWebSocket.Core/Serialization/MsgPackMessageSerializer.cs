@@ -14,14 +14,15 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 {
     private readonly ILogger _logger = logger;
 
-    // Configure MessagePack options.
-    // ContractlessStandardResolverAllowPrivate: Allows deserialization without explicit attributes and works with record primary constructors.
     private static readonly MessagePackSerializerOptions s_msgPackOptions =
-        ContractlessStandardResolverAllowPrivate.Options;
-
-    // Optional: Consider adding compression if needed and supported by OBS (check compatibility)
-    // private static readonly MessagePackSerializerOptions s_msgPackOptions = ContractlessStandardResolverAllowPrivate.Options
-    //     .WithCompression(MessagePackCompression.Lz4BlockArray);
+        MessagePackSerializerOptions
+            .Standard.WithResolver(
+                CompositeResolver.Create(
+                    ObsWebSocketMsgPackResolver.Instance,
+                    StandardResolver.Instance
+                )
+            )
+            .WithSecurity(MessagePackSecurity.UntrustedData);
 
     /// <inheritdoc/>
     public string ProtocolSubProtocol => "obswebsocket.msgpack";
@@ -84,10 +85,8 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
-            // Deserialize using 'object' as the placeholder type for the payload 'd'.
-            // With ContractlessStandardResolver, this typically results in nested Dictionary<object, object>, List<object>, or primitive types.
-            IncomingMessage<object>? message = await MessagePackSerializer
-                .DeserializeAsync<IncomingMessage<object>>(
+            IncomingMessage<ReadOnlyMemory<byte>>? message = await MessagePackSerializer
+                .DeserializeAsync<IncomingMessage<ReadOnlyMemory<byte>>>(
                     messageStream,
                     s_msgPackOptions,
                     cancellationToken
@@ -123,21 +122,14 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
         where TPayload : class
     {
-        if (rawPayloadData is null)
+        if (rawPayloadData is not ReadOnlyMemory<byte> raw)
         {
             return default;
         }
 
         try
         {
-            // ContractlessStandardResolver should handle converting from the underlying object/dictionary
-            // structure back to the target TPayload type if the structure is compatible or TPayload
-            // uses attributes recognized by the resolver (like [Key]).
-            // If direct conversion fails, serializing then deserializing is a fallback.
-            return MessagePackSerializer.Deserialize<TPayload>(
-                MessagePackSerializer.Serialize(rawPayloadData, s_msgPackOptions),
-                s_msgPackOptions
-            );
+            return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)
         {
@@ -155,18 +147,14 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
         where TPayload : struct
     {
-        if (rawPayloadData is null)
+        if (rawPayloadData is not ReadOnlyMemory<byte> raw)
         {
             return default;
         }
 
         try
         {
-            // Similar logic as above for value types
-            return MessagePackSerializer.Deserialize<TPayload>(
-                MessagePackSerializer.Serialize(rawPayloadData, s_msgPackOptions),
-                s_msgPackOptions
-            );
+            return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)
         {
