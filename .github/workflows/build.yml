@@ -47,6 +47,18 @@ jobs:
     - name: Build Solution
       run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
 
+    - name: Native AOT Smoke Publish (ObsWebSocket.Core)
+      run: >
+        dotnet publish ObsWebSocket.Core/ObsWebSocket.Core.csproj
+        --configuration Release
+        --framework net9.0
+        --runtime linux-x64
+        --self-contained true
+        /p:PublishAot=true
+        /p:ILLinkTreatWarningsAsErrors=true
+        /p:IlcTreatWarningsAsErrors=true
+        --no-restore
+
     - name: Run Unit Tests
       # Run tests specifically for the ObsWebSocket.Tests project
       # Exclude integration tests which require a live OBS instance

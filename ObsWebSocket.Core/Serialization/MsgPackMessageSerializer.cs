@@ -18,6 +18,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         MessagePackSerializerOptions
             .Standard.WithResolver(
                 CompositeResolver.Create(
+                    MsgPackJsonElementResolver.Instance,
                     MsgPackStubExtensionDataResolver.Instance,
                     MessagePack.GeneratedMessagePackResolver.Instance,
                     StandardResolver.Instance
