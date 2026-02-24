@@ -1,7 +1,9 @@
 using System.Buffers;
+using System.Reflection;
 using System.Text.Json;
 using MessagePack;
 using Microsoft.Extensions.Logging.Abstractions;
+using ObsWebSocket.Core;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Events;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -450,6 +452,95 @@ public class SerializerBehaviorTests
         Assert.IsFalse(roundTrip.Filters[1].FilterSettings.HasValue);
     }
 
+    [TestMethod]
+    public void MsgPackResolver_CoversGeneratedAndCoreProtocolTypes()
+    {
+        Type[] allTypes = typeof(ObsWebSocketClient).Assembly.GetTypes();
+        List<Type> requiredTypes = [];
+
+        requiredTypes.AddRange(
+            allTypes.Where(static t =>
+                t is { IsClass: true, IsAbstract: false }
+                && t.Namespace == "ObsWebSocket.Core.Protocol.Requests"
+                && t.Name.EndsWith("RequestData", StringComparison.Ordinal)
+            )
+        );
+
+        requiredTypes.AddRange(
+            allTypes.Where(static t =>
+                t is { IsClass: true, IsAbstract: false }
+                && t.Namespace == "ObsWebSocket.Core.Protocol.Responses"
+                && t.Name.EndsWith("ResponseData", StringComparison.Ordinal)
+            )
+        );
+
+        requiredTypes.AddRange(
+            allTypes.Where(static t =>
+                t is { IsClass: true, IsAbstract: false }
+                && t.Namespace == "ObsWebSocket.Core.Protocol.Events"
+                && t.Name.EndsWith("Payload", StringComparison.Ordinal)
+            )
+        );
+
+        requiredTypes.AddRange(
+            allTypes.Where(static t =>
+                t is { IsClass: true, IsAbstract: false }
+                && t.Namespace == "ObsWebSocket.Core.Protocol.Common.NestedTypes"
+            )
+        );
+
+        requiredTypes.Add(
+            typeof(HelloPayload)
+        );
+        requiredTypes.Add(
+            typeof(AuthenticationData)
+        );
+        requiredTypes.Add(
+            typeof(IdentifyPayload)
+        );
+        requiredTypes.Add(
+            typeof(IdentifiedPayload)
+        );
+        requiredTypes.Add(
+            typeof(ReidentifyPayload)
+        );
+        requiredTypes.Add(
+            typeof(RequestPayload)
+        );
+        requiredTypes.Add(
+            typeof(RequestBatchPayload)
+        );
+        requiredTypes.Add(typeof(ObsWebSocket.Core.Protocol.RequestStatus));
+        requiredTypes.Add(
+            typeof(OutgoingMessage<RequestPayload>)
+        );
+        requiredTypes.Add(
+            typeof(OutgoingMessage<IdentifyPayload>)
+        );
+        requiredTypes.Add(
+            typeof(OutgoingMessage<ReidentifyPayload>)
+        );
+        requiredTypes.Add(
+            typeof(OutgoingMessage<RequestBatchPayload>)
+        );
+
+        List<string> missing = [];
+        foreach (Type type in requiredTypes.Distinct())
+        {
+            if (!HasFormatter(ObsWebSocketMsgPackResolver.Instance, type))
+            {
+                missing.Add(type.FullName ?? type.Name);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            Assert.Fail(
+                $"ObsWebSocketMsgPackResolver is missing formatter(s): {string.Join(", ", missing.OrderBy(static s => s, StringComparer.Ordinal))}"
+            );
+        }
+    }
+
     private static byte[] BuildSceneListChangedPayloadBytes()
     {
         ArrayBufferWriter<byte> buffer = new();
@@ -637,5 +728,13 @@ public class SerializerBehaviorTests
     private sealed class UnreadableMemoryStream(byte[] buffer) : MemoryStream(buffer)
     {
         public override bool CanRead => false;
+    }
+
+    private static bool HasFormatter(IFormatterResolver resolver, Type targetType)
+    {
+        MethodInfo? method = typeof(IFormatterResolver).GetMethod(nameof(IFormatterResolver.GetFormatter));
+        Assert.IsNotNull(method, "Could not locate IFormatterResolver.GetFormatter<T>.");
+        object? formatter = method.MakeGenericMethod(targetType).Invoke(resolver, null);
+        return formatter is not null;
     }
 }

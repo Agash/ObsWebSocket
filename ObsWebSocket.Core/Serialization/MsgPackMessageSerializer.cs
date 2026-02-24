@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
@@ -18,14 +19,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
     private static readonly MessagePackSerializerOptions s_msgPackOptions =
         MessagePackSerializerOptions
-            .Standard.WithResolver(
-                CompositeResolver.Create(
-                    MsgPackJsonElementResolver.Instance,
-                    MsgPackStubExtensionDataResolver.Instance,
-                    MessagePack.GeneratedMessagePackResolver.Instance,
-                    StandardResolver.Instance
-                )
-            )
+            .Standard.WithResolver(CompositeResolver.Create(CreateResolverChain()))
             .WithSecurity(MessagePackSecurity.UntrustedData);
 
     /// <inheritdoc/>
@@ -248,6 +242,29 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
 
         return new EventPayloadBase<object>(eventType ?? string.Empty, eventIntent, eventData);
+    }
+
+    private static IFormatterResolver[] CreateResolverChain()
+    {
+        List<IFormatterResolver> resolvers =
+        [
+            MsgPackJsonElementResolver.Instance,
+            MsgPackStubExtensionDataResolver.Instance,
+            ObsWebSocketMsgPackResolver.Instance,
+            BuiltinResolver.Instance,
+            AttributeFormatterResolver.Instance,
+            StandardResolver.Instance,
+            PrimitiveObjectResolver.Instance,
+        ];
+
+        if (RuntimeFeature.IsDynamicCodeSupported)
+        {
+            resolvers.Add(DynamicObjectResolverAllowPrivate.Instance);
+            resolvers.Add(DynamicGenericResolver.Instance);
+            resolvers.Add(DynamicUnionResolver.Instance);
+        }
+
+        return [.. resolvers];
     }
 
     private static RequestBatchResponsePayload<object> DeserializeRequestBatchResponsePayload(
