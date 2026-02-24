@@ -119,7 +119,40 @@ For generated request models and direct requests, see:
 
 ## Example App
 
-`ObsWebSocket.Example` contains a minimal host-based sample using configuration + DI.
+`ObsWebSocket.Example` contains a host-based sample using configuration + DI.
+
+- Interactive mode: starts a command loop (`help`, `version`, `scene`, `batch-example`, etc.)
+- Transport validation mode: runs JSON + MsgPack validation cycles (scene/input/filter stub-heavy calls), then enters the interactive loop
+
+`appsettings.json`:
+
+```json
+{
+  "Obs": {
+    "ServerUri": "ws://localhost:4455",
+    "Password": "",
+    "EventSubscriptions": null,
+    "Format": "Json"
+  },
+  "ExampleValidation": {
+    "RunValidationOnStartup": false,
+    "ValidationIterations": 1
+  }
+}
+```
+
+Interactive command to run validation on demand:
+
+- `run-transport-tests`
+
+## Native AOT Example
+
+Build and run the example as Native AOT:
+
+```bash
+dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj -c Release -r win-x64 --self-contained true
+./ObsWebSocket.Example/bin/Release/net10.0/win-x64/publish/ObsWebSocket.Example.exe
+```
 
 ## Contributing
 

@@ -1,15 +1,17 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Buffers;
+using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
 
 namespace ObsWebSocket.Example;
 
@@ -17,18 +19,19 @@ internal sealed partial class Worker(
     ILogger<Worker> logger,
     ObsWebSocketClient obsClient,
     IOptions<ObsWebSocketClientOptions> obsOptions,
+    IOptions<ExampleValidationOptions> validationOptions,
+    ILoggerFactory loggerFactory,
+    IWebSocketConnectionFactory connectionFactory,
     IHostApplicationLifetime lifetime
 ) : BackgroundService
 {
     private readonly ILogger<Worker> _logger = logger;
     private readonly ObsWebSocketClient _obsClient = obsClient;
+    private readonly ObsWebSocketClientOptions _baseOptions = obsOptions.Value;
+    private readonly ExampleValidationOptions _validationOptions = validationOptions.Value;
+    private readonly ILoggerFactory _loggerFactory = loggerFactory;
+    private readonly IWebSocketConnectionFactory _connectionFactory = connectionFactory;
     private readonly IHostApplicationLifetime _lifetime = lifetime;
-
-    private static readonly JsonSerializerOptions s_serializerOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-    };
 
     // Store the *intended* subscription flags (initialized from options, updated by set-subs)
     // Note: The client doesn't currently expose the *actual* negotiated flags from the server.
@@ -61,6 +64,12 @@ internal sealed partial class Worker(
 
         try
         {
+            if (_validationOptions.RunValidationOnStartup)
+            {
+                _logger.LogInformation("Running startup transport validation suite...");
+                await RunTransportValidationSuiteAsync(stoppingToken).ConfigureAwait(false);
+            }
+
             // --- Connect to OBS ---
             // ConnectAsync now uses the IOptions internally
             await _obsClient.ConnectAsync(stoppingToken);
@@ -201,6 +210,7 @@ internal sealed partial class Worker(
                       list-filters [source name] - List filters for a source (input/scene)
                       toggle-filter [source] [filter] - Toggle enable state of a filter
                       batch-example             - Run a sample batch request sequence
+                      run-transport-tests       - Run JSON + MsgPack validation cycles
                       list-subs                 - Show current event subscription flags (intended)
                       set-subs <numeric_flags>  - Change event subscriptions via Reidentify
                     """
@@ -304,9 +314,7 @@ internal sealed partial class Worker(
                     {
                         Console.WriteLine($"--- Settings for '{inputForGetSettings}' ---");
                         Console.WriteLine($"Kind: {settings.InputKind ?? "Unknown"}"); // Kind comes from response
-                        Console.WriteLine(
-                            JsonSerializer.Serialize(settings.InputSettings, s_serializerOptions)
-                        );
+                        Console.WriteLine(settings.InputSettings?.GetRawText() ?? "null");
                     }
                     else
                     {
@@ -352,9 +360,19 @@ internal sealed partial class Worker(
                     // Construct the settings object for Text (GDI+) source
                     // IMPORTANT: The exact property name ('text') depends on the input kind.
                     // Assume 'text' for 'text_gdiplus_v3'. Inspect with 'get-input-settings' if unsure.
-                    JsonElement newSettings = JsonSerializer.SerializeToElement(
-                        new { text = newText }
+                    ArrayBufferWriter<byte> textPayloadBuffer = new();
+                    using (Utf8JsonWriter writer = new(textPayloadBuffer))
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("text", newText);
+                        writer.WriteEndObject();
+                        writer.Flush();
+                    }
+
+                    using JsonDocument textPayloadDocument = JsonDocument.Parse(
+                        textPayloadBuffer.WrittenMemory
                     );
+                    JsonElement newSettings = textPayloadDocument.RootElement.Clone();
 
                     // Send the request
                     await _obsClient.SetInputSettingsAsync(
@@ -505,10 +523,10 @@ internal sealed partial class Worker(
                         string responseJson = "Could not serialize response data";
                         try
                         {
-                            responseJson = JsonSerializer.Serialize(
-                                result.ResponseData,
-                                s_serializerOptions
-                            );
+                            responseJson =
+                                result.ResponseData is JsonElement jsonElement
+                                    ? jsonElement.GetRawText()
+                                    : result.ResponseData.ToString() ?? string.Empty;
                         }
                         catch
                         { /* Ignore serialization errors for logging */
@@ -519,6 +537,10 @@ internal sealed partial class Worker(
                 }
 
                 _logger.LogInformation("Batch example finished.");
+                return false;
+
+            case "run-transport-tests":
+                await RunTransportValidationSuiteAsync(cancellationToken).ConfigureAwait(false);
                 return false;
 
             case "list-subs":
@@ -568,6 +590,140 @@ internal sealed partial class Worker(
                 return false;
         }
     }
+
+    private async Task RunTransportValidationSuiteAsync(CancellationToken cancellationToken)
+    {
+        int iterations = Math.Max(1, _validationOptions.ValidationIterations);
+        for (int i = 0; i < iterations; i++)
+        {
+            _logger.LogInformation(
+                "Running transport validation iteration {Current}/{Total} (JSON then MsgPack)...",
+                i + 1,
+                iterations
+            );
+            await RunTransportValidationCycleAsync(SerializationFormat.Json, cancellationToken)
+                .ConfigureAwait(false);
+            await RunTransportValidationCycleAsync(SerializationFormat.MsgPack, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async Task RunTransportValidationCycleAsync(
+        SerializationFormat format,
+        CancellationToken cancellationToken
+    )
+    {
+        ObsWebSocketClientOptions cycleOptions = CloneOptionsForFormat(format);
+        IWebSocketMessageSerializer serializer = CreateSerializer(format);
+
+        await using ObsWebSocketClient cycleClient = new(
+            _loggerFactory.CreateLogger<ObsWebSocketClient>(),
+            serializer,
+            Options.Create(cycleOptions),
+            _connectionFactory
+        );
+
+        await cycleClient.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            GetVersionResponseData? version = await cycleClient
+                .GetVersionAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            _logger.LogInformation(
+                "[{Format}] Connected to OBS {ObsVersion} (RPC {RpcVersion})",
+                format,
+                version?.ObsVersion,
+                version?.RpcVersion
+            );
+
+            GetSceneListResponseData? scenes = await cycleClient
+                .GetSceneListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            _logger.LogInformation(
+                "[{Format}] Scene stubs deserialized: {SceneCount}",
+                format,
+                scenes?.Scenes?.Count ?? 0
+            );
+
+            GetInputListResponseData? inputs = await cycleClient
+                .GetInputListAsync(new GetInputListRequestData(), cancellationToken)
+                .ConfigureAwait(false);
+            _logger.LogInformation(
+                "[{Format}] Input stubs deserialized: {InputCount}",
+                format,
+                inputs?.Inputs?.Count ?? 0
+            );
+
+            string? inputName = inputs?.Inputs?.FirstOrDefault()?.InputName;
+            if (!string.IsNullOrWhiteSpace(inputName))
+            {
+                GetSourceFilterListResponseData? filters = await cycleClient
+                    .GetSourceFilterListAsync(
+                        new GetSourceFilterListRequestData(inputName),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                _logger.LogInformation(
+                    "[{Format}] Filter stubs deserialized for '{InputName}': {FilterCount}",
+                    format,
+                    inputName,
+                    filters?.Filters?.Count ?? 0
+                );
+            }
+
+            GetSourceFilterKindListResponseData? filterKinds = await cycleClient
+                .GetSourceFilterKindListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            _logger.LogInformation(
+                "[{Format}] Filter kind entries: {KindCount}",
+                format,
+                filterKinds?.SourceFilterKinds?.Count ?? 0
+            );
+
+            List<RequestResponsePayload<object>> batch = await cycleClient
+                .CallBatchAsync(
+                    [new("GetVersion", null), new("GetSceneList", null)],
+                    executionType: RequestBatchExecutionType.SerialRealtime,
+                    haltOnFailure: false,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+            _logger.LogInformation("[{Format}] Batch call results: {ResultCount}", format, batch.Count);
+        }
+        finally
+        {
+            if (cycleClient.IsConnected)
+            {
+                await cycleClient.DisconnectAsync(cancellationToken: CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private IWebSocketMessageSerializer CreateSerializer(SerializationFormat format) =>
+        format switch
+        {
+            SerializationFormat.MsgPack => new MsgPackMessageSerializer(
+                _loggerFactory.CreateLogger<MsgPackMessageSerializer>()
+            ),
+            _ => new JsonMessageSerializer(_loggerFactory.CreateLogger<JsonMessageSerializer>()),
+        };
+
+    private ObsWebSocketClientOptions CloneOptionsForFormat(SerializationFormat format) =>
+        new()
+        {
+            ServerUri = _baseOptions.ServerUri,
+            Password = _baseOptions.Password,
+            EventSubscriptions = _baseOptions.EventSubscriptions,
+            HandshakeTimeoutMs = _baseOptions.HandshakeTimeoutMs,
+            RequestTimeoutMs = _baseOptions.RequestTimeoutMs,
+            Format = format,
+            AutoReconnectEnabled = false,
+            InitialReconnectDelayMs = _baseOptions.InitialReconnectDelayMs,
+            MaxReconnectAttempts = _baseOptions.MaxReconnectAttempts,
+            ReconnectBackoffMultiplier = _baseOptions.ReconnectBackoffMultiplier,
+            MaxReconnectDelayMs = _baseOptions.MaxReconnectDelayMs,
+        };
 
     // --- Helper to find Scene Item ID ---
     private async Task<double> GetSceneItemIdAsync(
@@ -686,7 +842,28 @@ internal sealed partial class Worker(
         Console.WriteLine("\n--- FILTER DEFAULT SETTINGS START ---");
         try
         {
-            string jsonOutput = JsonSerializer.Serialize(filterDefaultSettings);
+            ArrayBufferWriter<byte> outputBuffer = new();
+            using (Utf8JsonWriter writer = new(outputBuffer, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                foreach ((string filterKind, JsonElement? value) in filterDefaultSettings)
+                {
+                    writer.WritePropertyName(filterKind);
+                    if (value is JsonElement element)
+                    {
+                        element.WriteTo(writer);
+                    }
+                    else
+                    {
+                        writer.WriteNullValue();
+                    }
+                }
+
+                writer.WriteEndObject();
+                writer.Flush();
+            }
+
+            string jsonOutput = System.Text.Encoding.UTF8.GetString(outputBuffer.WrittenSpan);
             Console.WriteLine(jsonOutput);
         }
         catch (Exception ex)
@@ -794,3 +971,5 @@ internal sealed partial class Worker(
     [System.Text.RegularExpressions.GeneratedRegex(@"code (\d+):")]
     private static partial System.Text.RegularExpressions.Regex ObsErrorCodeRegex();
 }
+
+
