@@ -125,6 +125,77 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         try
         {
+            if (typeof(TPayload) == typeof(EventPayloadBase<object>))
+            {
+                EventPayloadBase<ReadOnlyMemory<byte>>? eventPayload =
+                    MessagePackSerializer.Deserialize<EventPayloadBase<ReadOnlyMemory<byte>>>(
+                        raw,
+                        s_msgPackOptions
+                    );
+                if (eventPayload is null)
+                {
+                    return default;
+                }
+
+                return (TPayload)
+                    (object)
+                        new EventPayloadBase<object>(
+                            eventPayload.EventType,
+                            eventPayload.EventIntent,
+                            eventPayload.EventData
+                        );
+            }
+
+            if (typeof(TPayload) == typeof(RequestResponsePayload<object>))
+            {
+                RequestResponsePayload<ReadOnlyMemory<byte>>? responsePayload =
+                    MessagePackSerializer.Deserialize<RequestResponsePayload<ReadOnlyMemory<byte>>>(
+                        raw,
+                        s_msgPackOptions
+                    );
+                if (responsePayload is null)
+                {
+                    return default;
+                }
+
+                return (TPayload)
+                    (object)
+                        new RequestResponsePayload<object>(
+                            responsePayload.RequestType,
+                            responsePayload.RequestId,
+                            responsePayload.RequestStatus,
+                            responsePayload.ResponseData
+                        );
+            }
+
+            if (typeof(TPayload) == typeof(RequestBatchResponsePayload<object>))
+            {
+                RequestBatchResponsePayload<ReadOnlyMemory<byte>>? batchPayload =
+                    MessagePackSerializer.Deserialize<
+                        RequestBatchResponsePayload<ReadOnlyMemory<byte>>
+                    >(raw, s_msgPackOptions);
+                if (batchPayload is null)
+                {
+                    return default;
+                }
+
+                List<RequestResponsePayload<object>> mappedResults =
+                [
+                    .. batchPayload.Results.Select(result => new RequestResponsePayload<object>(
+                        result.RequestType,
+                        result.RequestId,
+                        result.RequestStatus,
+                        result.ResponseData
+                    )),
+                ];
+
+                return (TPayload)
+                    (object)new RequestBatchResponsePayload<object>(
+                        batchPayload.RequestId,
+                        mappedResults
+                    );
+            }
+
             return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
         catch (Exception ex)

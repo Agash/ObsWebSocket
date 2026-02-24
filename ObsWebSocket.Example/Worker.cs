@@ -629,6 +629,18 @@ internal sealed partial class Worker(
             GetVersionResponseData? version = await cycleClient
                 .GetVersionAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            if (
+                version is null
+                || string.IsNullOrWhiteSpace(version.ObsVersion)
+                || string.IsNullOrWhiteSpace(version.ObsWebSocketVersion)
+                || version.RpcVersion <= 0
+            )
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Invalid GetVersion response. ObsVersion='{version?.ObsVersion}', ObsWebSocketVersion='{version?.ObsWebSocketVersion}', RpcVersion={version?.RpcVersion}."
+                );
+            }
+
             _logger.LogInformation(
                 "[{Format}] Connected to OBS {ObsVersion} (RPC {RpcVersion})",
                 format,
@@ -639,6 +651,13 @@ internal sealed partial class Worker(
             GetSceneListResponseData? scenes = await cycleClient
                 .GetSceneListAsync(cancellationToken)
                 .ConfigureAwait(false);
+            if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetSceneList returned no scenes."
+                );
+            }
+
             _logger.LogInformation(
                 "[{Format}] Scene stubs deserialized: {SceneCount}",
                 format,
@@ -648,6 +667,13 @@ internal sealed partial class Worker(
             GetInputListResponseData? inputs = await cycleClient
                 .GetInputListAsync(new GetInputListRequestData(), cancellationToken)
                 .ConfigureAwait(false);
+            if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetInputList returned no inputs."
+                );
+            }
+
             _logger.LogInformation(
                 "[{Format}] Input stubs deserialized: {InputCount}",
                 format,
@@ -674,10 +700,79 @@ internal sealed partial class Worker(
             GetSourceFilterKindListResponseData? filterKinds = await cycleClient
                 .GetSourceFilterKindListAsync(cancellationToken)
                 .ConfigureAwait(false);
+            if (filterKinds?.SourceFilterKinds is null || filterKinds.SourceFilterKinds.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] GetSourceFilterKindList returned no filter kinds."
+                );
+            }
+
             _logger.LogInformation(
                 "[{Format}] Filter kind entries: {KindCount}",
                 format,
                 filterKinds?.SourceFilterKinds?.Count ?? 0
+            );
+
+            string testId = $"{format}-custom-{Guid.NewGuid():N}";
+            JsonElement customPayload = JsonDocument
+                .Parse(
+                    $$"""
+                    {
+                      "testId": "{{testId}}",
+                      "format": "{{format}}",
+                      "nested": {
+                        "enabled": true,
+                        "levels": [1, 2, 3]
+                      }
+                    }
+                    """
+                )
+                .RootElement.Clone();
+
+            Task<CustomEventEventArgs?> waitForCustomEvent = cycleClient.WaitForEventAsync<
+                CustomEventEventArgs
+            >(
+                predicate: evt =>
+                    evt.EventData.EventData is { } data
+                    && data.ValueKind == JsonValueKind.Object
+                    && data.TryGetProperty("testId", out JsonElement idProp)
+                    && idProp.GetString() == testId,
+                timeout: TimeSpan.FromSeconds(5),
+                cancellationToken: cancellationToken
+            );
+
+            await cycleClient
+                .BroadcastCustomEventAsync(
+                    new BroadcastCustomEventRequestData(customPayload),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            CustomEventEventArgs? customEvent = await waitForCustomEvent.ConfigureAwait(false);
+            if (customEvent?.EventData.EventData is not { } receivedCustomData)
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Did not receive CustomEvent payload."
+                );
+            }
+
+            if (
+                receivedCustomData.GetProperty("testId").GetString() != testId
+                || receivedCustomData.GetProperty("nested").GetProperty("enabled").GetBoolean()
+                    != true
+                || receivedCustomData.GetProperty("nested").GetProperty("levels").GetArrayLength()
+                    != 3
+            )
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] CustomEvent payload shape/content mismatch."
+                );
+            }
+
+            _logger.LogInformation(
+                "[{Format}] CustomEvent roundtrip verified with testId {TestId}.",
+                format,
+                testId
             );
 
             List<RequestResponsePayload<object>> batch = await cycleClient
@@ -688,6 +783,13 @@ internal sealed partial class Worker(
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
+            if (batch.Count != 2 || batch.Any(result => !result.RequestStatus.Result))
+            {
+                throw new InvalidOperationException(
+                    $"[{format}] Batch validation failed. Count={batch.Count}."
+                );
+            }
+
             _logger.LogInformation("[{Format}] Batch call results: {ResultCount}", format, batch.Count);
         }
         finally
