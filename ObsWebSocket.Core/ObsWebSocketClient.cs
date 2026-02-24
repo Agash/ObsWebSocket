@@ -2208,7 +2208,10 @@ public sealed partial class ObsWebSocketClient(
         {
             return requestData is JsonElement element
                 ? element
-                : JsonSerializer.SerializeToElement(requestData, s_payloadJsonOptions);
+                : JsonSerializer.SerializeToElement(
+                    requestData,
+                    s_payloadJsonOptions.GetTypeInfo(requestData.GetType())
+                );
         }
         catch (InvalidOperationException ex)
         {

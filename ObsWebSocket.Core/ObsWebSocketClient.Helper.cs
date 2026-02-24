@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+using System.Buffers;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
@@ -14,9 +16,8 @@ namespace ObsWebSocket.Core; // Or ObsWebSocket.Core.Extensions
 /// </summary>
 public static partial class ObsWebSocketClientHelpers
 {
-    private static readonly JsonSerializerOptions s_helperJsonOptions = new(
-        JsonSerializerDefaults.Web
-    );
+    private static readonly JsonSerializerOptions s_helperJsonOptions =
+        ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options;
 
     /// <summary>
     /// Switches the active Program or Preview scene, optionally setting a specific transition and duration beforehand.
@@ -264,12 +265,18 @@ public static partial class ObsWebSocketClientHelpers
 
         try
         {
-            // Create the minimal settings object OBS expects for text sources
-            var settingsPayload = new { text };
-            JsonElement settingsElement = JsonSerializer.SerializeToElement(
-                settingsPayload,
-                s_helperJsonOptions
-            );
+            // Create the minimal settings payload without reflection-driven serialization.
+            ArrayBufferWriter<byte> buffer = new();
+            using (Utf8JsonWriter writer = new(buffer))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("text", text);
+                writer.WriteEndObject();
+                writer.Flush();
+            }
+
+            using JsonDocument settingsDocument = JsonDocument.Parse(buffer.WrittenMemory);
+            JsonElement settingsElement = settingsDocument.RootElement.Clone();
 
             await client
                 .SetInputSettingsAsync(
@@ -616,7 +623,19 @@ public static partial class ObsWebSocketClientHelpers
 
         try
         {
-            return filterInfo.FilterSettings.Value.Deserialize<T>(s_helperJsonOptions);
+            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+            return filterInfo.FilterSettings.Value.Deserialize(typeInfo);
+        }
+        catch (InvalidOperationException invalidOperationException)
+        {
+            client._logger.LogError(
+                invalidOperationException,
+                "Type {TypeName} is not registered in ObsWebSocketJsonContext. Filter settings deserialization for '{FilterName}' on '{SourceName}' requires source-generated metadata for AOT compatibility.",
+                typeof(T).Name,
+                filterName,
+                sourceName
+            );
+            return null;
         }
         catch (JsonException jsonEx)
         {
@@ -674,7 +693,15 @@ public static partial class ObsWebSocketClientHelpers
         JsonElement settingsElement;
         try
         {
-            settingsElement = JsonSerializer.SerializeToElement(settings, s_helperJsonOptions);
+            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        }
+        catch (InvalidOperationException invalidOperationException)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'. Type is not registered in ObsWebSocketJsonContext.",
+                invalidOperationException
+            );
         }
         catch (JsonException jsonEx)
         {
@@ -1015,3 +1042,5 @@ public static partial class ObsWebSocketClientHelpers
             : base(message, inner) { }
     }
 }
+
+

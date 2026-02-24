@@ -1,5 +1,6 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Protocol;
 
@@ -29,7 +30,9 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         using MemoryStream memoryStream = new();
         try
         {
-            JsonSerializer.Serialize(memoryStream, message, s_options);
+            JsonTypeInfo<OutgoingMessage<T>> typeInfo =
+                (JsonTypeInfo<OutgoingMessage<T>>)s_options.GetTypeInfo(typeof(OutgoingMessage<T>));
+            JsonSerializer.Serialize(memoryStream, message, typeInfo);
             return Task.FromResult(memoryStream.ToArray());
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
@@ -59,12 +62,12 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         try
         {
             // Deserialize into the generic IncomingMessage with JsonElement as the data type
+            JsonTypeInfo<IncomingMessage<JsonElement>> typeInfo =
+                (JsonTypeInfo<IncomingMessage<JsonElement>>)s_options.GetTypeInfo(
+                    typeof(IncomingMessage<JsonElement>)
+                );
             IncomingMessage<JsonElement>? message = await JsonSerializer
-                .DeserializeAsync<IncomingMessage<JsonElement>>(
-                    messageStream,
-                    s_options,
-                    cancellationToken
-                )
+                .DeserializeAsync(messageStream, typeInfo, cancellationToken)
                 .ConfigureAwait(false);
 
             if (message is null)
@@ -124,7 +127,84 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
 
         try
         {
-            return jsonElement.Deserialize<TPayload>(s_options);
+            if (typeof(TPayload) == typeof(EventPayloadBase<object>))
+            {
+                JsonTypeInfo<EventPayloadBase<JsonElement>> eventTypeInfo =
+                    (JsonTypeInfo<EventPayloadBase<JsonElement>>)s_options.GetTypeInfo(
+                        typeof(EventPayloadBase<JsonElement>)
+                    );
+                EventPayloadBase<JsonElement>? eventPayload = jsonElement.Deserialize(eventTypeInfo);
+                if (eventPayload is null)
+                {
+                    return default;
+                }
+
+                return (TPayload)
+                    (object)
+                        new EventPayloadBase<object>(
+                            eventPayload.EventType,
+                            eventPayload.EventIntent,
+                            eventPayload.EventData
+                        );
+            }
+
+            if (typeof(TPayload) == typeof(RequestResponsePayload<object>))
+            {
+                JsonTypeInfo<RequestResponsePayload<JsonElement>> responseTypeInfo =
+                    (JsonTypeInfo<RequestResponsePayload<JsonElement>>)s_options.GetTypeInfo(
+                        typeof(RequestResponsePayload<JsonElement>)
+                    );
+                RequestResponsePayload<JsonElement>? responsePayload =
+                    jsonElement.Deserialize(responseTypeInfo);
+                if (responsePayload is null)
+                {
+                    return default;
+                }
+
+                return (TPayload)
+                    (object)
+                        new RequestResponsePayload<object>(
+                            responsePayload.RequestType,
+                            responsePayload.RequestId,
+                            responsePayload.RequestStatus,
+                            responsePayload.ResponseData
+                        );
+            }
+
+            if (typeof(TPayload) == typeof(RequestBatchResponsePayload<object>))
+            {
+                JsonTypeInfo<RequestBatchResponsePayload<JsonElement>> batchTypeInfo =
+                    (JsonTypeInfo<RequestBatchResponsePayload<JsonElement>>)s_options.GetTypeInfo(
+                        typeof(RequestBatchResponsePayload<JsonElement>)
+                    );
+                RequestBatchResponsePayload<JsonElement>? batchPayload =
+                    jsonElement.Deserialize(batchTypeInfo);
+                if (batchPayload is null)
+                {
+                    return default;
+                }
+
+                List<RequestResponsePayload<object>> mappedResults =
+                [
+                    .. batchPayload.Results.Select(result => new RequestResponsePayload<object>(
+                        result.RequestType,
+                        result.RequestId,
+                        result.RequestStatus,
+                        result.ResponseData
+                    )),
+                ];
+
+                return (TPayload)
+                    (object)new RequestBatchResponsePayload<object>(
+                        batchPayload.RequestId,
+                        mappedResults
+                    );
+            }
+
+            JsonTypeInfo<TPayload> typeInfo = (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(
+                typeof(TPayload)
+            );
+            return jsonElement.Deserialize(typeInfo);
         }
         catch (Exception ex)
         {
@@ -167,7 +247,10 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         {
             // Deserialize will return default(TPayload) if JSON is null, which is valid for nullable structs,
             // but might be undesirable for non-nullable ones (though caught earlier if JSON is explicitly null).
-            return jsonElement.Deserialize<TPayload>(s_options);
+            JsonTypeInfo<TPayload> typeInfo = (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(
+                typeof(TPayload)
+            );
+            return jsonElement.Deserialize(typeInfo);
         }
         catch (Exception ex)
         {
