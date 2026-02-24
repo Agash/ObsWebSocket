@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Moq;
@@ -442,7 +442,7 @@ public class ObsWebSocketClientRequestTests
 
         // Act & Assert
         // Verify that calling the client method throws the correct exception
-        ObsWebSocketException ex = await Assert.ThrowsExceptionAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
             async () => await client.GetVersionAsync() // Call the specific extension method
         );
 
@@ -534,7 +534,7 @@ public class ObsWebSocketClientRequestTests
 
         // Act & Assert
         // Expect TaskCanceledException because the CancellationToken passed to GetVersionAsync will be cancelled.
-        await Assert.ThrowsExceptionAsync<TaskCanceledException>(
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(
             async () =>
             {
                 using CancellationTokenSource cts = new(timeoutMs); // Create token source with short delay
@@ -626,3 +626,4 @@ public class ObsWebSocketClientRequestTests
         } // Ignore errors
     }
 }
+

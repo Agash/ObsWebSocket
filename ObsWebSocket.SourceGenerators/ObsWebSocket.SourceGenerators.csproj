@@ -16,7 +16,7 @@
   <ItemGroup>
     <PackageReference
       Include="Microsoft.CodeAnalysis.CSharp"
-      Version="4.13.0"
+      Version="5.0.0"
       PrivateAssets="all"
     />
     <PackageReference

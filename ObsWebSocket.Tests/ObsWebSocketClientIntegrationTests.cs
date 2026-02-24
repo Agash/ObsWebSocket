@@ -90,7 +90,7 @@ public class ObsWebSocketClientIntegrationTests
         ValidateOption(s_testOptions.TestAudioInputName, nameof(s_testOptions.TestAudioInputName));
     }
 
-    [ClassCleanup(ClassCleanupBehavior.EndOfClass)]
+    [ClassCleanup]
     public static async Task ClassCleanup()
     {
         if (s_serviceProvider is IAsyncDisposable asyncDisposable)

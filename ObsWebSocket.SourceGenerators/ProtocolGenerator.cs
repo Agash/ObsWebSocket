@@ -13,6 +13,7 @@ namespace ObsWebSocket.SourceGenerators;
 public sealed class ProtocolGenerator : IIncrementalGenerator
 {
     private const string ProtocolFileName = "protocol.json";
+    private static readonly object s_generationLock = new();
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -59,17 +60,20 @@ public sealed class ProtocolGenerator : IIncrementalGenerator
                     return;
                 }
 
-                Emitter.PreGenerateNestedDtos(spc, result.Definition);
+                lock (s_generationLock)
+                {
+                    Emitter.PreGenerateNestedDtos(spc, result.Definition);
 
-                // Generate Enums, Top-Level DTOs, Client Extensions, Event Payloads, EventArgs, and Client Event Infrastructure
-                Emitter.GenerateEnums(spc, result.Definition);
-                Emitter.GenerateRequestDtos(spc, result.Definition);
-                Emitter.GenerateResponseDtos(spc, result.Definition);
-                Emitter.GenerateClientExtensions(spc, result.Definition);
-                Emitter.GenerateEventPayloads(spc, result.Definition);
-                Emitter.GenerateEventArgs(spc, result.Definition);
-                Emitter.GenerateClientEventInfrastructure(spc, result.Definition);
-                Emitter.GenerateWaitForEventHelper(spc, result.Definition);
+                    // Generate Enums, Top-Level DTOs, Client Extensions, Event Payloads, EventArgs, and Client Event Infrastructure
+                    Emitter.GenerateEnums(spc, result.Definition);
+                    Emitter.GenerateRequestDtos(spc, result.Definition);
+                    Emitter.GenerateResponseDtos(spc, result.Definition);
+                    Emitter.GenerateClientExtensions(spc, result.Definition);
+                    Emitter.GenerateEventPayloads(spc, result.Definition);
+                    Emitter.GenerateEventArgs(spc, result.Definition);
+                    Emitter.GenerateClientEventInfrastructure(spc, result.Definition);
+                    Emitter.GenerateWaitForEventHelper(spc, result.Definition);
+                }
             }
         );
     }

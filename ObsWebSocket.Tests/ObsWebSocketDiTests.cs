@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -272,10 +272,11 @@ public class ObsWebSocketDiTests
 
         // Act & Assert
         // Expect ArgumentNullException when ConnectAsync is called without ServerUri
-        ArgumentNullException ex = await Assert.ThrowsExceptionAsync<ArgumentNullException>(() =>
+        ArgumentNullException ex = await Assert.ThrowsExactlyAsync<ArgumentNullException>(() =>
             client.ConnectAsync()
         );
         // Verify the exception parameter name points to the missing option
         Assert.AreEqual("ServerUri", ex.ParamName);
     }
 }
+

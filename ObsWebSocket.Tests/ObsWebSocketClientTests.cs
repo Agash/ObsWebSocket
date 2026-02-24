@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Moq;
@@ -31,7 +31,7 @@ public partial class ObsWebSocketClientTests
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
 
         // Act & Assert
-        await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () =>
+        await Assert.ThrowsExactlyAsync<ArgumentNullException>(async () =>
             await client.CallBatchAsync(null!) // Pass null directly
         );
     }
@@ -64,7 +64,7 @@ public partial class ObsWebSocketClientTests
         List<BatchRequestItem> requests = [new("", null)]; // Item with empty RequestType
 
         // Act & Assert
-        ArgumentException ex = await Assert.ThrowsExceptionAsync<ArgumentException>(async () =>
+        ArgumentException ex = await Assert.ThrowsExactlyAsync<ArgumentException>(async () =>
             await client.CallBatchAsync(requests)
         );
         Assert.IsTrue(
@@ -317,7 +317,7 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Act & Assert
-        ObsWebSocketException ex = await Assert.ThrowsExceptionAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
             async () => await client.CallBatchAsync(requests, timeoutMs: timeoutMs) // Use the timeout override
         );
 
@@ -377,3 +377,4 @@ public partial class ObsWebSocketClientTests
         } // Ignore deserialization errors
     }
 }
+
