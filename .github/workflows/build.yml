@@ -100,29 +100,32 @@ jobs:
 
   publish_nuget:
     name: Publish NuGet Package
-    needs: [build_and_test] # Depends only on build job which now creates the artifact on release
-    # Trigger ONLY on published releases
+    needs: [build_and_test]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Needed for download-artifact
+      contents: read
+      id-token: write
 
     steps:
     - name: Download NuGet Package Artifact
       uses: actions/download-artifact@v4
       with:
-        name: nuget-package # Must match the upload artifact name
+        name: nuget-package
         path: ${{ env.NuGetDirectory }}
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
 
-    - name: Display Package Information
-      run: Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg | ForEach-Object { $_.FullName }
+    - name: NuGet login
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: Agash
 
     - name: Publish NuGet package to NuGet.org
       run: |
         foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
             Write-Host "Pushing package: $($file.FullName)"
-            dotnet nuget push $file --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+            dotnet nuget push $file --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
         }

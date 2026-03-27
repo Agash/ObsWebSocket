@@ -970,6 +970,175 @@ public static partial class ObsWebSocketClientHelpers
 
     // Helper #14 (WaitForEventAsync<TEventArgs>) - Deferred due to complexity/reflection constraints.
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Virtualcam helpers
+    // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the OBS virtual camera output is currently active.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<bool> IsVirtualCamActiveAsync(
+        this ObsWebSocketClient client,
+        CancellationToken cancellationToken = default)
+    {
+        client.EnsureConnected();
+        GetVirtualCamStatusResponseData? status = await client
+            .GetVirtualCamStatusAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return status?.OutputActive ?? false;
+    }
+
+    /// <summary>
+    /// Starts or stops the virtual camera and waits until the
+    /// <see cref="VirtualcamStateChangedEventArgs"/> confirms the desired state,
+    /// or until <paramref name="timeout"/> elapses.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="activate"><see langword="true"/> to start the virtual camera; <see langword="false"/> to stop it.</param>
+    /// <param name="timeout">
+    /// Maximum time to wait for the state-change event.
+    /// Defaults to 10 seconds.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    /// The final <c>OutputActive</c> state reported by the event,
+    /// or <see langword="null"/> if the timeout elapsed before the event arrived.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<bool?> SetVirtualCamActiveAndWaitAsync(
+        this ObsWebSocketClient client,
+        bool activate,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        client.EnsureConnected();
+
+        TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromSeconds(10);
+
+        // Set up the wait before issuing the command to avoid missing the event.
+        Task<VirtualcamStateChangedEventArgs?> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
+            predicate: _ => true,
+            timeout: effectiveTimeout,
+            cancellationToken: cancellationToken);
+
+        if (activate)
+            await client.StartVirtualCamAsync(cancellationToken).ConfigureAwait(false);
+        else
+            await client.StopVirtualCamAsync(cancellationToken).ConfigureAwait(false);
+
+        VirtualcamStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
+        return ev?.EventData.OutputActive;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Canvas-aware screenshot helpers
+    // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Captures a screenshot of the named source and returns the raw image bytes.
+    /// The <paramref name="sourceUuid"/> parameter can be used to identify the source
+    /// unambiguously when multiple sources share the same display name.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source or scene to capture.</param>
+    /// <param name="imageFormat">Image format: <c>"png"</c>, <c>"jpg"</c>, or <c>"bmp"</c>.</param>
+    /// <param name="width">Optional output width. <see langword="null"/> uses the source width.</param>
+    /// <param name="height">Optional output height. <see langword="null"/> uses the source height.</param>
+    /// <param name="compressionQuality">
+    /// JPEG compression quality 0–100 (<c>-1</c> uses the OBS default).
+    /// Ignored for lossless formats.
+    /// </param>
+    /// <param name="sourceUuid">
+    /// Optional source UUID for unambiguous identification.
+    /// When <see langword="null"/> the lookup is by <paramref name="sourceName"/> alone.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The decoded image bytes, or an empty array if OBS returned no data.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<byte[]> GetSourceScreenshotOnCanvasBytesAsync(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string imageFormat = "png",
+        int? width = null,
+        int? height = null,
+        int compressionQuality = -1,
+        string? sourceUuid = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceName);
+        client.EnsureConnected();
+
+        GetSourceScreenshotResponseData? response = await client.GetSourceScreenshotAsync(
+            new GetSourceScreenshotRequestData(
+                imageFormat: imageFormat,
+                sourceName: sourceName,
+                sourceUuid: sourceUuid,
+                imageWidth: width,
+                imageHeight: height,
+                imageCompressionQuality: compressionQuality
+            ),
+            cancellationToken).ConfigureAwait(false);
+
+        string? b64 = response?.ImageData;
+        if (string.IsNullOrEmpty(b64))
+            return [];
+
+        int commaIdx = b64.IndexOf(',', StringComparison.Ordinal);
+        string base64 = commaIdx >= 0 ? b64[(commaIdx + 1)..] : b64;
+        return Convert.FromBase64String(base64);
+    }
+
+    /// <summary>
+    /// Saves a screenshot of the named source directly to a file on the OBS host machine.
+    /// The <paramref name="sourceUuid"/> parameter can be used to identify the source
+    /// unambiguously when multiple sources share the same display name.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source or scene to capture.</param>
+    /// <param name="filePath">Absolute path on the OBS host where the image will be saved.</param>
+    /// <param name="imageFormat">Image format: <c>"png"</c>, <c>"jpg"</c>, or <c>"bmp"</c>.</param>
+    /// <param name="width">Optional output width. <see langword="null"/> uses the source width.</param>
+    /// <param name="height">Optional output height. <see langword="null"/> uses the source height.</param>
+    /// <param name="compressionQuality">JPEG compression quality 0–100 (<c>-1</c> uses the OBS default).</param>
+    /// <param name="sourceUuid">
+    /// Optional source UUID for unambiguous identification.
+    /// When <see langword="null"/> the lookup is by <paramref name="sourceName"/> alone.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task SaveSourceScreenshotToFileAsync(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string filePath,
+        string imageFormat = "png",
+        int? width = null,
+        int? height = null,
+        int compressionQuality = -1,
+        string? sourceUuid = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceName);
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+        client.EnsureConnected();
+
+        await client.SaveSourceScreenshotAsync(
+            new SaveSourceScreenshotRequestData(
+                imageFormat: imageFormat,
+                imageFilePath: filePath,
+                sourceName: sourceName,
+                sourceUuid: sourceUuid,
+                imageWidth: width,
+                imageHeight: height,
+                imageCompressionQuality: compressionQuality
+            ),
+            cancellationToken).ConfigureAwait(false);
+    }
+
     // Internal Helper for SetSceneItemEnabledAsync (Source Name overload)
     /// <summary>Exception thrown when a scene item cannot be found by name within a scene.</summary>
     [Serializable]
