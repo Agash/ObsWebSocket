@@ -751,7 +751,7 @@ internal sealed partial class Worker(
             );
 
             GetSceneListResponseData? scenes = await cycleClient
-                .GetSceneListAsync(cancellationToken)
+                .GetSceneListAsync(new(), cancellationToken)
                 .ConfigureAwait(false);
             if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
             {

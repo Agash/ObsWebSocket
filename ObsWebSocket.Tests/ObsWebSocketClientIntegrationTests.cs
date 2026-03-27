@@ -353,7 +353,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync();
         Assert.IsTrue(client.IsConnected);
 
-        GetSceneListResponseData? response = await client.GetSceneListAsync();
+        GetSceneListResponseData? response = await client.GetSceneListAsync(new());
 
         Assert.IsNotNull(response, "GetSceneList response was null.");
         Assert.IsNotNull(response.Scenes, "Scenes list was null.");
