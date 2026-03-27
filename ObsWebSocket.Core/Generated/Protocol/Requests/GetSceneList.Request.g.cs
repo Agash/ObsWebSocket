@@ -13,19 +13,19 @@ using ObsWebSocket.Core.Protocol.Common.NestedTypes;
 namespace ObsWebSocket.Core.Protocol.Requests;
 
 /// <summary>
-/// Data required for the CreateScene request.
+/// Data required for the GetSceneList request.
 /// </summary>
 /// <remarks>
-///  Creates a new scene in OBS.
+///  Gets an array of scenes in OBS.
 /// <para>OBS WebSocket Protocol Category: scenes | Complexity: 2/5</para>
 /// <para>RPC Version: 1 | Initial OBS WebSocket Version: 5.0.0</para>
 /// Generated from obs-websocket protocol definition.</remarks>
 #pragma warning disable CS8618
 [MessagePackObject]
-public sealed partial record CreateSceneRequestData
+public sealed partial record GetSceneListRequestData
 {
     /// <summary>
-    /// UUID of the canvas to create the new scene in. Leave default to assume main canvas
+    /// UUID of the canvas the scenes are in
     /// </summary>
     /// <remarks>
     /// <para>Optional: true</para>
@@ -35,29 +35,17 @@ public sealed partial record CreateSceneRequestData
     [Key("canvasUuid")]
     public string? CanvasUuid { get; init; }
 
-    /// <summary>
-    /// Name for the new scene
-    /// </summary>
-    /// <remarks>
-    /// <para>Optional: false</para>
-    /// </remarks>
-    [JsonPropertyName("sceneName")]
-    [Key("sceneName")]
-    public required string SceneName { get; init; }
-
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
-    public CreateSceneRequestData() { }
+    public GetSceneListRequestData() { }
 
     /// <summary>
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CreateSceneRequestData(string sceneName, string? canvasUuid = null)
+    public GetSceneListRequestData(string? canvasUuid = null)
     {
         this.CanvasUuid = canvasUuid;
-        this.SceneName = sceneName;
     }
 
 }

@@ -339,7 +339,7 @@ public static partial class ObsWebSocketClientHelpers
             // Check scenes if not found in inputs
             ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData? sceneListResponse =
                 await client
-                    .GetSceneListAsync(cancellationToken: cancellationToken)
+                    .GetSceneListAsync(new(), cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             return sceneListResponse?.Scenes?.Any(s =>
                     string.Equals(s.SceneName, sourceName, StringComparison.Ordinal)

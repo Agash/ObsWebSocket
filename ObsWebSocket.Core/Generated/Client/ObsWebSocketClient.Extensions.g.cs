@@ -20,6 +20,25 @@ namespace ObsWebSocket.Core;
 public static partial class ObsWebSocketClientExtensions
 {
     /// <summary>
+    /// Gets an array of canvases in OBS.
+    /// </summary>
+    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData"/> response data, or <c>null</c> if the successful response does not contain data.</returns>
+    /// <remarks>
+    /// <para>OBS WebSocket Protocol Category: canvases</para>
+    /// <para>Complexity Rating: 3/5</para>
+    /// <para>RPC Version: 1 | Initial OBS WebSocket Version: 5.7.0</para>
+    /// Generated from obs-websocket protocol definition.</remarks>
+    /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
+    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData?> GetCanvasListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    {
+        return await client.CallAsync<ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData>("GetCanvasList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Gets the value of a &quot;slot&quot; from the selected persistent data realm.
     /// </summary>
     /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
@@ -2318,9 +2337,10 @@ public static partial class ObsWebSocketClientExtensions
     }
 
     /// <summary>
-    /// Gets an array of all scenes in OBS.
+    /// Gets an array of scenes in OBS.
     /// </summary>
     /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
+    /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData"/> response data, or <c>null</c> if the successful response does not contain data.</returns>
     /// <remarks>
@@ -2331,9 +2351,9 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData?> GetSceneListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData?> GetSceneListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData requestData, CancellationToken cancellationToken = default)
     {
-        return await client.CallAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData>("GetSceneList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return await client.CallAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData>("GetSceneList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -2360,7 +2380,9 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the current program scene.
     /// 
-    /// Note: This request is slated to have the `currentProgram`-prefixed fields removed from in an upcoming RPC version.
+    /// Note 1: This request is slated to have the `currentProgram`-prefixed fields removed from in an upcoming RPC version.
+    /// 
+    /// Note 2: Canvases do not have any concept of a program or preview scene, so this request does not support canvases.
     /// </summary>
     /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>

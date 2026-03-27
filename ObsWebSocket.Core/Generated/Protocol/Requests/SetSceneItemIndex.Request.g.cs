@@ -27,6 +27,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record SetSceneItemIndexRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Numeric ID of the scene item
     /// </summary>
     /// <remarks>
@@ -79,8 +90,9 @@ public sealed partial record SetSceneItemIndexRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneItemIndexRequestData(double sceneItemId, double sceneItemIndex, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneItemIndexRequestData(double sceneItemId, double sceneItemIndex, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
         this.SceneItemId = sceneItemId;

@@ -62,6 +62,69 @@ public static partial class ObsWebSocketClientHelpers
             // This switch is generated based on known events with data from protocol.json
             switch (typeof(TEventArgs))
             {
+                case Type t when t == typeof(ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs):
+                {
+                    EventHandler<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs> specificHandler = (sender, e) =>
+                    {
+                        try
+                        {
+                            if (predicate((TEventArgs)(object)e))
+                            {
+                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Catch exceptions from user predicate and fail the task
+                            tcs.TrySetException(ex);
+                        }
+                    };
+                    client.CanvasCreated += specificHandler;
+                    unsubscribeAction = () => client.CanvasCreated -= specificHandler;
+                    break;
+                }
+                case Type t when t == typeof(ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs):
+                {
+                    EventHandler<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs> specificHandler = (sender, e) =>
+                    {
+                        try
+                        {
+                            if (predicate((TEventArgs)(object)e))
+                            {
+                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Catch exceptions from user predicate and fail the task
+                            tcs.TrySetException(ex);
+                        }
+                    };
+                    client.CanvasRemoved += specificHandler;
+                    unsubscribeAction = () => client.CanvasRemoved -= specificHandler;
+                    break;
+                }
+                case Type t when t == typeof(ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs):
+                {
+                    EventHandler<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs> specificHandler = (sender, e) =>
+                    {
+                        try
+                        {
+                            if (predicate((TEventArgs)(object)e))
+                            {
+                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Catch exceptions from user predicate and fail the task
+                            tcs.TrySetException(ex);
+                        }
+                    };
+                    client.CanvasNameChanged += specificHandler;
+                    unsubscribeAction = () => client.CanvasNameChanged -= specificHandler;
+                    break;
+                }
                 case Type t when t == typeof(ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs):
                 {
                     EventHandler<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs> specificHandler = (sender, e) =>

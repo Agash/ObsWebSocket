@@ -11,6 +11,9 @@ internal static partial class ObsWebSocketMsgPackResolverCore
     private static partial bool IsEventType(Type type)
     {
         return
+            type == typeof(ObsWebSocket.Core.Protocol.Events.CanvasCreatedPayload) ||
+            type == typeof(ObsWebSocket.Core.Protocol.Events.CanvasRemovedPayload) ||
+            type == typeof(ObsWebSocket.Core.Protocol.Events.CanvasNameChangedPayload) ||
             type == typeof(ObsWebSocket.Core.Protocol.Events.CurrentSceneCollectionChangingPayload) ||
             type == typeof(ObsWebSocket.Core.Protocol.Events.CurrentSceneCollectionChangedPayload) ||
             type == typeof(ObsWebSocket.Core.Protocol.Events.SceneCollectionListChangedPayload) ||

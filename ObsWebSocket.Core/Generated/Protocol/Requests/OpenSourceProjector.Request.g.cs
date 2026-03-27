@@ -27,6 +27,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record OpenSourceProjectorRequestData
 {
     /// <summary>
+    /// UUID of the canvas the source is in, if using the sourceName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Monitor index, use `GetMonitorList` to obtain index
     /// </summary>
     /// <remarks>
@@ -78,8 +89,9 @@ public sealed partial record OpenSourceProjectorRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public OpenSourceProjectorRequestData(string? sourceName = null, string? sourceUuid = null, double? monitorIndex = null, string? projectorGeometry = null)
+    public OpenSourceProjectorRequestData(string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, double? monitorIndex = null, string? projectorGeometry = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;
         this.MonitorIndex = monitorIndex;

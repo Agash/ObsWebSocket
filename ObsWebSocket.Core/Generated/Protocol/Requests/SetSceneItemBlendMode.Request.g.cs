@@ -27,6 +27,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record SetSceneItemBlendModeRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// New blend mode
     /// </summary>
     /// <remarks>
@@ -78,8 +89,9 @@ public sealed partial record SetSceneItemBlendModeRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneItemBlendModeRequestData(double sceneItemId, string sceneItemBlendMode, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneItemBlendModeRequestData(double sceneItemId, string sceneItemBlendMode, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
         this.SceneItemId = sceneItemId;

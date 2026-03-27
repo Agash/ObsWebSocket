@@ -25,6 +25,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record CreateSourceFilterRequestData
 {
     /// <summary>
+    /// UUID of the canvas the source is in, if using the sourceName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// The kind of filter to be created
     /// </summary>
     /// <remarks>
@@ -86,8 +97,9 @@ public sealed partial record CreateSourceFilterRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CreateSourceFilterRequestData(string filterName, string filterKind, string? sourceName = null, string? sourceUuid = null, System.Text.Json.JsonElement? filterSettings = null)
+    public CreateSourceFilterRequestData(string filterName, string filterKind, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, System.Text.Json.JsonElement? filterSettings = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;
         this.FilterName = filterName;

@@ -14,6 +14,60 @@ public sealed partial class ObsWebSocketClient
 {
 
     /// <summary>
+    /// Occurs when the <c>CanvasCreated</c> event is received from the OBS WebSocket server.
+    /// </summary>
+    /// <remarks>
+    ///  A new canvas has been created.
+    /// <para>Requires the <c>Canvases</c> subscription.</para>
+    /// <para>Category: canvases | Complexity: 2</para>
+    /// <para>RPC Version: 1 | Initial Version: 5.7.0</para>
+    /// </remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs>? CanvasCreated;
+
+    /// <summary>Invokes the <see cref="CanvasCreated"/> event handler safely.</summary>
+    /// <param name="e">The <see cref="ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs"/> containing event data.</param>
+    private void OnCanvasCreated(ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs e)
+    {
+        CanvasCreated?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// Occurs when the <c>CanvasRemoved</c> event is received from the OBS WebSocket server.
+    /// </summary>
+    /// <remarks>
+    ///  A canvas has been removed.
+    /// <para>Requires the <c>Canvases</c> subscription.</para>
+    /// <para>Category: canvases | Complexity: 2</para>
+    /// <para>RPC Version: 1 | Initial Version: 5.7.0</para>
+    /// </remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs>? CanvasRemoved;
+
+    /// <summary>Invokes the <see cref="CanvasRemoved"/> event handler safely.</summary>
+    /// <param name="e">The <see cref="ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs"/> containing event data.</param>
+    private void OnCanvasRemoved(ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs e)
+    {
+        CanvasRemoved?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// Occurs when the <c>CanvasNameChanged</c> event is received from the OBS WebSocket server.
+    /// </summary>
+    /// <remarks>
+    ///  The name of a canvas has changed.
+    /// <para>Requires the <c>Canvases</c> subscription.</para>
+    /// <para>Category: canvases | Complexity: 2</para>
+    /// <para>RPC Version: 1 | Initial Version: 5.7.0</para>
+    /// </remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs>? CanvasNameChanged;
+
+    /// <summary>Invokes the <see cref="CanvasNameChanged"/> event handler safely.</summary>
+    /// <param name="e">The <see cref="ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs"/> containing event data.</param>
+    private void OnCanvasNameChanged(ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs e)
+    {
+        CanvasNameChanged?.Invoke(this, e);
+    }
+
+    /// <summary>
     /// Occurs when the <c>CurrentSceneCollectionChanging</c> event is received from the OBS WebSocket server.
     /// </summary>
     /// <remarks>

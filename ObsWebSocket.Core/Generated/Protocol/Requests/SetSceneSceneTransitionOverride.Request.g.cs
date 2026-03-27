@@ -25,6 +25,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record SetSceneSceneTransitionOverrideRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Name of the scene
     /// </summary>
     /// <remarks>
@@ -77,8 +88,9 @@ public sealed partial record SetSceneSceneTransitionOverrideRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SetSceneSceneTransitionOverrideRequestData(string? sceneName = null, string? sceneUuid = null, string? transitionName = null, double? transitionDuration = null)
+    public SetSceneSceneTransitionOverrideRequestData(string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? transitionName = null, double? transitionDuration = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
         this.TransitionName = transitionName;

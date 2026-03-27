@@ -120,13 +120,22 @@ public enum EventSubscription : int
     Ui = (1 << 10),
 
     /// <summary>
+    /// Subscription value to receive events in the `Canvases` category.
+    /// </summary>
+    /// <remarks>
+    /// Initial OBS Websocket Version: 5.7.0
+    /// RPC Version: 1
+    /// </remarks>
+    Canvases = (1 << 11),
+
+    /// <summary>
     /// Helper to receive all non-high-volume events.
     /// </summary>
     /// <remarks>
     /// Initial OBS Websocket Version: 5.0.0
     /// RPC Version: 1
     /// </remarks>
-    All = (General | Config | Scenes | Inputs | Transitions | Filters | Outputs | SceneItems | MediaInputs | Vendors | Ui),
+    All = (General | Config | Scenes | Inputs | Transitions | Filters | Outputs | SceneItems | MediaInputs | Vendors | Ui | Canvases),
 
     /// <summary>
     /// Subscription value to receive the `InputVolumeMeters` high-volume event.

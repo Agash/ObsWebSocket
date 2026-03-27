@@ -27,6 +27,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record GetSourceActiveRequestData
 {
     /// <summary>
+    /// UUID of the canvas the source is in, if using sourceName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Name of the source to get the active state of
     /// </summary>
     /// <remarks>
@@ -56,8 +67,9 @@ public sealed partial record GetSourceActiveRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSourceActiveRequestData(string? sourceName = null, string? sourceUuid = null)
+    public GetSourceActiveRequestData(string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;
     }

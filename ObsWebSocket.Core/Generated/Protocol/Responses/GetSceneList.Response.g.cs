@@ -16,7 +16,7 @@ namespace ObsWebSocket.Core.Protocol.Responses;
 /// Data returned by the GetSceneList request.
 /// </summary>
 /// <remarks>
-///  Gets an array of all scenes in OBS.
+///  Gets an array of scenes in OBS.
 /// <para>OBS WebSocket Protocol Category: scenes | Complexity: 2/5</para>
 /// <para>RPC Version: 1 | Initial OBS WebSocket Version: 5.0.0</para>
 /// Generated from obs-websocket protocol definition.</remarks>
@@ -25,28 +25,28 @@ namespace ObsWebSocket.Core.Protocol.Responses;
 public sealed partial record GetSceneListResponseData
 {
     /// <summary>
-    /// Current preview scene name. `null` if not in studio mode
+    /// Current preview scene name. `null` if not in studio mode or non-main canvas
     /// </summary>
     [JsonPropertyName("currentPreviewSceneName")]
     [Key("currentPreviewSceneName")]
     public string? CurrentPreviewSceneName { get; init; }
 
     /// <summary>
-    /// Current preview scene UUID. `null` if not in studio mode
+    /// Current preview scene UUID. `null` if not in studio mode or non-main canvas
     /// </summary>
     [JsonPropertyName("currentPreviewSceneUuid")]
     [Key("currentPreviewSceneUuid")]
     public string? CurrentPreviewSceneUuid { get; init; }
 
     /// <summary>
-    /// Current program scene name. Can be `null` if internal state desync
+    /// Current program scene name. Can be `null` if non-main canvas or internal state desync
     /// </summary>
     [JsonPropertyName("currentProgramSceneName")]
     [Key("currentProgramSceneName")]
     public string? CurrentProgramSceneName { get; init; }
 
     /// <summary>
-    /// Current program scene UUID. Can be `null` if internal state desync
+    /// Current program scene UUID. Can be `null` if non-main canvas or internal state desync
     /// </summary>
     [JsonPropertyName("currentProgramSceneUuid")]
     [Key("currentProgramSceneUuid")]

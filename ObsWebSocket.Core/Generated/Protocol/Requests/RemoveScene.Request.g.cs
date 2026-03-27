@@ -25,6 +25,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record RemoveSceneRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Name of the scene to remove
     /// </summary>
     /// <remarks>
@@ -54,8 +65,9 @@ public sealed partial record RemoveSceneRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public RemoveSceneRequestData(string? sceneName = null, string? sceneUuid = null)
+    public RemoveSceneRequestData(string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
     }

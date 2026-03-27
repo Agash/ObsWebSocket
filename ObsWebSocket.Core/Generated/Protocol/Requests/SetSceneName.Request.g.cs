@@ -25,6 +25,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record SetSceneNameRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// New name for the scene
     /// </summary>
     /// <remarks>
@@ -65,8 +76,9 @@ public sealed partial record SetSceneNameRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneNameRequestData(string newSceneName, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneNameRequestData(string newSceneName, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
         this.NewSceneName = newSceneName;

@@ -92,6 +92,7 @@ internal static partial class ObsWebSocketMsgPackResolverCore
             type == typeof(ObsWebSocket.Core.Protocol.Requests.SetSceneItemIndexRequestData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Requests.GetSceneItemBlendModeRequestData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Requests.SetSceneItemBlendModeRequestData) ||
+            type == typeof(ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Requests.SetCurrentProgramSceneRequestData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Requests.SetCurrentPreviewSceneRequestData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Requests.CreateSceneRequestData) ||

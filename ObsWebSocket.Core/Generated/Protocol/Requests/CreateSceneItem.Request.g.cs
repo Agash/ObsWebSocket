@@ -27,6 +27,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record CreateSceneItemRequestData
 {
     /// <summary>
+    /// UUID of the canvas the scene is in, if using the sceneName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Enable state to apply to the scene item on creation
     /// </summary>
     /// <remarks>
@@ -89,8 +100,9 @@ public sealed partial record CreateSceneItemRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CreateSceneItemRequestData(string? sceneName = null, string? sceneUuid = null, string? sourceName = null, string? sourceUuid = null, bool? sceneItemEnabled = null)
+    public CreateSceneItemRequestData(string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? sourceName = null, string? sourceUuid = null, bool? sceneItemEnabled = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
         this.SourceName = sourceName;

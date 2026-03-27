@@ -18,7 +18,9 @@ namespace ObsWebSocket.Core.Protocol.Responses;
 /// <remarks>
 ///  Gets the current program scene.
 ///  
-///  Note: This request is slated to have the `currentProgram`-prefixed fields removed from in an upcoming RPC version.
+///  Note 1: This request is slated to have the `currentProgram`-prefixed fields removed from in an upcoming RPC version.
+///  
+///  Note 2: Canvases do not have any concept of a program or preview scene, so this request does not support canvases.
 /// <para>OBS WebSocket Protocol Category: scenes | Complexity: 1/5</para>
 /// <para>RPC Version: 1 | Initial OBS WebSocket Version: 5.0.0</para>
 /// Generated from obs-websocket protocol definition.</remarks>

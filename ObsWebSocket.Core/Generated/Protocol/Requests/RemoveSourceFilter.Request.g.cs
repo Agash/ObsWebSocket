@@ -25,6 +25,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record RemoveSourceFilterRequestData
 {
     /// <summary>
+    /// UUID of the canvas the source is in, if using the sourceName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Name of the filter to remove
     /// </summary>
     /// <remarks>
@@ -65,8 +76,9 @@ public sealed partial record RemoveSourceFilterRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public RemoveSourceFilterRequestData(string filterName, string? sourceName = null, string? sourceUuid = null)
+    public RemoveSourceFilterRequestData(string filterName, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;
         this.FilterName = filterName;

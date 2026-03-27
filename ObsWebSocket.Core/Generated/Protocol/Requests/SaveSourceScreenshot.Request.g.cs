@@ -30,6 +30,17 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 public sealed partial record SaveSourceScreenshotRequestData
 {
     /// <summary>
+    /// UUID of the canvas the source is in, if using sourceName field
+    /// </summary>
+    /// <remarks>
+    /// <para>Optional: true</para>
+    /// Behavior When Optional: Unknown
+    /// </remarks>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public string? CanvasUuid { get; init; }
+
+    /// <summary>
     /// Compression quality to use. 0 for high compression, 100 for uncompressed. -1 to use &quot;default&quot; (whatever that means, idk)
     /// </summary>
     /// <remarks>
@@ -116,8 +127,9 @@ public sealed partial record SaveSourceScreenshotRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SaveSourceScreenshotRequestData(string imageFormat, string imageFilePath, string? sourceName = null, string? sourceUuid = null, double? imageWidth = null, double? imageHeight = null, double? imageCompressionQuality = null)
+    public SaveSourceScreenshotRequestData(string imageFormat, string imageFilePath, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, double? imageWidth = null, double? imageHeight = null, double? imageCompressionQuality = null)
     {
+        this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;
         this.ImageFormat = imageFormat;

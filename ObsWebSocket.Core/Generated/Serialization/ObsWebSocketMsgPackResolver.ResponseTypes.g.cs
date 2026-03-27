@@ -11,6 +11,7 @@ internal static partial class ObsWebSocketMsgPackResolverCore
     private static partial bool IsResponseType(Type type)
     {
         return
+            type == typeof(ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Responses.GetPersistentDataResponseData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Responses.GetSceneCollectionListResponseData) ||
             type == typeof(ObsWebSocket.Core.Protocol.Responses.GetProfileListResponseData) ||
