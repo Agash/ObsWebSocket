@@ -146,7 +146,7 @@ public partial class ObsWebSocketClientTests
 
         // Define the batch items
         BatchRequestItem request1 = new("GetVersion", null);
-        SetSceneNameRequestData request2Data = new("OldScene", "NewScene");
+        SetSceneNameRequestData request2Data = new("NewScene", sceneName: "OldScene");
         BatchRequestItem request2 = new("SetSceneName", request2Data);
         List<BatchRequestItem> requests = [request1, request2];
 
