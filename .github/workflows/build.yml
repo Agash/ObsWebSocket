@@ -32,12 +32,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0 # Required for MinVer to determine the version from Git history
 
     - name: Setup .NET 10 SDK
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '10.x'
 
@@ -91,7 +91,7 @@ jobs:
     - name: Upload NuGet Package Artifact (on master push or release)
       # Upload if it's a push to master OR if the event is a release (so publish job can get it)
       if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nuget-package
         if-no-files-found: error
@@ -109,13 +109,13 @@ jobs:
 
     steps:
     - name: Download NuGet Package Artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nuget-package
         path: ${{ env.NuGetDirectory }}
 
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
 
     - name: NuGet login
       uses: NuGet/login@v1
