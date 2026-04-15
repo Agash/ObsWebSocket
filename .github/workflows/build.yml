@@ -95,7 +95,7 @@ jobs:
       with:
         name: nuget-package
         if-no-files-found: error
-        retention-days: 7
+        retention-days: 1
         path: ${{ env.NuGetDirectory }}/*.nupkg
 
   publish_nuget:
