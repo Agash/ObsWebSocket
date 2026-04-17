@@ -29,12 +29,12 @@
     <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
     <PackageReference Include="MessagePack" Version="3.1.4" ExcludeAssets="build;buildTransitive;analyzers" />
     <PackageReference Include="MessagePackAnalyzer" Version="3.1.4" IncludeAssets="none" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.6" />
     <PackageReference Include="MinVer" Version="7.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -52,46 +52,21 @@
     <ObsCodegenKeyFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)Generated\Serialization\ObsWebSocketJsonContext.g.cs'))</ObsCodegenKeyFile>
   </PropertyGroup>
   <UsingTask TaskName="ObsWebSocket.Codegen.Tasks.GenerateObsWebSocketSourcesTask" AssemblyFile="$(ObsCodegenTaskAssembly)" />
-  <Target
-    Name="BuildObsCodegenTask"
-    Condition="'$(DesignTimeBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
-  >
-    <Message
-      Text="Building codegen task project $(ObsCodegenTaskProject)..."
-      Importance="high"
-    />
-    <Exec
-      Command="dotnet build &quot;$(ObsCodegenTaskProject)&quot; -c $(Configuration) --nologo"
-      WorkingDirectory="$(MSBuildProjectDirectory)"
-    />
+  <Target Name="BuildObsCodegenTask" Condition="'$(DesignTimeBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))">
+    <Message Text="Building codegen task project $(ObsCodegenTaskProject)..." Importance="high" />
+    <Exec Command="dotnet build &quot;$(ObsCodegenTaskProject)&quot; -c $(Configuration) --nologo" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
   <Target Name="SetObsCodegenForceRegeneration" BeforeTargets="Rebuild" Condition="'$(DesignTimeBuild)' != 'true'">
     <PropertyGroup>
       <ObsCodegenForceRegeneration>true</ObsCodegenForceRegeneration>
     </PropertyGroup>
   </Target>
-  <Target
-    Name="GenerateObsWebSocketSourcesCrossTargeting"
-    BeforeTargets="DispatchToInnerBuilds"
-    DependsOnTargets="BuildObsCodegenTask"
-    Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' == 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
-  >
-    <Message
-      Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..."
-      Importance="high"
-    />
+  <Target Name="GenerateObsWebSocketSourcesCrossTargeting" BeforeTargets="DispatchToInnerBuilds" DependsOnTargets="BuildObsCodegenTask" Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' == 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))">
+    <Message Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..." Importance="high" />
     <GenerateObsWebSocketSourcesTask ProtocolPath="$(ObsCodegenProtocolPath)" OutputDirectory="$(ObsCodegenOutputPath)" DownloadIfMissing="true" />
   </Target>
-  <Target
-    Name="GenerateObsWebSocketSourcesSingleTarget"
-    BeforeTargets="CoreCompile"
-    DependsOnTargets="BuildObsCodegenTask"
-    Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))"
-  >
-    <Message
-      Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..."
-      Importance="high"
-    />
+  <Target Name="GenerateObsWebSocketSourcesSingleTarget" BeforeTargets="CoreCompile" DependsOnTargets="BuildObsCodegenTask" Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(Rebuild)' == 'true' or '$(ObsCodegenForceRegeneration)' == 'true' or !Exists('$(ObsCodegenKeyFile)'))">
+    <Message Text="Generating ObsWebSocket.Core sources using $(ObsCodegenTaskAssembly)..." Importance="high" />
     <GenerateObsWebSocketSourcesTask ProtocolPath="$(ObsCodegenProtocolPath)" OutputDirectory="$(ObsCodegenOutputPath)" DownloadIfMissing="true" />
   </Target>
   <ItemGroup>
