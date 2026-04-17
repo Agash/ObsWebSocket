@@ -29,6 +29,8 @@ jobs:
   build_and_test:
     name: Build, Test, and Pack
     runs-on: ubuntu-latest # Use the latest Ubuntu runner
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout code
