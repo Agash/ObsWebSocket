@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -461,7 +462,7 @@ internal sealed partial class Worker(
                 string sourceForFilters = string.Join(" ", args);
                 GetSourceFilterListResponseData? filterList =
                     await _obsClient.GetSourceFilterListAsync(
-                        new GetSourceFilterListRequestData(sourceForFilters),
+                        new GetSourceFilterListRequestData(sourceName: sourceForFilters),
                         cancellationToken: cancellationToken
                     );
                 if (filterList?.Filters is not null && filterList.Filters.Count > 0)
@@ -677,6 +678,10 @@ internal sealed partial class Worker(
             case "get-all-filter-settings": // New Command
                 await GetAllFilterSettingsForSource(cancellationToken);
                 return false;
+
+            case "add-browser-source":
+                await AddBrowserSourceAsync(cancellationToken);
+                return false;
             // --- End of New Commands ---
 
             default:
@@ -790,7 +795,7 @@ internal sealed partial class Worker(
             {
                 GetSourceFilterListResponseData? filters = await cycleClient
                     .GetSourceFilterListAsync(
-                        new GetSourceFilterListRequestData(inputName),
+                        new GetSourceFilterListRequestData(sourceName: inputName),
                         cancellationToken
                     )
                     .ConfigureAwait(false);
@@ -1303,6 +1308,250 @@ internal sealed partial class Worker(
         // No cleanup needed as we didn't add filters to the source
     }
 
+    private async Task AddBrowserSourceAsync(CancellationToken cancellationToken)
+    {
+        // Step 1: Fetch scene list and determine current program scene
+        GetSceneListResponseData? sceneList = await _obsClient.GetSceneListAsync(
+            new(),
+            cancellationToken: cancellationToken
+        );
+
+        if (sceneList?.Scenes is null || sceneList.Scenes.Count == 0)
+        {
+            UiWarn("Could not retrieve scene list from OBS.");
+            return;
+        }
+
+        string currentProgramScene = sceneList.CurrentProgramSceneName ?? string.Empty;
+
+        List<string> sceneNames = sceneList.Scenes
+            .Select(s => s.SceneName)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Select(n => n!)
+            .ToList();
+
+        // Place current program scene first, then alphabetically
+        List<string> orderedSceneNames = !string.IsNullOrEmpty(currentProgramScene)
+            ? [
+                ..sceneNames.Where(n => n == currentProgramScene),
+                ..sceneNames.Where(n => n != currentProgramScene).OrderBy(n => n),
+              ]
+            : [..sceneNames.OrderBy(n => n)];
+
+        if (orderedSceneNames.Count == 0)
+        {
+            UiWarn("No scenes available in OBS.");
+            return;
+        }
+
+        // Map display labels (with "(current program)" suffix) to actual names
+        Dictionary<string, string> displayToSceneName = orderedSceneNames.ToDictionary(
+            n => n == currentProgramScene ? $"{n} (current program)" : n,
+            n => n
+        );
+
+        // Step 2: Prompt user to select a scene
+        string selectedSceneDisplay = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select target [cyan]scene[/]:")
+                .PageSize(15)
+                .AddChoices(displayToSceneName.Keys)
+        );
+
+        string selectedScene = displayToSceneName[selectedSceneDisplay];
+
+        // Step 3: Fetch scene items and all global browser_source inputs in parallel
+        Task<GetSceneItemListResponseData?> sceneItemsTask = _obsClient.GetSceneItemListAsync(
+            new GetSceneItemListRequestData(sceneName: selectedScene),
+            cancellationToken: cancellationToken
+        );
+        Task<GetInputListResponseData?> browserInputsTask = _obsClient.GetInputListAsync(
+            new GetInputListRequestData("browser_source"),
+            cancellationToken: cancellationToken
+        );
+
+        await Task.WhenAll(sceneItemsTask, browserInputsTask).ConfigureAwait(false);
+
+        GetSceneItemListResponseData? sceneItemList = await sceneItemsTask;
+        GetInputListResponseData? browserInputList = await browserInputsTask;
+
+        // Find browser sources that already exist in the selected scene
+        HashSet<string> sceneSourceNames = sceneItemList?.SceneItems?
+            .Select(si => si.SourceName ?? string.Empty)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+
+        List<string> existingBrowserSourcesInScene = browserInputList?.Inputs?
+            .Where(i => sceneSourceNames.Contains(i.InputName ?? string.Empty))
+            .Select(i => i.InputName!)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .OrderBy(n => n)
+            .ToList() ?? [];
+
+        // Step 4: Prompt — create new source or update an existing browser source
+        const string CreateNewChoice = "+ Create new browser source";
+        List<string> sourceChoices = [CreateNewChoice, ..existingBrowserSourcesInScene];
+
+        string selectedSourceChoice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Browser source in scene [cyan]{Markup.Escape(selectedScene)}[/]:")
+                .PageSize(15)
+                .AddChoices(sourceChoices)
+        );
+
+        bool isNewSource = selectedSourceChoice == CreateNewChoice;
+        string sourceName;
+
+        if (isNewSource)
+        {
+            sourceName = AnsiConsole.Prompt(
+                new TextPrompt<string>("New browser source [cyan]name[/]:")
+                    .Validate(s =>
+                        !string.IsNullOrWhiteSpace(s)
+                            ? ValidationResult.Success()
+                            : ValidationResult.Error("[red]Name cannot be empty.[/]")
+                    )
+            );
+        }
+        else
+        {
+            sourceName = selectedSourceChoice;
+        }
+
+        // Step 5: Get canvas dimensions from video settings
+        GetVideoSettingsResponseData? videoSettings = await _obsClient.GetVideoSettingsAsync(
+            cancellationToken: cancellationToken
+        );
+
+        if (videoSettings is null)
+        {
+            UiWarn("Could not retrieve video settings from OBS.");
+            return;
+        }
+
+        int canvasWidth = (int)videoSettings.BaseWidth;
+        int canvasHeight = (int)videoSettings.BaseHeight;
+        UiInfo($"Canvas resolution: {canvasWidth}x{canvasHeight}");
+
+        // Step 6: Prompt for the overlay URL
+        string url = AnsiConsole.Prompt(
+            new TextPrompt<string>("Browser source [cyan]URL[/]:")
+                .Validate(s =>
+                    !string.IsNullOrWhiteSpace(s)
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]URL cannot be empty.[/]")
+                )
+        );
+
+        // Step 7: Build the browser source settings payload
+        // webpage_control_level 2 = full OBS control via the obsstudio JS API,
+        // including start/stop streaming without confirmation dialogs.
+        // Adjust to a lower value if full access is not desired.
+        const string OverlayCss =
+            "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }";
+
+        ArrayBufferWriter<byte> settingsBuffer = new();
+        using (Utf8JsonWriter settingsWriter = new(settingsBuffer))
+        {
+            settingsWriter.WriteStartObject();
+            settingsWriter.WriteString("url", url);
+            settingsWriter.WriteNumber("width", canvasWidth);
+            settingsWriter.WriteNumber("height", canvasHeight);
+            settingsWriter.WriteBoolean("fps_custom", false); // Use OBS default 30 fps
+            settingsWriter.WriteNumber("fps", 30);
+            settingsWriter.WriteString("css", OverlayCss);
+            settingsWriter.WriteBoolean("reroute_audio", true); // Let OBS manage audio
+            settingsWriter.WriteNumber("webpage_control_level", 5); // Full OBS JS API access
+            settingsWriter.WriteBoolean("restart_when_active", true); // Keep WS alive on scene change
+            settingsWriter.WriteEndObject();
+            settingsWriter.Flush();
+        }
+
+        using JsonDocument settingsDoc = JsonDocument.Parse(settingsBuffer.WrittenMemory);
+        JsonElement browserSettings = settingsDoc.RootElement.Clone();
+
+        double sceneItemId;
+
+        // Step 8: Create new input or update existing source settings
+        if (isNewSource)
+        {
+            UiInfo($"Creating browser source '{sourceName}' in scene '{selectedScene}'...");
+
+            CreateInputResponseData? createResult = await _obsClient.CreateInputAsync(
+                new CreateInputRequestData(
+                    inputName: sourceName,
+                    inputKind: "browser_source",
+                    sceneName: selectedScene,
+                    inputSettings: browserSettings,
+                    sceneItemEnabled: true
+                ),
+                cancellationToken: cancellationToken
+            );
+
+            if (createResult is null)
+            {
+                UiWarn($"No response received when creating browser source '{sourceName}'.");
+                return;
+            }
+
+            sceneItemId = createResult.SceneItemId;
+            UiSuccess($"Created '{sourceName}' (scene item ID: {sceneItemId}).");
+        }
+        else
+        {
+            UiInfo($"Updating browser source '{sourceName}' settings...");
+
+            // overlay: false — reset to defaults then apply all new settings cleanly
+            await _obsClient.SetInputSettingsAsync(
+                new SetInputSettingsRequestData(
+                    browserSettings,
+                    inputName: sourceName,
+                    overlay: false
+                ),
+                cancellationToken: cancellationToken
+            );
+
+            sceneItemId = await GetSceneItemIdAsync(selectedScene, sourceName, cancellationToken);
+            UiSuccess($"Updated '{sourceName}' (scene item ID: {sceneItemId}).");
+        }
+
+        // Step 9: Set Blend Mode to Normal (explicit, even though it is the default)
+        await _obsClient.SetSceneItemBlendModeAsync(
+            new SetSceneItemBlendModeRequestData(
+                sceneItemId: sceneItemId,
+                sceneItemBlendMode: "OBS_BLEND_NORMAL",
+                sceneName: selectedScene
+            ),
+            cancellationToken: cancellationToken
+        );
+
+        // The obs-websocket v5 protocol does not expose SetSceneItemPrivateSettings,
+        // so Blending Method (SRGB Off) cannot be set programmatically via this API.
+        AnsiConsole.MarkupLine(
+            "[yellow]Action required:[/] Set [bold]Blending Method[/] to [bold]sRGB Off[/] manually in OBS."
+        );
+        AnsiConsole.MarkupLine(
+            "[grey]  Right-click the scene item → Blending → Method → sRGB Off[/]"
+        );
+
+        RenderKeyValueTable(
+            $"Browser Source — {(isNewSource ? "Created" : "Updated")}",
+            [
+                ("Name", sourceName),
+                ("Scene", selectedScene),
+                ("URL", url),
+                ("Dimensions", $"{canvasWidth} x {canvasHeight} (matches canvas)"),
+                ("FPS", "30 (fps_custom: false, uses OBS default)"),
+                ("CSS", OverlayCss),
+                ("Audio", "OBS handled (reroute_audio: true)"),
+                ("OBS Control Level", "Full (webpage_control_level: 5)"),
+                ("Refresh on Scene Active", "Yes (restart_when_active: true)"),
+                ("Blend Mode", "Normal (OBS_BLEND_NORMAL)"),
+                ("Blending Method", "sRGB Off — set manually in OBS (not exposed by WebSocket v5)"),
+            ]
+        );
+    }
+
     private static void RenderCommandHelp()
     {
         Table commandTable = new() { Title = new TableTitle("Available Commands") };
@@ -1359,6 +1608,10 @@ internal sealed partial class Worker(
         _ = commandTable.AddRow(
             Markup.Escape("get-all-filter-settings"),
             Markup.Escape("Dump default settings for all filter kinds")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("add-browser-source"),
+            Markup.Escape("Create or update a fullscreen browser source overlay in a scene")
         );
         AnsiConsole.Write(commandTable);
     }
