@@ -17,23 +17,19 @@ Modern .NET client for OBS Studio WebSocket v5, with generated protocol types an
 dotnet add package ObsWebSocket.Core
 ```
 
-## What You Get
+## Features
 
-- Strongly typed request/response DTOs generated from OBS protocol
-- Strongly typed OBS event args
-- Async-first API (`Task`, `ValueTask`, cancellation support)
+- Strongly typed request/response DTOs generated from the obs-websocket protocol
+- Strongly typed event args
+- Async-first API with cancellation support
 - DI helpers via `AddObsWebSocketClient()`
-- Configurable JSON or MessagePack transport
-- Reconnect and timeout options via `ObsWebSocketClientOptions`
-- Convenience helpers for common scene/input/filter workflows
+- JSON and MessagePack transports (configurable per environment)
+- Reconnect, timeout, and event subscription options
+- Typed settings helpers for inputs, filters, transitions, outputs, and stream service — works with built-in library types or your own AOT-safe source-generated types
 
-## Important Caveats
+> **OBS WebSocket v5 only** (OBS Studio 28+). Enable the server via *Tools → WebSocket Server Settings* in OBS.
 
-- This library is for **OBS WebSocket v5** only (OBS Studio 28+).
-- Make sure OBS WebSocket server is enabled (`Tools -> WebSocket Server Settings`).
-- If you use authentication, provide the correct password in options/config.
-
-## Quick Start (DI)
+## Quick Start
 
 `appsettings.json`:
 
@@ -42,7 +38,6 @@ dotnet add package ObsWebSocket.Core
   "Obs": {
     "ServerUri": "ws://localhost:4455",
     "Password": "",
-    "EventSubscriptions": null,
     "Format": "Json"
   }
 }
@@ -51,25 +46,19 @@ dotnet add package ObsWebSocket.Core
 `Program.cs`:
 
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using ObsWebSocket.Core;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
-
 builder.Services.Configure<ObsWebSocketClientOptions>(
     builder.Configuration.GetSection("Obs"));
-
 builder.Services.AddObsWebSocketClient();
 builder.Services.AddHostedService<Worker>();
-
 await builder.Build().RunAsync();
 ```
 
-Worker example:
+`Worker.cs`:
 
 ```csharp
-using Microsoft.Extensions.Hosting;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
 
@@ -87,49 +76,117 @@ public sealed class Worker(ObsWebSocketClient client) : IHostedService
     public async Task StopAsync(CancellationToken ct)
     {
         client.CurrentProgramSceneChanged -= OnSceneChanged;
-        if (client.IsConnected)
-        {
-            await client.DisconnectAsync();
-        }
+        if (client.IsConnected) await client.DisconnectAsync();
     }
 
-    private static void OnSceneChanged(object? sender, CurrentProgramSceneChangedEventArgs e)
-    {
-        Console.WriteLine($"Program scene: {e.EventData.SceneName}");
-    }
+    private static void OnSceneChanged(object? _, CurrentProgramSceneChangedEventArgs e) =>
+        Console.WriteLine($"Scene changed: {e.EventData.SceneName}");
 }
 ```
 
-## Helpers and Advanced Usage
+## Common Use Cases
 
-Common helper APIs include:
+### Update a text source
 
-- `SwitchSceneAndWaitAsync(...)`
-- `SetInputTextAsync(...)`
-- `SetSceneItemEnabledAsync(...)`
-- `SourceExistsAsync(...)`
-- `GetSourceFilterSettingsAsync<T>(...)`
-- `WaitForEventAsync<TEventArgs>(...)`
+```csharp
+// One-liner helper
+await client.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
 
-For generated request models and direct requests, see:
+// Or use a typed settings object to update multiple properties at once
+var settings = new TextGdiPlusInputSettings(Text: "Breaking: Live now!", WordWrap: true);
+await client.SetInputSettingsAsync("NewsTicker", settings, ct);
+```
 
+`TextGdiPlusInputSettings` is a built-in library type. The same pattern applies to `TextFreetype2InputSettings`, `BrowserSourceSettings`, and filter settings types — all live in `ObsWebSocket.Core.Protocol.Common.InputSettings` and `ObsWebSocket.Core.Protocol.Common.FilterSettings`.
+
+### Check and save the replay buffer
+
+```csharp
+var status = await client.GetReplayBufferStatusAsync(cancellationToken: ct);
+if (status.OutputActive == true)
+{
+    await client.SaveReplayBufferAsync(cancellationToken: ct);
+    Console.WriteLine("Replay saved.");
+}
+```
+
+### Create or update a browser source
+
+Use a library type for common properties, or define your own type to target exactly what you need:
+
+```csharp
+// Library type — covers the standard browser source properties
+var current = await client.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
+Console.WriteLine($"Current URL: {current?.Url}");
+
+await client.SetInputSettingsAsync(
+    "StreamOverlay",
+    new BrowserSourceSettings(Url: "https://myoverlay.example.com", Width: 1920, Height: 1080),
+    ct
+);
+```
+
+```csharp
+// Consumer type — define only the properties you care about, fully AOT-safe
+[JsonSerializable(typeof(OverlaySettings))]
+internal partial class MyContext : JsonSerializerContext { }
+
+internal sealed record OverlaySettings(
+    [property: JsonPropertyName("url")]  string? Url = null,
+    [property: JsonPropertyName("css")]  string? Css = null
+);
+
+await client.SetInputSettingsAsync(
+    "StreamOverlay",
+    new OverlaySettings(Url: "https://myoverlay.example.com"),
+    MyContext.Default.OverlaySettings,
+    ct
+);
+```
+
+> Raw `JsonElement` access is also available — all settings helpers have counterparts in the generated types under `ObsWebSocket.Core.Protocol.Requests` if you need full control.
+
+## Helper API
+
+All typed settings helpers have two overloads: an implicit one for library-registered types, and an explicit one accepting a `JsonTypeInfo<T>` for consumer-provided types. All are AOT-safe when using the explicit overload.
+
+**Settings read/write:**
+
+| Helper | Notes |
+|---|---|
+| `GetInputSettingsAsync<T>` / `SetInputSettingsAsync<T>` | Input settings; Set supports `overlay` |
+| `GetInputDefaultSettingsAsync<T>` | Default settings for a given input kind |
+| `GetSourceFilterSettingsAsync<T>` / `SetSourceFilterSettingsAsync<T>` | Filter settings; Set supports `overlay` |
+| `GetSourceFilterDefaultSettingsAsync<T>` | Default settings for a given filter kind |
+| `GetCurrentSceneTransitionSettingsAsync<T>` / `SetCurrentSceneTransitionSettingsAsync<T>` | Transition settings |
+| `GetOutputSettingsAsync<T>` / `SetOutputSettingsAsync<T>` | Output settings |
+| `GetStreamServiceSettingsAsync<T>` / `SetStreamServiceSettingsAsync<T>` | Stream service settings |
+
+**Scene / source utilities:**
+
+- `SwitchSceneAndWaitAsync(scene, ct)` — switch scene and wait for the event to confirm
+- `SetInputTextAsync(name, text, ct)` — shorthand for updating text source content
+- `CreateSourceFilterAsync<T>(source, filterName, kind, settings, ct)` — add a typed filter
+- `SourceExistsAsync(name, ct)` — check whether a source exists
+- `WaitForEventAsync<TEventArgs>(ct)` — await the next occurrence of any typed OBS event
+
+For direct low-level access, all generated request/response types are in:
 - `ObsWebSocket.Core.Protocol.Requests`
 - `ObsWebSocket.Core.Protocol.Responses`
 - `ObsWebSocket.Core.Events.Generated`
 
-Batch API note (AOT-safe path):
+### Batch API
 
-- `BatchRequestItem.RequestData` should be `null`, `JsonElement`, or a generated `*RequestData` DTO from `ObsWebSocket.Core.Protocol.Requests`.
-- Arbitrary anonymous/POCO objects are not guaranteed to be serializable in Native AOT builds.
+`CallBatchAsync` accepts a `List<BatchRequestItem>`. Each item's `RequestData` should be `null`, a `JsonElement` built with `Utf8JsonWriter`, or a generated `*RequestData` DTO — anonymous types and reflection-based serialization are not AOT-safe here.
 
 ## Example App
 
-`ObsWebSocket.Example` contains a host-based sample using configuration + DI.
+`ObsWebSocket.Example` is a host-based sample with configuration and DI.
 
-- Interactive mode: starts a command loop (`help`, `version`, `scene`, `batch-example`, etc.)
-- Transport validation mode: runs JSON + MsgPack validation cycles (scene/input/filter stub-heavy calls), then enters the interactive loop
-- One-shot mode: pass a command as process arguments to run it directly and exit (for CI/automation), for example:
-  - `ObsWebSocket.Example run-transport-tests`
+- **Interactive mode** — command loop (`help`, `version`, `scene`, `batch-example`, `get-all-settings-types`, etc.)
+- **Transport validation mode** — exercises JSON and MsgPack across scene/input/filter/settings APIs, then enters the interactive loop
+- **One-shot mode** — pass a command as a process argument for CI/automation:
+  `ObsWebSocket.Example run-transport-tests`
 
 `appsettings.json`:
 
@@ -138,7 +195,6 @@ Batch API note (AOT-safe path):
   "Obs": {
     "ServerUri": "ws://localhost:4455",
     "Password": "",
-    "EventSubscriptions": null,
     "Format": "Json"
   },
   "ExampleValidation": {
@@ -148,17 +204,10 @@ Batch API note (AOT-safe path):
 }
 ```
 
-Interactive command to run validation on demand:
-
-- `run-transport-tests`
-
-## Native AOT Example
-
-Build and run the example as Native AOT:
+## Native AOT
 
 ```bash
 dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj -c Release -r win-x64 --self-contained true
-./ObsWebSocket.Example/bin/Release/net10.0/win-x64/publish/ObsWebSocket.Example.exe
 ```
 
 ## Contributing
