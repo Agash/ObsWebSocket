@@ -1,7 +1,11 @@
 using System.Buffers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Hosting;
+using ObsWebSocket.Core.Protocol.Common.FilterSettings;
+using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
@@ -404,36 +408,9 @@ internal sealed partial class Worker(
                         sceneForSetText
                     );
 
-                    // Construct the settings object for Text (GDI+) source
-                    // IMPORTANT: The exact property name ('text') depends on the input kind.
-                    // Assume 'text' for 'text_gdiplus_v3'. Inspect with 'get-input-settings' if unsure.
-                    ArrayBufferWriter<byte> textPayloadBuffer = new();
-                    using (Utf8JsonWriter writer = new(textPayloadBuffer))
-                    {
-                        writer.WriteStartObject();
-                        writer.WriteString("text", newText);
-                        writer.WriteEndObject();
-                        writer.Flush();
-                    }
-
-                    using JsonDocument textPayloadDocument = JsonDocument.Parse(
-                        textPayloadBuffer.WrittenMemory
-                    );
-                    JsonElement newSettings = textPayloadDocument.RootElement.Clone();
-
-                    // Send the request
-                    await _obsClient.SetInputSettingsAsync(
-                        new SetInputSettingsRequestData(
-                            newSettings,
-                            inputName: inputForSetText, // Identify input by name
-                            overlay: true // Only update the 'text' field
-                        ),
-                        cancellationToken: cancellationToken
-                    );
-
-                    UiSuccess(
-                        $"Successfully set text for '{inputForSetText}' to: '{newText}'"
-                    );
+                    // Uses SetInputTextAsync helper which serializes TextGdiPlusInputSettings internally.
+                    await _obsClient.SetInputTextAsync(inputForSetText, newText, cancellationToken);
+                    UiSuccess($"Successfully set text for '{inputForSetText}' to: '{newText}'");
                 }
                 catch (SceneItemNotFoundException ex)
                 {
@@ -917,6 +894,10 @@ internal sealed partial class Worker(
 
             _logger.LogInformation("[{Format}] Batch call results: {ResultCount}", format, batch.Count);
 
+            List<(string Label, bool Pass, string Detail)> settingsResults =
+                await ValidateSettingsModesAsync(cycleClient, inputs, cancellationToken)
+                    .ConfigureAwait(false);
+
             Table summary = new() { Title = new TableTitle($"{format} Validation Summary") };
             _ = summary.AddColumn("Check");
             _ = summary.AddColumn("Result");
@@ -934,6 +915,15 @@ internal sealed partial class Worker(
             );
             _ = summary.AddRow("CustomEvent", customEventVerified ? "[green]Pass[/]" : "[yellow]Unverified[/]");
             _ = summary.AddRow("Batch", $"{batch.Count} result(s)");
+            foreach ((string label, bool pass, string detail) in settingsResults)
+            {
+                _ = summary.AddRow(
+                    Markup.Escape(label),
+                    pass
+                        ? $"[green]Pass[/] — {Markup.Escape(detail)}"
+                        : $"[red]Fail[/] — {Markup.Escape(detail)}"
+                );
+            }
             AnsiConsole.Write(summary);
         }
         finally
@@ -943,6 +933,158 @@ internal sealed partial class Worker(
                 await cycleClient.DisconnectAsync(cancellationToken: CancellationToken.None)
                     .ConfigureAwait(false);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates all three settings API modes for both InputSettings and FilterSettings.
+    /// All operations are read-then-write-back (overlay:true) so they are non-destructive.
+    /// Requires at least one browser_source and one input with a gain_filter in OBS.
+    /// </summary>
+    private async Task<List<(string Label, bool Pass, string Detail)>> ValidateSettingsModesAsync(
+        ObsWebSocketClient client,
+        GetInputListResponseData? inputs,
+        CancellationToken cancellationToken)
+    {
+        List<(string Label, bool Pass, string Detail)> results = [];
+        if (inputs is null)
+        {
+            results.Add(("Settings [all modes]", false, "GetInputList returned null"));
+            return results;
+        }
+
+        // ── InputSettings ─────────────────────────────────────────────────────
+        string? browserInputName = inputs.Inputs
+            ?.FirstOrDefault(i => string.Equals(i.InputKind, "browser_source", StringComparison.OrdinalIgnoreCase))
+            ?.InputName;
+
+        if (string.IsNullOrEmpty(browserInputName))
+        {
+            results.Add(("InputSettings [all modes]", false, "No browser_source in OBS — add one to test"));
+        }
+        else
+        {
+            // Mode 1: raw JsonElement via protocol-level call
+            results.Add(await TrySettingsCheckAsync("InputSettings Mode1 (raw JsonElement)", async () =>
+            {
+                GetInputSettingsResponseData? r = await client.GetInputSettingsAsync(
+                    new GetInputSettingsRequestData(browserInputName), cancellationToken);
+                if (r?.InputSettings is not JsonElement el)
+                    return (false, "null InputSettings in response");
+                await client.SetInputSettingsAsync(
+                    new SetInputSettingsRequestData(el, inputName: browserInputName, overlay: true),
+                    cancellationToken);
+                string url = el.TryGetProperty("url", out JsonElement p) ? p.GetString() ?? "(no url)" : "(no url key)";
+                return (true, $"'{browserInputName}' url={url}");
+            }));
+
+            // Mode 2: library-registered type via implicit GetTypeInfo lookup
+            results.Add(await TrySettingsCheckAsync("InputSettings Mode2 (BrowserSourceSettings)", async () =>
+            {
+                BrowserSourceSettings? s = await client.GetInputSettingsAsync<BrowserSourceSettings>(
+                    browserInputName, cancellationToken);
+                if (s is null)
+                    return (false, "null result");
+                await client.SetInputSettingsAsync(browserInputName, s, overlay: true, cancellationToken: cancellationToken);
+                return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
+            }));
+
+            // Mode 3: consumer-defined type with explicit JsonTypeInfo<T>
+            results.Add(await TrySettingsCheckAsync("InputSettings Mode3 (consumer JsonTypeInfo)", async () =>
+            {
+                JsonTypeInfo<WorkerBrowserUrlSettings> typeInfo = WorkerSettingsJsonContext.Default.WorkerBrowserUrlSettings;
+                WorkerBrowserUrlSettings? s = await client.GetInputSettingsAsync(
+                    browserInputName, typeInfo, cancellationToken);
+                if (s is null)
+                    return (false, "null result");
+                await client.SetInputSettingsAsync(browserInputName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
+                return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
+            }));
+        }
+
+        // ── FilterSettings ────────────────────────────────────────────────────
+        // Find first gain_filter across the first 5 inputs.
+        string? filterSourceName = null;
+        string? gainFilterName = null;
+        foreach (Core.Protocol.Common.InputStub input in inputs.Inputs?.Where(i => !string.IsNullOrEmpty(i.InputName)).Take(5) ?? [])
+        {
+            try
+            {
+                GetSourceFilterListResponseData? fl = await client.GetSourceFilterListAsync(
+                    new GetSourceFilterListRequestData(sourceName: input.InputName!), cancellationToken);
+                Core.Protocol.Common.FilterStub? gain = fl?.Filters?.FirstOrDefault(f =>
+                    string.Equals(f.FilterKind, "gain_filter", StringComparison.OrdinalIgnoreCase));
+                if (gain?.FilterName is not null)
+                {
+                    filterSourceName = input.InputName;
+                    gainFilterName = gain.FilterName;
+                    break;
+                }
+            }
+            catch { /* skip inputs we can't query */ }
+        }
+
+        if (string.IsNullOrEmpty(filterSourceName) || string.IsNullOrEmpty(gainFilterName))
+        {
+            results.Add(("FilterSettings [all modes]", false, "No gain_filter found — add one to an input in OBS"));
+        }
+        else
+        {
+            // Mode 1: raw JsonElement via protocol-level call
+            results.Add(await TrySettingsCheckAsync("FilterSettings Mode1 (raw JsonElement)", async () =>
+            {
+                GetSourceFilterResponseData? r = await client.GetSourceFilterAsync(
+                    new GetSourceFilterRequestData { SourceName = filterSourceName, FilterName = gainFilterName },
+                    cancellationToken);
+                if (r?.FilterSettings is not JsonElement el)
+                    return (false, "null FilterSettings in response");
+                await client.SetSourceFilterSettingsAsync(
+                    new SetSourceFilterSettingsRequestData(gainFilterName, el, sourceName: filterSourceName, overlay: true),
+                    cancellationToken);
+                string db = el.TryGetProperty("db", out JsonElement p) ? p.GetDouble().ToString("F1") : "(no db key)";
+                return (true, $"'{filterSourceName}/{gainFilterName}' db={db}");
+            }));
+
+            // Mode 2: library-registered type via implicit GetTypeInfo lookup
+            results.Add(await TrySettingsCheckAsync("FilterSettings Mode2 (GainFilterSettings)", async () =>
+            {
+                GainFilterSettings? s = await client.GetSourceFilterSettingsAsync<GainFilterSettings>(
+                    filterSourceName, gainFilterName, cancellationToken);
+                if (s is null)
+                    return (false, "null result");
+                await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, overlay: true, cancellationToken: cancellationToken);
+                return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
+            }));
+
+            // Mode 3: consumer-defined type with explicit JsonTypeInfo<T>
+            results.Add(await TrySettingsCheckAsync("FilterSettings Mode3 (consumer JsonTypeInfo)", async () =>
+            {
+                JsonTypeInfo<WorkerGainDbSettings> typeInfo = WorkerSettingsJsonContext.Default.WorkerGainDbSettings;
+                WorkerGainDbSettings? s = await client.GetSourceFilterSettingsAsync(
+                    filterSourceName, gainFilterName, typeInfo, cancellationToken);
+                if (s is null)
+                    return (false, "null result");
+                await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
+                return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
+            }));
+        }
+
+        return results;
+    }
+
+    private static async Task<(string Label, bool Pass, string Detail)> TrySettingsCheckAsync(
+        string label,
+        Func<Task<(bool Pass, string Detail)>> action)
+    {
+        try
+        {
+            (bool pass, string detail) = await action().ConfigureAwait(false);
+            return (label, pass, detail);
+        }
+        catch (Exception ex)
+        {
+            string msg = ex.Message.Length > 100 ? ex.Message[..100] : ex.Message;
+            return (label, false, msg);
         }
     }
 
@@ -1444,31 +1586,20 @@ internal sealed partial class Worker(
         );
 
         // Step 7: Build the browser source settings payload
-        // webpage_control_level 2 = full OBS control via the obsstudio JS API,
-        // including start/stop streaming without confirmation dialogs.
-        // Adjust to a lower value if full access is not desired.
         const string OverlayCss =
             "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }";
 
-        ArrayBufferWriter<byte> settingsBuffer = new();
-        using (Utf8JsonWriter settingsWriter = new(settingsBuffer))
-        {
-            settingsWriter.WriteStartObject();
-            settingsWriter.WriteString("url", url);
-            settingsWriter.WriteNumber("width", canvasWidth);
-            settingsWriter.WriteNumber("height", canvasHeight);
-            settingsWriter.WriteBoolean("fps_custom", false); // Use OBS default 30 fps
-            settingsWriter.WriteNumber("fps", 30);
-            settingsWriter.WriteString("css", OverlayCss);
-            settingsWriter.WriteBoolean("reroute_audio", true); // Let OBS manage audio
-            settingsWriter.WriteNumber("webpage_control_level", 5); // Full OBS JS API access
-            settingsWriter.WriteBoolean("restart_when_active", true); // Keep WS alive on scene change
-            settingsWriter.WriteEndObject();
-            settingsWriter.Flush();
-        }
-
-        using JsonDocument settingsDoc = JsonDocument.Parse(settingsBuffer.WrittenMemory);
-        JsonElement browserSettings = settingsDoc.RootElement.Clone();
+        BrowserSourceSettings browserSettings = new(
+            Url: url,
+            Width: canvasWidth,
+            Height: canvasHeight,
+            FpsCustom: false,
+            Fps: 30,
+            Css: OverlayCss,
+            RerouteAudio: true,
+            WebpageControlLevel: 5,
+            RestartWhenActive: true
+        );
 
         double sceneItemId;
 
@@ -1478,13 +1609,11 @@ internal sealed partial class Worker(
             UiInfo($"Creating browser source '{sourceName}' in scene '{selectedScene}'...");
 
             CreateInputResponseData? createResult = await _obsClient.CreateInputAsync(
-                new CreateInputRequestData(
-                    inputName: sourceName,
-                    inputKind: "browser_source",
-                    sceneName: selectedScene,
-                    inputSettings: browserSettings,
-                    sceneItemEnabled: true
-                ),
+                inputKind: "browser_source",
+                inputName: sourceName,
+                settings: browserSettings,
+                sceneName: selectedScene,
+                sceneItemEnabled: true,
                 cancellationToken: cancellationToken
             );
 
@@ -1503,11 +1632,9 @@ internal sealed partial class Worker(
 
             // overlay: false — reset to defaults then apply all new settings cleanly
             await _obsClient.SetInputSettingsAsync(
-                new SetInputSettingsRequestData(
-                    browserSettings,
-                    inputName: sourceName,
-                    overlay: false
-                ),
+                inputName: sourceName,
+                settings: browserSettings,
+                overlay: false,
                 cancellationToken: cancellationToken
             );
 
@@ -1595,7 +1722,7 @@ internal sealed partial class Worker(
         );
         _ = commandTable.AddRow(
             Markup.Escape("run-transport-tests"),
-            Markup.Escape("Run JSON + MsgPack validation cycles")
+            Markup.Escape("Run validation cycle for the configured transport (version, scenes, inputs, filters, custom event, batch, settings modes 1/2/3)")
         );
         _ = commandTable.AddRow(
             Markup.Escape("list-subs"),
@@ -1745,5 +1872,25 @@ internal sealed partial class Worker(
     [System.Text.RegularExpressions.GeneratedRegex(@"code (\d+):")]
     private static partial System.Text.RegularExpressions.Regex ObsErrorCodeRegex();
 }
+
+// ── Consumer-defined settings types (Mode 3 example) ──────────────────────────
+// These are NOT registered in the library's ObsWebSocketSettingsJsonContext.
+// They represent what a consumer app would define to map only the fields it cares about,
+// using its own JsonSerializerContext and passing an explicit JsonTypeInfo<T> to the helpers.
+
+internal sealed record WorkerBrowserUrlSettings(
+    [property: JsonPropertyName("url")] string? Url = null
+);
+
+internal sealed record WorkerGainDbSettings(
+    [property: JsonPropertyName("db")] double? Db = null
+);
+
+[JsonSerializable(typeof(WorkerBrowserUrlSettings))]
+[JsonSerializable(typeof(WorkerGainDbSettings))]
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
+internal sealed partial class WorkerSettingsJsonContext : JsonSerializerContext { }
 
 
