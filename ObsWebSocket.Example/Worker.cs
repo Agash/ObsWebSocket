@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Hosting;
+using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using Microsoft.Extensions.Logging;
@@ -1357,6 +1358,7 @@ internal sealed partial class Worker(
             cancellationToken
         );
 
+        await DumpOutputSettingsAsync(cancellationToken);
         await DumpStreamServiceSettingsAsync(cancellationToken);
     }
 
@@ -1407,6 +1409,59 @@ internal sealed partial class Worker(
         }
 
         RenderJsonPanel(panelTitle, SerializeKindDefaults(results));
+    }
+
+    private async Task DumpOutputSettingsAsync(CancellationToken cancellationToken)
+    {
+        List<OutputStub> outputs;
+        try
+        {
+            GetOutputListResponseData response = await _obsClient.GetOutputListAsync(
+                cancellationToken: cancellationToken
+            );
+            outputs = response.Outputs ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve output list.");
+            UiError("[red]Could not retrieve output list.[/]");
+            return;
+        }
+
+        if (outputs.Count == 0)
+        {
+            _logger.LogWarning("No outputs configured on this OBS instance.");
+            return;
+        }
+
+        Dictionary<string, JsonElement?> results = new(StringComparer.OrdinalIgnoreCase);
+        foreach (OutputStub output in outputs)
+        {
+            if (output.OutputName is not { } name)
+                continue;
+
+            string key = output.OutputKind is { } kind ? $"{name} ({kind})" : name;
+            try
+            {
+                GetOutputSettingsResponseData r = await _obsClient.GetOutputSettingsAsync(
+                    new GetOutputSettingsRequestData(outputName: name),
+                    cancellationToken: cancellationToken
+                );
+                results[key] = r.OutputSettings;
+            }
+            catch (ObsWebSocketException ex)
+            {
+                _logger.LogWarning("Could not get settings for output '{Name}': {Msg}", name, ex.Message);
+                results[key] = null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error getting settings for output '{Name}'.", name);
+                results[key] = null;
+            }
+        }
+
+        RenderJsonPanel("Output Settings (current instances)", SerializeKindDefaults(results));
     }
 
     private async Task DumpStreamServiceSettingsAsync(CancellationToken cancellationToken)

@@ -375,13 +375,7 @@ internal static class TestUtils
             return element.Clone();
         }
 
-        using MemoryStream ms = new();
-        using Utf8JsonWriter writer = new(ms);
-        JsonSerializer.Serialize(writer, obj, s_jsonSerializerOptions);
-        writer.Flush();
-        ms.Position = 0;
-        using JsonDocument doc = JsonDocument.Parse(ms);
-        return doc.RootElement.Clone();
+        return JsonSerializer.SerializeToElement(obj, obj.GetType(), s_jsonSerializerOptions);
     }
 
     /// <summary>
