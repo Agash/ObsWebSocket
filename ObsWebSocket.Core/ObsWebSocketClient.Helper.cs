@@ -6,6 +6,7 @@ using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated; // Assuming generated enums are here
+using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
 
@@ -16,8 +17,19 @@ namespace ObsWebSocket.Core; // Or ObsWebSocket.Core.Extensions
 /// </summary>
 public static partial class ObsWebSocketClientHelpers
 {
-    private static readonly JsonSerializerOptions s_helperJsonOptions =
-        ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options;
+    private static readonly JsonSerializerOptions s_helperJsonOptions = CreateHelperOptions();
+
+    private static JsonSerializerOptions CreateHelperOptions()
+    {
+        JsonSerializerOptions options = new(ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options)
+        {
+            TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
+                ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default,
+                ObsWebSocket.Core.Serialization.ObsWebSocketSettingsJsonContext.Default
+            ),
+        };
+        return options;
+    }
 
     /// <summary>
     /// Switches the active Program or Preview scene, optionally setting a specific transition and duration beforehand.
@@ -263,40 +275,14 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(text); // Allow empty string, but not null
         client.EnsureConnected();
 
-        try
-        {
-            // Create the minimal settings payload without reflection-driven serialization.
-            ArrayBufferWriter<byte> buffer = new();
-            using (Utf8JsonWriter writer = new(buffer))
-            {
-                writer.WriteStartObject();
-                writer.WriteString("text", text);
-                writer.WriteEndObject();
-                writer.Flush();
-            }
-
-            using JsonDocument settingsDocument = JsonDocument.Parse(buffer.WrittenMemory);
-            JsonElement settingsElement = settingsDocument.RootElement.Clone();
-
-            await client
-                .SetInputSettingsAsync(
-                    new SetInputSettingsRequestData(
-                        inputSettings: settingsElement,
-                        inputName: inputName,
-                        overlay: true // Merge with existing settings
-                    ),
-                    cancellationToken: cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
-        catch (JsonException jsonEx)
-        {
-            // Should be unlikely for this simple object, but handle defensively
-            throw new ObsWebSocketException(
-                $"Failed to serialize text setting for '{inputName}'.",
-                jsonEx
-            );
-        }
+        await client
+            .SetInputSettingsAsync(
+                inputName: inputName,
+                settings: new TextGdiPlusInputSettings(Text: text),
+                overlay: true,
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
         // Let ObsWebSocketException from the underlying call propagate
     }
 
@@ -570,26 +556,30 @@ public static partial class ObsWebSocketClientHelpers
     }
 
     /// <summary>
-    /// Retrieves the settings for a specific filter on a source and deserializes them into type T.
+    /// Retrieves the settings for a specific filter on a source and deserializes them using an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
-    /// <typeparam name="T">The C# type (class or record) to deserialize the settings into.</typeparam>
+    /// <typeparam name="T">The C# type to deserialize the filter settings into.</typeparam>
     /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The deserialized settings object of type T, or null if the source/filter is not found or deserialization fails.</returns>
+    /// <returns>The deserialized settings, or null if the source/filter is not found or deserialization fails.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     public static async Task<T?> GetSourceFilterSettingsAsync<T>(
         this ObsWebSocketClient client,
         string sourceName,
         string filterName,
+        JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
-        where T : class // Class constraint helps with null return
+        where T : class
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         ArgumentException.ThrowIfNullOrEmpty(filterName);
+        ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
         GetSourceFilterResponseData? filterInfo;
@@ -610,50 +600,21 @@ public static partial class ObsWebSocketClientHelpers
                 )
             )
         {
-            // Source or filter not found
             return null;
         }
-        // Let other exceptions propagate
 
         if (filterInfo?.FilterSettings == null)
-        {
-            // Filter exists but has no settings data (unlikely for most filters, but possible)
             return null;
-        }
 
         try
         {
-            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
             return filterInfo.FilterSettings.Value.Deserialize(typeInfo);
-        }
-        catch (InvalidOperationException invalidOperationException)
-        {
-            client._logger.LogError(
-                invalidOperationException,
-                "Type {TypeName} is not registered in ObsWebSocketJsonContext. Filter settings deserialization for '{FilterName}' on '{SourceName}' requires source-generated metadata for AOT compatibility.",
-                typeof(T).Name,
-                filterName,
-                sourceName
-            );
-            return null;
         }
         catch (JsonException jsonEx)
         {
             client._logger.LogError(
                 jsonEx,
-                "Failed to deserialize filter settings for '{FilterName}' on '{SourceName}' to type {TypeName}. Raw JSON: {RawJson}",
-                filterName,
-                sourceName,
-                typeof(T).Name,
-                filterInfo.FilterSettings.Value.GetRawText()
-            );
-            return null;
-        }
-        catch (NotSupportedException nse) // Can happen with complex types or configuration issues
-        {
-            client._logger.LogError(
-                nse,
-                "Deserialization not supported for filter settings for '{FilterName}' on '{SourceName}' to type {TypeName}.",
+                "Failed to deserialize filter settings for '{FilterName}' on '{SourceName}' to type {TypeName}.",
                 filterName,
                 sourceName,
                 typeof(T).Name
@@ -663,24 +624,60 @@ public static partial class ObsWebSocketClientHelpers
     }
 
     /// <summary>
-    /// Sets the settings for a specific filter on a source using a strongly-typed settings object.
+    /// Retrieves the settings for a specific filter on a source. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
-    /// <typeparam name="T">The C# type (class or record) representing the filter settings.</typeparam>
+    /// <typeparam name="T">The C# type to deserialize the filter settings into. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source.</param>
+    /// <param name="filterName">The name of the filter.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The deserialized settings, or null if the source/filter is not found or deserialization fails.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task<T?> GetSourceFilterSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string filterName,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.GetSourceFilterSettingsAsync(sourceName, filterName, typeInfo, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets the settings for a specific filter on a source using a strongly-typed settings object and an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the filter settings.</typeparam>
     /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
     /// <param name="settings">The settings object to apply.</param>
-    /// <param name="overlay">True (default) to merge settings, false to replace all settings with defaults first, then apply.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
+    /// <param name="overlay">True (default) to merge settings; false to reset to defaults and then apply.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="ObsWebSocketException">Thrown if OBS fails the operation (e.g., source/filter not found) or if serialization fails.</exception>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    /// <exception cref="ArgumentNullException">Thrown if settings object is null.</exception>
     public static async Task SetSourceFilterSettingsAsync<T>(
         this ObsWebSocketClient client,
         string sourceName,
         string filterName,
         T settings,
-        bool overlay = true, // Defaults to merging settings
+        JsonTypeInfo<T> typeInfo,
+        bool overlay = true,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -688,33 +685,19 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         ArgumentException.ThrowIfNullOrEmpty(filterName);
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
         JsonElement settingsElement;
         try
         {
-            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
             settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
-        }
-        catch (InvalidOperationException invalidOperationException)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'. Type is not registered in ObsWebSocketJsonContext.",
-                invalidOperationException
-            );
         }
         catch (JsonException jsonEx)
         {
             throw new ObsWebSocketException(
                 $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'.",
                 jsonEx
-            );
-        }
-        catch (NotSupportedException nse)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'. Check type compatibility.",
-                nse
             );
         }
 
@@ -729,6 +712,432 @@ public static partial class ObsWebSocketClientHelpers
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sets the settings for a specific filter on a source using a strongly-typed settings object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the filter settings. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source.</param>
+    /// <param name="filterName">The name of the filter.</param>
+    /// <param name="settings">The settings object to apply.</param>
+    /// <param name="overlay">True (default) to merge settings; false to reset to defaults and then apply.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task SetSourceFilterSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string filterName,
+        T settings,
+        bool overlay = true,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.SetSourceFilterSettingsAsync(sourceName, filterName, settings, typeInfo, overlay, cancellationToken);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Generic input settings helpers
+    // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Retrieves and deserializes the settings for an input using an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
+    /// </summary>
+    /// <typeparam name="T">The C# type to deserialize the input settings into.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The deserialized settings, or null if the input is not found or deserialization fails.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown for unexpected OBS errors.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<T?> GetInputSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string inputName,
+        JsonTypeInfo<T> typeInfo,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputName);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        GetInputSettingsResponseData? response;
+        try
+        {
+            response = await client
+                .GetInputSettingsAsync(
+                    new GetInputSettingsRequestData(inputName: inputName),
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+        catch (ObsWebSocketException ex)
+            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains(
+                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
+                    StringComparison.Ordinal
+                )
+            )
+        {
+            return null;
+        }
+
+        if (response?.InputSettings == null)
+            return null;
+
+        try
+        {
+            return response.InputSettings.Value.Deserialize(typeInfo);
+        }
+        catch (JsonException jsonEx)
+        {
+            client._logger.LogError(
+                jsonEx,
+                "Failed to deserialize input settings for '{InputName}' to type {TypeName}.",
+                inputName,
+                typeof(T).Name
+            );
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Retrieves and deserializes the settings for an input. The type must be registered in <c>ObsWebSocketJsonContext</c>.
+    /// </summary>
+    /// <typeparam name="T">The C# type to deserialize the input settings into. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The deserialized settings, or null if the input is not found or deserialization fails.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown if the type is not registered or OBS returns an error.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task<T?> GetInputSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string inputName,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.GetInputSettingsAsync(inputName, typeInfo, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets the settings of an input using a strongly-typed settings object and an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the input settings.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="settings">The settings object to apply.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
+    /// <param name="overlay">True (default) to merge settings; false to reset to defaults and then apply.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task SetInputSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string inputName,
+        T settings,
+        JsonTypeInfo<T> typeInfo,
+        bool overlay = true,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputName);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        JsonElement settingsElement;
+        try
+        {
+            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        }
+        catch (JsonException jsonEx)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize settings object of type '{typeof(T).Name}' for input '{inputName}'.",
+                jsonEx
+            );
+        }
+
+        await client
+            .SetInputSettingsAsync(
+                new SetInputSettingsRequestData(
+                    inputSettings: settingsElement,
+                    inputName: inputName,
+                    overlay: overlay
+                ),
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sets the settings of an input using a strongly-typed settings object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the input settings. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="settings">The settings object to apply.</param>
+    /// <param name="overlay">True (default) to merge settings; false to reset to defaults and then apply.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task SetInputSettingsAsync<T>(
+        this ObsWebSocketClient client,
+        string inputName,
+        T settings,
+        bool overlay = true,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.SetInputSettingsAsync(inputName, settings, typeInfo, overlay, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a new input with strongly-typed settings and an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the input settings.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputKind">The kind of input to create (e.g., "browser_source").</param>
+    /// <param name="inputName">The name for the new input.</param>
+    /// <param name="settings">The settings for the new input.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
+    /// <param name="sceneName">Optional: the name of the scene to add the input to.</param>
+    /// <param name="sceneUuid">Optional: the UUID of the scene to add the input to.</param>
+    /// <param name="sceneItemEnabled">Optional: initial enabled state of the resulting scene item.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The response data containing the new scene item ID, or null on failure.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<CreateInputResponseData?> CreateInputAsync<T>(
+        this ObsWebSocketClient client,
+        string inputKind,
+        string inputName,
+        T settings,
+        JsonTypeInfo<T> typeInfo,
+        string? sceneName = null,
+        string? sceneUuid = null,
+        bool? sceneItemEnabled = null,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputKind);
+        ArgumentException.ThrowIfNullOrEmpty(inputName);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        JsonElement settingsElement;
+        try
+        {
+            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        }
+        catch (JsonException jsonEx)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize settings object of type '{typeof(T).Name}' for input '{inputName}'.",
+                jsonEx
+            );
+        }
+
+        return await client
+            .CreateInputAsync(
+                new CreateInputRequestData(
+                    inputName: inputName,
+                    inputKind: inputKind,
+                    sceneName: sceneName,
+                    sceneUuid: sceneUuid,
+                    inputSettings: settingsElement,
+                    sceneItemEnabled: sceneItemEnabled
+                ),
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates a new input with strongly-typed settings. The type must be registered in <c>ObsWebSocketJsonContext</c>.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the input settings. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="inputKind">The kind of input to create (e.g., "browser_source").</param>
+    /// <param name="inputName">The name for the new input.</param>
+    /// <param name="settings">The settings for the new input.</param>
+    /// <param name="sceneName">Optional: the name of the scene to add the input to.</param>
+    /// <param name="sceneUuid">Optional: the UUID of the scene to add the input to.</param>
+    /// <param name="sceneItemEnabled">Optional: initial enabled state of the resulting scene item.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The response data containing the new scene item ID, or null on failure.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task<CreateInputResponseData?> CreateInputAsync<T>(
+        this ObsWebSocketClient client,
+        string inputKind,
+        string inputName,
+        T settings,
+        string? sceneName = null,
+        string? sceneUuid = null,
+        bool? sceneItemEnabled = null,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.CreateInputAsync(inputKind, inputName, settings, typeInfo, sceneName, sceneUuid, sceneItemEnabled, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a new filter on a source with strongly-typed settings and an explicit <see cref="JsonTypeInfo{T}"/>.
+    /// Suitable for both library-defined and consumer-defined settings types.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the filter settings.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source to add the filter to.</param>
+    /// <param name="filterName">The name for the new filter.</param>
+    /// <param name="filterKind">The kind of filter to create (e.g., "gain_filter").</param>
+    /// <param name="settings">The initial settings for the filter.</param>
+    /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task CreateSourceFilterAsync<T>(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string filterName,
+        string filterKind,
+        T settings,
+        JsonTypeInfo<T> typeInfo,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceName);
+        ArgumentException.ThrowIfNullOrEmpty(filterName);
+        ArgumentException.ThrowIfNullOrEmpty(filterKind);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        JsonElement settingsElement;
+        try
+        {
+            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        }
+        catch (JsonException jsonEx)
+        {
+            throw new ObsWebSocketException(
+                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'.",
+                jsonEx
+            );
+        }
+
+        await client
+            .CreateSourceFilterAsync(
+                new CreateSourceFilterRequestData(
+                    filterName: filterName,
+                    filterKind: filterKind,
+                    sourceName: sourceName,
+                    filterSettings: settingsElement
+                ),
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates a new filter on a source with strongly-typed settings. The type must be registered in <c>ObsWebSocketJsonContext</c>.
+    /// </summary>
+    /// <typeparam name="T">The C# type representing the filter settings. Must be a library-registered settings type.</typeparam>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sourceName">The name of the source to add the filter to.</param>
+    /// <param name="filterName">The name for the new filter.</param>
+    /// <param name="filterKind">The kind of filter to create (e.g., "gain_filter").</param>
+    /// <param name="settings">The initial settings for the filter.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static Task CreateSourceFilterAsync<T>(
+        this ObsWebSocketClient client,
+        string sourceName,
+        string filterName,
+        string filterKind,
+        T settings,
+        CancellationToken cancellationToken = default
+    )
+        where T : class
+    {
+        JsonTypeInfo<T> typeInfo;
+        try
+        {
+            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return client.CreateSourceFilterAsync(sourceName, filterName, filterKind, settings, typeInfo, cancellationToken);
     }
 
     /// <summary>
