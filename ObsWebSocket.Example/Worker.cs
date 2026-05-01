@@ -652,8 +652,8 @@ internal sealed partial class Worker(
                 );
                 return false;
 
-            case "get-all-filter-settings": // New Command
-                await GetAllFilterSettingsForSource(cancellationToken);
+            case "get-all-settings-types":
+                await GetAllSettingsTypesAsync(cancellationToken);
                 return false;
 
             case "add-browser-source":
@@ -1314,140 +1314,148 @@ internal sealed partial class Worker(
             : response.SceneItemId;
     }
 
-    // Worker.cs - Replace the existing GetAllFilterSettingsForSource method
-
-    private async Task GetAllFilterSettingsForSource(CancellationToken cancellationToken)
+    private async Task GetAllSettingsTypesAsync(CancellationToken cancellationToken)
     {
-        // Note: The 'sourceName' parameter is no longer strictly needed by the core logic,
-        // but we keep it in the command signature for user context.
-        // We *could* potentially use it to filter filter kinds that are applicable
-        // to the source type, but GetSourceFilterKindListAsync doesn't support that.
-        _logger.LogInformation(
-            "Attempting to get default settings for all available filter kinds..."
+        _logger.LogInformation("Fetching all settings type schemas from OBS...");
+
+        await DumpKindDefaultSettingsAsync(
+            "Filter Kind Defaults",
+            async ct =>
+            {
+                GetSourceFilterKindListResponseData? r = await _obsClient.GetSourceFilterKindListAsync(cancellationToken: ct);
+                return r?.SourceFilterKinds ?? [];
+            },
+            async (kind, ct) =>
+            {
+                GetSourceFilterDefaultSettingsResponseData? r = await _obsClient.GetSourceFilterDefaultSettingsAsync(
+                    new GetSourceFilterDefaultSettingsRequestData(kind),
+                    cancellationToken: ct
+                );
+                return r?.DefaultFilterSettings;
+            },
+            cancellationToken
         );
 
-        List<string> availableFilterKinds;
-        Dictionary<string, JsonElement?> filterDefaultSettings = new(
-            StringComparer.OrdinalIgnoreCase
+        await DumpKindDefaultSettingsAsync(
+            "Input Kind Defaults",
+            async ct =>
+            {
+                GetInputKindListResponseData? r = await _obsClient.GetInputKindListAsync(
+                    new GetInputKindListRequestData(unversioned: false),
+                    cancellationToken: ct
+                );
+                return r?.InputKinds ?? [];
+            },
+            async (kind, ct) =>
+            {
+                GetInputDefaultSettingsResponseData? r = await _obsClient.GetInputDefaultSettingsAsync(
+                    new GetInputDefaultSettingsRequestData(kind),
+                    cancellationToken: ct
+                );
+                return r?.DefaultInputSettings;
+            },
+            cancellationToken
         );
 
-        // 1. Get all available filter kinds
+        await DumpStreamServiceSettingsAsync(cancellationToken);
+    }
+
+    private async Task DumpKindDefaultSettingsAsync(
+        string panelTitle,
+        Func<CancellationToken, Task<List<string>>> getKinds,
+        Func<string, CancellationToken, Task<JsonElement?>> getDefaults,
+        CancellationToken cancellationToken
+    )
+    {
+        List<string> kinds;
         try
         {
-            GetSourceFilterKindListResponseData? response =
-                await _obsClient.GetSourceFilterKindListAsync(cancellationToken: cancellationToken);
-            if (response?.SourceFilterKinds is null || response.SourceFilterKinds.Count == 0)
-            {
-                _logger.LogWarning("Could not retrieve filter kinds from OBS.");
-                return;
-            }
-
-            availableFilterKinds = response.SourceFilterKinds;
-            _logger.LogInformation(
-                "Found {Count} available filter kinds.",
-                availableFilterKinds.Count
-            );
+            kinds = await getKinds(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get filter kind list.");
+            _logger.LogError(ex, "Failed to retrieve kind list for '{Panel}'.", panelTitle);
+            UiError($"[red]Could not retrieve kind list for {panelTitle}.[/]");
             return;
         }
 
-        // 2. Get default settings for each filter kind
-        _logger.LogInformation("Retrieving default settings for each filter kind...");
-        foreach (string filterKind in availableFilterKinds)
+        if (kinds.Count == 0)
+        {
+            _logger.LogWarning("No kinds returned for '{Panel}'.", panelTitle);
+            return;
+        }
+
+        _logger.LogInformation("Found {Count} kinds for '{Panel}'. Fetching defaults...", kinds.Count, panelTitle);
+
+        Dictionary<string, JsonElement?> results = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string kind in kinds)
         {
             try
             {
-                GetSourceFilterDefaultSettingsResponseData? defaultSettingsResponse =
-                    await _obsClient.GetSourceFilterDefaultSettingsAsync(
-                        new GetSourceFilterDefaultSettingsRequestData(filterKind),
-                        cancellationToken: cancellationToken
-                    );
-
-                if (defaultSettingsResponse != null)
-                {
-                    // Store default settings using the KIND as the key
-                    filterDefaultSettings[filterKind] =
-                        defaultSettingsResponse.DefaultFilterSettings;
-                    _logger.LogDebug(
-                        "Retrieved default settings for kind: {FilterKind}",
-                        filterKind
-                    );
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Received null response when getting default settings for filter kind '{FilterKind}'.",
-                        filterKind
-                    );
-                    // Store null or an empty element to indicate we tried but got nothing back
-                    filterDefaultSettings[filterKind] = null;
-                }
+                results[kind] = await getDefaults(kind, cancellationToken);
             }
             catch (ObsWebSocketException ex)
             {
-                _logger.LogWarning(
-                    "Could not get default settings for filter kind '{FilterKind}'. OBS Error: {ErrorMessage}",
-                    filterKind,
-                    ex.Message
-                );
-                // Optionally store null or skip based on error type if needed
-                filterDefaultSettings[filterKind] = null; // Indicate failure
+                _logger.LogWarning("Could not get defaults for '{Kind}': {Msg}", kind, ex.Message);
+                results[kind] = null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Unexpected error getting default settings for filter kind '{FilterKind}'.",
-                    filterKind
-                );
-                filterDefaultSettings[filterKind] = null; // Indicate failure
+                _logger.LogError(ex, "Unexpected error getting defaults for '{Kind}'.", kind);
+                results[kind] = null;
             }
         }
 
-        // 3. Output the results as JSON
-        _logger.LogInformation("Default settings retrieval complete. Outputting JSON...");
-        Rule settingsStartRule = new("[yellow]Filter Default Settings[/]")
-        {
-            Justification = Justify.Left
-        };
-        AnsiConsole.Write(settingsStartRule);
+        RenderJsonPanel(panelTitle, SerializeKindDefaults(results));
+    }
+
+    private async Task DumpStreamServiceSettingsAsync(CancellationToken cancellationToken)
+    {
         try
         {
-            ArrayBufferWriter<byte> outputBuffer = new();
-            using (Utf8JsonWriter writer = new(outputBuffer, new JsonWriterOptions { Indented = true }))
-            {
-                writer.WriteStartObject();
-                foreach ((string filterKind, JsonElement? value) in filterDefaultSettings)
-                {
-                    writer.WritePropertyName(filterKind);
-                    if (value is JsonElement element)
-                    {
-                        element.WriteTo(writer);
-                    }
-                    else
-                    {
-                        writer.WriteNullValue();
-                    }
-                }
+            GetStreamServiceSettingsResponseData response = await _obsClient.GetStreamServiceSettingsAsync(
+                cancellationToken: cancellationToken
+            );
 
-                writer.WriteEndObject();
-                writer.Flush();
+            ArrayBufferWriter<byte> buf = new();
+            using (Utf8JsonWriter w = new(buf, new JsonWriterOptions { Indented = true }))
+            {
+                w.WriteStartObject();
+                w.WriteString("streamServiceType", response.StreamServiceType);
+                w.WritePropertyName("streamServiceSettings");
+                if (response.StreamServiceSettings is JsonElement el)
+                    el.WriteTo(w);
+                else
+                    w.WriteNullValue();
+                w.WriteEndObject();
+                w.Flush();
             }
 
-            string jsonOutput = System.Text.Encoding.UTF8.GetString(outputBuffer.WrittenSpan);
-            RenderJsonPanel("Filter Kind Defaults", jsonOutput);
+            RenderJsonPanel("Stream Service Settings", System.Text.Encoding.UTF8.GetString(buf.WrittenSpan));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to serialize filter default settings results to JSON.");
-            UiError("{\"error\": \"Failed to serialize results.\"}");
+            _logger.LogError(ex, "Failed to retrieve stream service settings.");
+            UiError("[red]Could not retrieve stream service settings.[/]");
         }
+    }
 
-        _logger.LogInformation("Default filter settings retrieval finished.");
-        // No cleanup needed as we didn't add filters to the source
+    private static string SerializeKindDefaults(Dictionary<string, JsonElement?> results)
+    {
+        ArrayBufferWriter<byte> buf = new();
+        using Utf8JsonWriter w = new(buf, new JsonWriterOptions { Indented = true });
+        w.WriteStartObject();
+        foreach ((string kind, JsonElement? value) in results)
+        {
+            w.WritePropertyName(kind);
+            if (value is JsonElement el)
+                el.WriteTo(w);
+            else
+                w.WriteNullValue();
+        }
+        w.WriteEndObject();
+        w.Flush();
+        return System.Text.Encoding.UTF8.GetString(buf.WrittenSpan);
     }
 
     private async Task AddBrowserSourceAsync(CancellationToken cancellationToken)
@@ -1733,8 +1741,8 @@ internal sealed partial class Worker(
             Markup.Escape("Reidentify with new event flags")
         );
         _ = commandTable.AddRow(
-            Markup.Escape("get-all-filter-settings"),
-            Markup.Escape("Dump default settings for all filter kinds")
+            Markup.Escape("get-all-settings-types"),
+            Markup.Escape("Dump default settings for all filter kinds, input kinds, and current stream service")
         );
         _ = commandTable.AddRow(
             Markup.Escape("add-browser-source"),
