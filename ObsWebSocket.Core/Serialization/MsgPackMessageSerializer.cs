@@ -16,7 +16,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 {
     private readonly ILogger _logger = logger;
 
-    private static readonly MessagePackSerializerOptions s_msgPackOptions =
+    internal static readonly MessagePackSerializerOptions s_msgPackOptions =
         MessagePackSerializerOptions
             .Standard.WithResolver(CompositeResolver.Create(CreateResolverChain()))
             .WithSecurity(MessagePackSecurity.UntrustedData);
