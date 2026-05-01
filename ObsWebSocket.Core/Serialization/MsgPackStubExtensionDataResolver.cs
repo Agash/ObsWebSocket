@@ -47,27 +47,15 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
             return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<TransitionStub>();
         }
 
-        if (type == typeof(List<SceneStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneStub>>();
-        }
-
-        if (type == typeof(List<SceneItemStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>();
-        }
-
-        if (type == typeof(List<FilterStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<FilterStub>>();
-        }
-
-        if (type == typeof(List<InputStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<InputStub>>();
-        }
-
-        return type == typeof(List<TransitionStub>)
+        return type == typeof(List<SceneStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneStub>>()
+            : type == typeof(List<SceneItemStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>()
+            : type == typeof(List<FilterStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<FilterStub>>()
+            : type == typeof(List<InputStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<InputStub>>()
+            : type == typeof(List<TransitionStub>)
             ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>()
             : type == typeof(List<OutputStub>)
             ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<OutputStub>>()

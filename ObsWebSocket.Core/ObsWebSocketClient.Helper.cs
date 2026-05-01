@@ -30,6 +30,25 @@ public static partial class ObsWebSocketClientHelpers
         return options;
     }
 
+    private static JsonTypeInfo<T> GetRegisteredTypeInfo<T>() where T : class
+    {
+        JsonTypeInfo<T>? typeInfo;
+        try
+        {
+            typeInfo = s_helperJsonOptions.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            throw new ObsWebSocketException(
+                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
+                ex
+            );
+        }
+        return typeInfo ?? throw new ObsWebSocketException(
+            $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type."
+        );
+    }
+
     /// <summary>
     /// Switches the active Program or Preview scene, optionally setting a specific transition and duration beforehand.
     /// Does not restore the previously active transition.
@@ -643,18 +662,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetSourceFilterSettingsAsync(sourceName, filterName, typeInfo, cancellationToken);
     }
 
@@ -737,18 +745,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.SetSourceFilterSettingsAsync(sourceName, filterName, settings, typeInfo, overlay, cancellationToken);
     }
 
@@ -839,18 +836,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetInputSettingsAsync(inputName, typeInfo, cancellationToken);
     }
 
@@ -927,18 +913,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.SetInputSettingsAsync(inputName, settings, typeInfo, overlay, cancellationToken);
     }
 
@@ -1033,18 +1008,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.CreateInputAsync(inputKind, inputName, settings, typeInfo, sceneName, sceneUuid, sceneItemEnabled, cancellationToken);
     }
 
@@ -1128,18 +1092,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.CreateSourceFilterAsync(sourceName, filterName, filterKind, settings, typeInfo, cancellationToken);
     }
 
@@ -1167,11 +1120,11 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        GetCurrentSceneTransitionResponseData response = await client
+        GetCurrentSceneTransitionResponseData? response = await client
             .GetCurrentSceneTransitionAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return response.TransitionSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.TransitionSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1189,18 +1142,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetCurrentSceneTransitionSettingsAsync(typeInfo, cancellationToken);
     }
 
@@ -1258,18 +1200,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.SetCurrentSceneTransitionSettingsAsync(settings, typeInfo, overlay, cancellationToken);
     }
 
@@ -1300,14 +1231,14 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        GetOutputSettingsResponseData response = await client
+        GetOutputSettingsResponseData? response = await client
             .GetOutputSettingsAsync(
                 new GetOutputSettingsRequestData(outputName: outputName),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response.OutputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.OutputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1327,18 +1258,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetOutputSettingsAsync(outputName, typeInfo, cancellationToken);
     }
 
@@ -1397,18 +1317,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.SetOutputSettingsAsync(outputName, settings, typeInfo, cancellationToken);
     }
 
@@ -1436,11 +1345,11 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        GetStreamServiceSettingsResponseData response = await client
+        GetStreamServiceSettingsResponseData? response = await client
             .GetStreamServiceSettingsAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return response.StreamServiceSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.StreamServiceSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1458,18 +1367,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetStreamServiceSettingsAsync(typeInfo, cancellationToken);
     }
 
@@ -1528,18 +1426,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.SetStreamServiceSettingsAsync(streamServiceType, settings, typeInfo, cancellationToken);
     }
 
@@ -1570,14 +1457,14 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        GetInputDefaultSettingsResponseData response = await client
+        GetInputDefaultSettingsResponseData? response = await client
             .GetInputDefaultSettingsAsync(
                 new GetInputDefaultSettingsRequestData(inputKind: inputKind),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response.DefaultInputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.DefaultInputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1597,18 +1484,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetInputDefaultSettingsAsync(inputKind, typeInfo, cancellationToken);
     }
 
@@ -1635,14 +1511,14 @@ public static partial class ObsWebSocketClientHelpers
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        GetSourceFilterDefaultSettingsResponseData response = await client
+        GetSourceFilterDefaultSettingsResponseData? response = await client
             .GetSourceFilterDefaultSettingsAsync(
                 new GetSourceFilterDefaultSettingsRequestData(filterKind: filterKind),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response.DefaultFilterSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.DefaultFilterSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1662,18 +1538,7 @@ public static partial class ObsWebSocketClientHelpers
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo;
-        try
-        {
-            typeInfo = (JsonTypeInfo<T>)s_helperJsonOptions.GetTypeInfo(typeof(T));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-        {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
-        }
+        JsonTypeInfo<T> typeInfo = GetRegisteredTypeInfo<T>();
         return client.GetSourceFilterDefaultSettingsAsync(filterKind, typeInfo, cancellationToken);
     }
 

@@ -30,6 +30,8 @@ public class ObsWebSocketClientIntegrationTests
     private const int DefaultTimeoutMs = 10000; // Default for most tests
     private const int EventTimeoutMs = 15000; // Allow more time for manual interaction tests
 
+    public TestContext TestContext { get; set; } = null!;
+
     [ClassInitialize]
     public static void ClassInitialize(TestContext context)
     {
@@ -126,7 +128,7 @@ public class ObsWebSocketClientIntegrationTests
     // --- Test Cases ---
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task ConnectDisconnect_ValidUri_Succeeds()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled at the configured URI. */
@@ -144,7 +146,7 @@ public class ObsWebSocketClientIntegrationTests
 
         try
         {
-            await client.ConnectAsync();
+            await client.ConnectAsync(TestContext.CancellationToken);
 
             Assert.IsTrue(client.IsConnected, "Client should be connected after ConnectAsync.");
             Assert.IsTrue(connectedEventFired, "Connected event should have fired.");
@@ -176,12 +178,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetVersion_ReturnsValidData()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. */
         await using ObsWebSocketClient client = CreateClient(); // Use await using for disposal
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetVersionResponseData? version = await client.GetVersionAsync();
@@ -195,16 +197,13 @@ public class ObsWebSocketClientIntegrationTests
             string.IsNullOrWhiteSpace(version.ObsWebSocketVersion),
             "ObsWebSocketVersion should not be empty."
         );
-        Assert.IsTrue(version.RpcVersion >= 1, "RpcVersion should be >= 1.");
+        Assert.IsGreaterThanOrEqualTo(version.RpcVersion, 1, "RpcVersion should be >= 1.");
         Assert.IsNotNull(version.AvailableRequests, "AvailableRequests should not be null.");
-        Assert.IsTrue(
-            version.AvailableRequests.Count > 0,
-            "AvailableRequests should not be empty."
-        );
+        Assert.IsNotEmpty(version.AvailableRequests, "AvailableRequests should not be empty.");
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task SetCurrentProgramScene_ChangesScene_WhenSceneExists()
     {
         string sceneName =
@@ -212,7 +211,7 @@ public class ObsWebSocketClientIntegrationTests
             ?? throw new AssertInconclusiveException("TestSceneName not configured");
 
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         // Get original scene (optional, but good practice)
@@ -280,7 +279,7 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(EventTimeoutMs)] // Allow more time for manual interaction + connection
+    [Timeout(EventTimeoutMs, CooperativeCancellation = true)] // Allow more time for manual interaction + connection
     public async Task Event_CurrentProgramSceneChanged_WhenTriggeredManually()
     {
         /* OBS Setup: Requires OBS running, WebSocket enabled. */
@@ -300,7 +299,7 @@ public class ObsWebSocketClientIntegrationTests
             _ = tcs.TrySetResult(args); // Signal that the event was received
         };
 
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected, "Client failed to connect.");
 
         // Get the initial scene to know what *not* to expect initially
@@ -345,19 +344,19 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetSceneList_ReturnsSceneStubs()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled and at least one scene existing (the TestSceneName). */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetSceneListResponseData? response = await client.GetSceneListAsync(new());
 
         Assert.IsNotNull(response, "GetSceneList response was null.");
         Assert.IsNotNull(response.Scenes, "Scenes list was null.");
-        Assert.IsTrue(response.Scenes.Count > 0, "Expected at least one scene in the list.");
+        Assert.IsNotEmpty(response.Scenes, "Expected at least one scene in the list.");
 
         // Find the test scene using the SceneStub
         SceneStub? testSceneStub = response.Scenes.FirstOrDefault(s =>
@@ -385,12 +384,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetInputList_ReturnsInputStubs()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled and at least one input (the TestInputName). */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetInputListResponseData? response = await client.GetInputListAsync(
@@ -399,7 +398,7 @@ public class ObsWebSocketClientIntegrationTests
 
         Assert.IsNotNull(response, "GetInputList response was null.");
         Assert.IsNotNull(response.Inputs, "Inputs list was null.");
-        Assert.IsTrue(response.Inputs.Count > 0, "Expected at least one input in the list.");
+        Assert.IsNotEmpty(response.Inputs, "Expected at least one input in the list.");
 
         // Find the test input
         InputStub? testInputStub = response.Inputs.FirstOrDefault(i =>
@@ -427,12 +426,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetSceneItemTransform_ReturnsTransformStub()
     {
         /* OBS Setup: Requires OBS running with TestSceneName containing TestInputName. */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         // Get the scene item ID first
@@ -471,12 +470,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetInputAudioTracks_ReturnsDictionary()
     {
         /* OBS Setup: Requires OBS running with an audio input named like 'Mic/Aux' (configure in TestAudioInputName). */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetInputAudioTracksResponseData? response;
@@ -496,7 +495,7 @@ public class ObsWebSocketClientIntegrationTests
 
         Assert.IsNotNull(response, "GetInputAudioTracks response was null.");
         Assert.IsNotNull(response.InputAudioTracks, "InputAudioTracks dictionary was null.");
-        Assert.IsTrue(response.InputAudioTracks.Count > 0, "Expected at least one audio track.");
+        Assert.IsNotEmpty(response.InputAudioTracks, "Expected at least one audio track.");
 
         // Check if common tracks exist (OBS usually has 6)
         for (int i = 1; i <= 6; i++)
@@ -516,12 +515,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetInputSettings_TextGDI_ReturnsJsonElement()
     {
         /* OBS Setup: Requires OBS running with TestSceneName containing TestInputName (which should be a Text GDI+ source). */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetInputSettingsResponseData? response;
@@ -562,33 +561,24 @@ public class ObsWebSocketClientIntegrationTests
             "Expected settings to be a JSON object."
         );
 
-        try
-        {
-            // Deserialize into a known structure for Text GDI+ v2
-            TextGdiPlusSettings? textSettings = settingsElement.Deserialize<TextGdiPlusSettings>(
-                TestUtils.s_jsonSerializerOptions
-            );
-            Assert.IsNotNull(textSettings, "Failed to deserialize settings element.");
-            Assert.IsNotNull(textSettings.Text, "Expected 'text' property in settings.");
-            Trace.WriteLine($"Text GDI+ Settings 'text' property: {textSettings.Text}");
-            Assert.IsNotNull(textSettings.Font, "Expected 'font' property in settings.");
-            Trace.WriteLine($"Text GDI+ Settings 'font.face': {textSettings.Font.Face}");
-        }
-        catch (JsonException ex)
-        {
-            Assert.Fail(
-                $"Failed to deserialize JsonElement: {ex.Message}. Raw JSON: {settingsElement.GetRawText()}"
-            );
-        }
+        // Deserialize into a known structure for Text GDI+ v2
+        TextGdiPlusSettings? textSettings = settingsElement.Deserialize<TextGdiPlusSettings>(
+            TestUtils.s_jsonSerializerOptions
+        );
+        Assert.IsNotNull(textSettings, "Failed to deserialize settings element.");
+        Assert.IsNotNull(textSettings.Text, "Expected 'text' property in settings.");
+        Trace.WriteLine($"Text GDI+ Settings 'text' property: {textSettings.Text}");
+        Assert.IsNotNull(textSettings.Font, "Expected 'font' property in settings.");
+        Trace.WriteLine($"Text GDI+ Settings 'font.face': {textSettings.Font.Face}");
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetSourceFilterList_ReturnsFilterStubs()
     {
         /* OBS Setup: Requires TestInputName source with a filter named TestFilterName. */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetSourceFilterListResponseData? response;
@@ -639,19 +629,19 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetTransitionList_ReturnsTransitionStubs()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetSceneTransitionListResponseData? response = await client.GetSceneTransitionListAsync();
 
         Assert.IsNotNull(response, "GetSceneTransitionList response was null.");
         Assert.IsNotNull(response.Transitions, "Transitions list was null.");
-        Assert.IsTrue(response.Transitions.Count > 0, "Expected at least one transition.");
+        Assert.IsNotEmpty(response.Transitions, "Expected at least one transition.");
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(response.CurrentSceneTransitionName),
             "Current transition name should not be empty."
@@ -679,22 +669,19 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetOutputList_ReturnsOutputStubs()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetOutputListResponseData? response = await client.GetOutputListAsync();
 
         Assert.IsNotNull(response, "GetOutputList response was null.");
         Assert.IsNotNull(response.Outputs, "Outputs list was null.");
-        Assert.IsTrue(
-            response.Outputs.Count > 0,
-            "Expected at least one output (e.g., Simple Output or Advanced)."
-        );
+        Assert.IsNotEmpty(response.Outputs, "Expected at least one output (e.g., Simple Output or Advanced).");
 
         OutputStub? firstOutput = response.Outputs.FirstOrDefault();
         Assert.IsNotNull(firstOutput, "First output stub was null.");
@@ -714,12 +701,12 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetMonitorList_ReturnsMonitorStubs()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. Result depends on connected monitors. */
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetMonitorListResponseData? response = await client.GetMonitorListAsync();
@@ -752,7 +739,7 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(EventTimeoutMs)] // Allow more time for manual scene change
+    [Timeout(EventTimeoutMs, CooperativeCancellation = true)] // Allow more time for manual scene change
     public async Task Event_SceneListChanged_ReceivesStubList()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. */
@@ -770,7 +757,7 @@ public class ObsWebSocketClientIntegrationTests
             _ = tcs.TrySetResult(args); // Signal that the event was received
         };
 
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected, "Client failed to connect.");
 
         Console.WriteLine(
@@ -787,10 +774,6 @@ public class ObsWebSocketClientIntegrationTests
         );
         Assert.IsNotNull(receivedArgs, "Received event arguments were null.");
         Assert.IsNotNull(receivedArgs.EventData.Scenes, "EventData.Scenes list was null.");
-        Assert.IsTrue(
-            receivedArgs.EventData.Scenes.Count >= 0,
-            "Scene list should exist (can be empty after deleting last scene)."
-        );
 
         if (receivedArgs.EventData.Scenes.Count > 0)
         {
@@ -818,13 +801,13 @@ public class ObsWebSocketClientIntegrationTests
     }
 
     [TestMethod, TestCategory("Integration")]
-    [Timeout(DefaultTimeoutMs)]
+    [Timeout(DefaultTimeoutMs, CooperativeCancellation = true)]
     public async Task GetInputDefaultSettings_ReturnsJsonElement_CanDeserialize()
     {
         /* OBS Setup: Requires OBS running with WebSocket enabled. */
         string inputKind = "text_gdiplus_v3"; // Use a known input kind
         await using ObsWebSocketClient client = CreateClient();
-        await client.ConnectAsync();
+        await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
         GetInputDefaultSettingsResponseData? response;
@@ -861,37 +844,28 @@ public class ObsWebSocketClientIntegrationTests
         );
 
         // Demonstrate deserializing the JsonElement into a Dictionary
-        try
-        {
-            Dictionary<string, JsonElement>? defaultSettingsDict = settingsElement.Deserialize<
-                Dictionary<string, JsonElement>
-            >(TestUtils.s_jsonSerializerOptions);
-            Assert.IsNotNull(
-                defaultSettingsDict,
-                "Failed to deserialize default settings JsonElement."
-            );
+        Dictionary<string, JsonElement>? defaultSettingsDict = settingsElement.Deserialize<
+            Dictionary<string, JsonElement>
+        >(TestUtils.s_jsonSerializerOptions);
+        Assert.IsNotNull(
+            defaultSettingsDict,
+            "Failed to deserialize default settings JsonElement."
+        );
 
-            // Assert some known default properties for text_gdiplus_v3 exist
-            Assert.IsTrue(
-                defaultSettingsDict.ContainsKey("font"),
-                "Expected 'font' default setting."
-            );
-            Assert.AreEqual(
-                JsonValueKind.Object,
-                defaultSettingsDict["font"].ValueKind,
-                "'font' setting should be an object."
-            );
-            Trace.WriteLine(
-                $"Successfully deserialized default settings for '{inputKind}'. Found 'text' and 'font'."
-            );
-            Trace.WriteLine($"Raw Default Settings JSON: {settingsElement.GetRawText()}");
-        }
-        catch (JsonException ex)
-        {
-            Assert.Fail(
-                $"Failed to deserialize default settings JsonElement: {ex.Message}. Raw JSON: {settingsElement.GetRawText()}"
-            );
-        }
+        // Assert some known default properties for text_gdiplus_v3 exist
+        Assert.IsTrue(
+            defaultSettingsDict.ContainsKey("font"),
+            "Expected 'font' default setting."
+        );
+        Assert.AreEqual(
+            JsonValueKind.Object,
+            defaultSettingsDict["font"].ValueKind,
+            "'font' setting should be an object."
+        );
+        Trace.WriteLine(
+            $"Successfully deserialized default settings for '{inputKind}'. Found 'text' and 'font'."
+        );
+        Trace.WriteLine($"Raw Default Settings JSON: {settingsElement.GetRawText()}");
     }
 
     // --- Helper Record for Text GDI+ settings deserialization ---

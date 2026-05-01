@@ -941,7 +941,7 @@ internal sealed partial class Worker(
     /// All operations are read-then-write-back (overlay:true) so they are non-destructive.
     /// Requires at least one browser_source and one input with a gain_filter in OBS.
     /// </summary>
-    private async Task<List<(string Label, bool Pass, string Detail)>> ValidateSettingsModesAsync(
+    private static async Task<List<(string Label, bool Pass, string Detail)>> ValidateSettingsModesAsync(
         ObsWebSocketClient client,
         GetInputListResponseData? inputs,
         CancellationToken cancellationToken)
@@ -1433,10 +1433,10 @@ internal sealed partial class Worker(
         List<OutputStub> outputs;
         try
         {
-            GetOutputListResponseData response = await _obsClient.GetOutputListAsync(
+            GetOutputListResponseData? response = await _obsClient.GetOutputListAsync(
                 cancellationToken: cancellationToken
             );
-            outputs = response.Outputs ?? [];
+            outputs = response?.Outputs ?? [];
         }
         catch (Exception ex)
         {
@@ -1462,11 +1462,11 @@ internal sealed partial class Worker(
             string key = output.OutputKind is { } kind ? $"{name} ({kind})" : name;
             try
             {
-                GetOutputSettingsResponseData r = await _obsClient.GetOutputSettingsAsync(
+                GetOutputSettingsResponseData? r = await _obsClient.GetOutputSettingsAsync(
                     new GetOutputSettingsRequestData(outputName: name),
                     cancellationToken: cancellationToken
                 );
-                results[key] = r.OutputSettings;
+                results[key] = r?.OutputSettings;
             }
             catch (ObsWebSocketException ex)
             {
@@ -1487,7 +1487,7 @@ internal sealed partial class Worker(
     {
         try
         {
-            GetStreamServiceSettingsResponseData response = await _obsClient.GetStreamServiceSettingsAsync(
+            GetStreamServiceSettingsResponseData? response = await _obsClient.GetStreamServiceSettingsAsync(
                 cancellationToken: cancellationToken
             );
 
@@ -1495,9 +1495,9 @@ internal sealed partial class Worker(
             using (Utf8JsonWriter w = new(buf, new JsonWriterOptions { Indented = true }))
             {
                 w.WriteStartObject();
-                w.WriteString("streamServiceType", response.StreamServiceType);
+                w.WriteString("streamServiceType", response?.StreamServiceType);
                 w.WritePropertyName("streamServiceSettings");
-                if (response.StreamServiceSettings is JsonElement el)
+                if (response?.StreamServiceSettings is JsonElement el)
                 {
                     el.WriteTo(w);
                 }
@@ -1557,11 +1557,12 @@ internal sealed partial class Worker(
 
         string currentProgramScene = sceneList.CurrentProgramSceneName ?? string.Empty;
 
-        List<string> sceneNames = sceneList.Scenes
-            .Select(s => s.SceneName)
-            .Where(n => !string.IsNullOrEmpty(n))
-            .Select(n => n!)
-            .ToList();
+        List<string> sceneNames = [
+            ..sceneList.Scenes
+                .Select(s => s.SceneName)
+                .Where(n => !string.IsNullOrEmpty(n))
+                .Select(n => n!),
+        ];
 
         // Place current program scene first, then alphabetically
         List<string> orderedSceneNames = !string.IsNullOrEmpty(currentProgramScene)
