@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using MessagePack;
@@ -68,28 +67,16 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
             return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<InputStub>>();
         }
 
-        if (type == typeof(List<TransitionStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>();
-        }
-
-        if (type == typeof(List<OutputStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<OutputStub>>();
-        }
-
-        if (type == typeof(List<MonitorStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>();
-        }
-
-        if (type == typeof(List<PropertyItemStub>))
-        {
-            return (IMessagePackFormatter<T>)(object)
-                new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>();
-        }
-
-        return type == typeof(OutputStub)
+        return type == typeof(List<TransitionStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>()
+            : type == typeof(List<OutputStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<OutputStub>>()
+            : type == typeof(List<MonitorStub>)
+            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>()
+            : type == typeof(List<PropertyItemStub>)
+            ? (IMessagePackFormatter<T>)(object)
+                new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>()
+            : type == typeof(OutputStub)
             ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>()
             : type == typeof(MonitorStub)
             ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>()

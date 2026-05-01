@@ -11,17 +11,11 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
 
     private MsgPackJsonElementResolver() { }
 
-    public IMessagePackFormatter<T>? GetFormatter<T>()
-    {
-        if (typeof(T) == typeof(JsonElement))
-        {
-            return (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance;
-        }
-
-        return typeof(T) == typeof(JsonElement?)
+    public IMessagePackFormatter<T>? GetFormatter<T>() => typeof(T) == typeof(JsonElement)
+            ? (IMessagePackFormatter<T>)(object)JsonElementFormatter.Instance
+            : typeof(T) == typeof(JsonElement?)
             ? (IMessagePackFormatter<T>)(object)NullableJsonElementFormatter.Instance
             : null;
-    }
 
     internal sealed class JsonElementFormatter : IMessagePackFormatter<JsonElement>
     {
@@ -98,14 +92,6 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
         public JsonElement? Deserialize(
             ref MessagePackReader reader,
             MessagePackSerializerOptions options
-        )
-        {
-            if (reader.TryReadNil())
-            {
-                return null;
-            }
-
-            return JsonElementFormatter.Instance.Deserialize(ref reader, options);
-        }
+        ) => reader.TryReadNil() ? null : JsonElementFormatter.Instance.Deserialize(ref reader, options);
     }
 }

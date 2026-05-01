@@ -10,7 +10,6 @@ using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
-using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
 using ObsWebSocket.Core.Serialization;
 using RequestStatus = ObsWebSocket.Core.Protocol.RequestStatus;
@@ -183,12 +182,12 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         BrowserSourceSettings settings = new(Url: "https://test.com", Width: 1280, Height: 720);
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -198,10 +197,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("inputSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "SetInputSettings", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);
@@ -221,13 +220,13 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         TestConsumerSettings settings = new(CustomKey: "abc", CustomCount: 99);
         JsonTypeInfo<TestConsumerSettings> typeInfo = TestConsumerSettingsJsonContext.Default.TestConsumerSettings;
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -237,10 +236,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("inputSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "SetInputSettings", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);
@@ -257,7 +256,7 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
 
-        await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
             () => client.SetInputSettingsAsync("TestSource", new TestConsumerSettings(), overlay: true)
         );
     }
@@ -276,7 +275,7 @@ public class TypedSettingsTests
         JsonElement settingsElement = JsonSerializer.SerializeToElement(expected, typeInfo);
         GetInputSettingsResponseData responseDto = new(inputSettings: settingsElement, inputKind: "browser_source");
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -285,7 +284,7 @@ public class TypedSettingsTests
             if (msg?.D?.RequestType == "GetInputSettings")
             {
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
                     RequestType: "GetInputSettings", RequestId: msg.D.RequestId!,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -293,7 +292,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         BrowserSourceSettings? result = await client.GetInputSettingsAsync<BrowserSourceSettings>("TestInput");
@@ -318,7 +317,7 @@ public class TypedSettingsTests
         JsonElement settingsElement = JsonSerializer.SerializeToElement(expected, typeInfo);
         GetInputSettingsResponseData responseDto = new(inputSettings: settingsElement, inputKind: "custom_source");
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -327,7 +326,7 @@ public class TypedSettingsTests
             if (msg?.D?.RequestType == "GetInputSettings")
             {
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
                     RequestType: "GetInputSettings", RequestId: msg.D.RequestId!,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -335,7 +334,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         TestConsumerSettings? result = await client.GetInputSettingsAsync("TestInput", typeInfo);
@@ -353,12 +352,12 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         GainFilterSettings settings = new(Db: -12.0);
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -368,10 +367,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("filterSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "SetSourceFilterSettings", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);
@@ -388,13 +387,13 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         TestConsumerSettings settings = new(CustomKey: "filter-val");
         JsonTypeInfo<TestConsumerSettings> typeInfo = TestConsumerSettingsJsonContext.Default.TestConsumerSettings;
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -404,10 +403,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("filterSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "SetSourceFilterSettings", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);
@@ -434,7 +433,7 @@ public class TypedSettingsTests
         GetSourceFilterResponseData responseDto = new(
             filterSettings: settingsElement, filterEnabled: true, filterIndex: 0, filterKind: "gain_filter");
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -443,7 +442,7 @@ public class TypedSettingsTests
             if (msg?.D?.RequestType == "GetSourceFilter")
             {
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
                     RequestType: "GetSourceFilter", RequestId: msg.D.RequestId!,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -451,7 +450,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         GainFilterSettings? result = await client.GetSourceFilterSettingsAsync<GainFilterSettings>("AudioSource", "Gain");
@@ -473,7 +472,7 @@ public class TypedSettingsTests
         GetSourceFilterResponseData responseDto = new(
             filterSettings: settingsElement, filterEnabled: true, filterIndex: 0, filterKind: "custom_filter");
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -482,7 +481,7 @@ public class TypedSettingsTests
             if (msg?.D?.RequestType == "GetSourceFilter")
             {
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, msg.D.RequestId!, new RequestResponsePayload<object>(
                     RequestType: "GetSourceFilter", RequestId: msg.D.RequestId!,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -490,7 +489,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         TestConsumerSettings? result = await client.GetSourceFilterSettingsAsync("AudioSource", "CustomFilter", typeInfo);
@@ -513,7 +512,7 @@ public class TypedSettingsTests
         JsonElement? capturedSettings = null;
         CreateInputResponseData responseDto = new(sceneItemId: 42);
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -524,7 +523,7 @@ public class TypedSettingsTests
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("inputSettings");
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "CreateInput", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -532,7 +531,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         CreateInputResponseData? result = await client.CreateInputAsync(
@@ -561,7 +560,7 @@ public class TypedSettingsTests
         JsonElement? capturedSettings = null;
         CreateInputResponseData responseDto = new(sceneItemId: 7);
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -572,7 +571,7 @@ public class TypedSettingsTests
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("inputSettings");
                 JsonElement rawPayload = TestUtils.ToJsonElement(responseDto)!.Value;
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "CreateInput", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
                     ResponseData: rawPayload));
@@ -580,7 +579,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
+        _ = mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
         CreateInputResponseData? result = await client.CreateInputAsync(
@@ -604,12 +603,12 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         GainFilterSettings settings = new(Db: -3.0);
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -619,10 +618,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("filterSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "CreateSourceFilter", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);
@@ -643,13 +642,13 @@ public class TypedSettingsTests
     {
         (ObsWebSocketClient client, Mock<IWebSocketMessageSerializer> mockSerializer, Mock<IWebSocketConnection> mockConnection) =
             TestUtils.SetupConnectedClientForceState();
-        mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
+        _ = mockSerializer.Setup(s => s.DeserializePayload<object>(It.IsAny<object>())).Returns((object?)null);
 
         TestConsumerSettings settings = new(CustomKey: "my-filter", CustomCount: 1);
         JsonTypeInfo<TestConsumerSettings> typeInfo = TestConsumerSettingsJsonContext.Default.TestConsumerSettings;
         JsonElement? capturedSettings = null;
 
-        mockConnection.Setup(ws => ws.SendAsync(
+        _ = mockConnection.Setup(ws => ws.SendAsync(
             It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<WebSocketMessageType>(), true, It.IsAny<CancellationToken>()))
         .Callback((ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
         {
@@ -659,10 +658,10 @@ public class TypedSettingsTests
             {
                 string id = msg.D.RequestId!;
                 capturedSettings = msg.D.RequestData?.GetProperty("filterSettings");
-                TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
+                _ = TestUtils.SimulateIncomingResponse(client, id, new RequestResponsePayload<object>(
                     RequestType: "CreateSourceFilter", RequestId: id,
                     RequestStatus: new RequestStatus(Result: true, Code: (int)Core.Protocol.Generated.RequestStatus.Success),
-                    ResponseData: (object?)null));
+                    ResponseData: null));
             }
         })
         .Returns(ValueTask.CompletedTask);

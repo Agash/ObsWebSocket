@@ -1,12 +1,8 @@
 using System.Buffers;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Hosting;
-using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Protocol.Common.FilterSettings;
-using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
@@ -14,6 +10,9 @@ using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
+using ObsWebSocket.Core.Protocol.Common;
+using ObsWebSocket.Core.Protocol.Common.FilterSettings;
+using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
@@ -92,7 +91,7 @@ internal sealed partial class Worker(
                     "Running startup command: {Command}",
                     startupCommand
                 );
-                await ProcessCommandAsync(
+                _ = await ProcessCommandAsync(
                         startupCommand,
                         _startupCommandOptions.Arguments,
                         stoppingToken
@@ -115,7 +114,7 @@ internal sealed partial class Worker(
                         "Running startup command: {Command}",
                         startupCommand
                     );
-                    await ProcessCommandAsync(
+                    _ = await ProcessCommandAsync(
                             startupCommand,
                             _startupCommandOptions.Arguments,
                             stoppingToken
@@ -971,7 +970,10 @@ internal sealed partial class Worker(
                 GetInputSettingsResponseData? r = await client.GetInputSettingsAsync(
                     new GetInputSettingsRequestData(browserInputName), cancellationToken);
                 if (r?.InputSettings is not JsonElement el)
+                {
                     return (false, "null InputSettings in response");
+                }
+
                 await client.SetInputSettingsAsync(
                     new SetInputSettingsRequestData(el, inputName: browserInputName, overlay: true),
                     cancellationToken);
@@ -985,7 +987,10 @@ internal sealed partial class Worker(
                 BrowserSourceSettings? s = await client.GetInputSettingsAsync<BrowserSourceSettings>(
                     browserInputName, cancellationToken);
                 if (s is null)
+                {
                     return (false, "null result");
+                }
+
                 await client.SetInputSettingsAsync(browserInputName, s, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
             }));
@@ -997,7 +1002,10 @@ internal sealed partial class Worker(
                 WorkerBrowserUrlSettings? s = await client.GetInputSettingsAsync(
                     browserInputName, typeInfo, cancellationToken);
                 if (s is null)
+                {
                     return (false, "null result");
+                }
+
                 await client.SetInputSettingsAsync(browserInputName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
             }));
@@ -1038,7 +1046,10 @@ internal sealed partial class Worker(
                     new GetSourceFilterRequestData { SourceName = filterSourceName, FilterName = gainFilterName },
                     cancellationToken);
                 if (r?.FilterSettings is not JsonElement el)
+                {
                     return (false, "null FilterSettings in response");
+                }
+
                 await client.SetSourceFilterSettingsAsync(
                     new SetSourceFilterSettingsRequestData(gainFilterName, el, sourceName: filterSourceName, overlay: true),
                     cancellationToken);
@@ -1052,7 +1063,10 @@ internal sealed partial class Worker(
                 GainFilterSettings? s = await client.GetSourceFilterSettingsAsync<GainFilterSettings>(
                     filterSourceName, gainFilterName, cancellationToken);
                 if (s is null)
+                {
                     return (false, "null result");
+                }
+
                 await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
             }));
@@ -1064,7 +1078,10 @@ internal sealed partial class Worker(
                 WorkerGainDbSettings? s = await client.GetSourceFilterSettingsAsync(
                     filterSourceName, gainFilterName, typeInfo, cancellationToken);
                 if (s is null)
+                {
                     return (false, "null result");
+                }
+
                 await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
             }));
@@ -1438,7 +1455,9 @@ internal sealed partial class Worker(
         foreach (OutputStub output in outputs)
         {
             if (output.OutputName is not { } name)
+            {
                 continue;
+            }
 
             string key = output.OutputKind is { } kind ? $"{name} ({kind})" : name;
             try
@@ -1479,9 +1498,14 @@ internal sealed partial class Worker(
                 w.WriteString("streamServiceType", response.StreamServiceType);
                 w.WritePropertyName("streamServiceSettings");
                 if (response.StreamServiceSettings is JsonElement el)
+                {
                     el.WriteTo(w);
+                }
                 else
+                {
                     w.WriteNullValue();
+                }
+
                 w.WriteEndObject();
                 w.Flush();
             }
@@ -1504,9 +1528,13 @@ internal sealed partial class Worker(
         {
             w.WritePropertyName(kind);
             if (value is JsonElement el)
+            {
                 el.WriteTo(w);
+            }
             else
+            {
                 w.WriteNullValue();
+            }
         }
         w.WriteEndObject();
         w.Flush();
@@ -1541,7 +1569,7 @@ internal sealed partial class Worker(
                 ..sceneNames.Where(n => n == currentProgramScene),
                 ..sceneNames.Where(n => n != currentProgramScene).OrderBy(n => n),
               ]
-            : [..sceneNames.OrderBy(n => n)];
+            : [.. sceneNames.OrderBy(n => n)];
 
         if (orderedSceneNames.Count == 0)
         {
@@ -1595,7 +1623,7 @@ internal sealed partial class Worker(
 
         // Step 4: Prompt — create new source or update an existing browser source
         const string CreateNewChoice = "+ Create new browser source";
-        List<string> sourceChoices = [CreateNewChoice, ..existingBrowserSourcesInScene];
+        List<string> sourceChoices = [CreateNewChoice, .. existingBrowserSourcesInScene];
 
         string selectedSourceChoice = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -1605,23 +1633,16 @@ internal sealed partial class Worker(
         );
 
         bool isNewSource = selectedSourceChoice == CreateNewChoice;
-        string sourceName;
-
-        if (isNewSource)
-        {
-            sourceName = AnsiConsole.Prompt(
+        string sourceName = isNewSource
+            ? AnsiConsole.Prompt(
                 new TextPrompt<string>("New browser source [cyan]name[/]:")
                     .Validate(s =>
                         !string.IsNullOrWhiteSpace(s)
                             ? ValidationResult.Success()
                             : ValidationResult.Error("[red]Name cannot be empty.[/]")
                     )
-            );
-        }
-        else
-        {
-            sourceName = selectedSourceChoice;
-        }
+            )
+            : selectedSourceChoice;
 
         // Step 5: Get canvas dimensions from video settings
         GetVideoSettingsResponseData? videoSettings = await _obsClient.GetVideoSettingsAsync(

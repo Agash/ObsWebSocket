@@ -1,12 +1,11 @@
-using System.Buffers;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Protocol;
-using ObsWebSocket.Core.Protocol.Generated; // Assuming generated enums are here
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
+using ObsWebSocket.Core.Protocol.Generated; // Assuming generated enums are here
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
 
@@ -604,7 +603,9 @@ public static partial class ObsWebSocketClientHelpers
         }
 
         if (filterInfo?.FilterSettings == null)
+        {
             return null;
+        }
 
         try
         {
@@ -801,7 +802,9 @@ public static partial class ObsWebSocketClientHelpers
         }
 
         if (response?.InputSettings == null)
+        {
             return null;
+        }
 
         try
         {
@@ -1168,10 +1171,7 @@ public static partial class ObsWebSocketClientHelpers
             .GetCurrentSceneTransitionAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        if (response.TransitionSettings is not { } element)
-            return null;
-
-        return JsonSerializer.Deserialize(element, typeInfo);
+        return response.TransitionSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1307,10 +1307,7 @@ public static partial class ObsWebSocketClientHelpers
             )
             .ConfigureAwait(false);
 
-        if (response.OutputSettings is not { } element)
-            return null;
-
-        return JsonSerializer.Deserialize(element, typeInfo);
+        return response.OutputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1443,10 +1440,7 @@ public static partial class ObsWebSocketClientHelpers
             .GetStreamServiceSettingsAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        if (response.StreamServiceSettings is not { } element)
-            return null;
-
-        return JsonSerializer.Deserialize(element, typeInfo);
+        return response.StreamServiceSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1583,10 +1577,7 @@ public static partial class ObsWebSocketClientHelpers
             )
             .ConfigureAwait(false);
 
-        if (response.DefaultInputSettings is not { } element)
-            return null;
-
-        return JsonSerializer.Deserialize(element, typeInfo);
+        return response.DefaultInputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1651,10 +1642,7 @@ public static partial class ObsWebSocketClientHelpers
             )
             .ConfigureAwait(false);
 
-        if (response.DefaultFilterSettings is not { } element)
-            return null;
-
-        return JsonSerializer.Deserialize(element, typeInfo);
+        return response.DefaultFilterSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -1983,9 +1971,13 @@ public static partial class ObsWebSocketClientHelpers
             cancellationToken: cancellationToken);
 
         if (activate)
+        {
             await client.StartVirtualCamAsync(cancellationToken).ConfigureAwait(false);
+        }
         else
+        {
             await client.StopVirtualCamAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         VirtualcamStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
         return ev?.EventData.OutputActive;
@@ -2043,7 +2035,9 @@ public static partial class ObsWebSocketClientHelpers
 
         string? b64 = response?.ImageData;
         if (string.IsNullOrEmpty(b64))
+        {
             return [];
+        }
 
         int commaIdx = b64.IndexOf(',', StringComparison.Ordinal);
         string base64 = commaIdx >= 0 ? b64[(commaIdx + 1)..] : b64;

@@ -363,20 +363,9 @@ internal static class TestUtils
     /// <summary>
     /// Serializes an object to a JsonElement using default web options. Clones the element for safe use.
     /// </summary>
-    internal static JsonElement? ToJsonElement(object? obj)
-    {
-        if (obj == null)
-        {
-            return null;
-        }
-
-        if (obj is JsonElement element)
-        {
-            return element.Clone();
-        }
-
-        return JsonSerializer.SerializeToElement(obj, obj.GetType(), s_jsonSerializerOptions);
-    }
+    internal static JsonElement? ToJsonElement(object? obj) => obj == null
+            ? null
+            : obj is JsonElement element ? element.Clone() : JsonSerializer.SerializeToElement(obj, obj.GetType(), s_jsonSerializerOptions);
 
     /// <summary>
     /// Gets a delegate for a private instance method using reflection.

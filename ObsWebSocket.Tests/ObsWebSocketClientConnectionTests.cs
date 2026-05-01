@@ -478,7 +478,7 @@ public class ObsWebSocketClientConnectionTests
 
         Assert.IsFalse(client.IsConnected);
         Assert.IsNotNull(disconnectedReason, "DisconnectedReason should not be null.");
-        Assert.IsInstanceOfType<AuthenticationFailureException>(disconnectedReason);
+        _ = Assert.IsInstanceOfType<AuthenticationFailureException>(disconnectedReason);
 
         // Verify mocks against the actual instance used (mockFailingConnection)
         mockFailingConnection.Verify(
@@ -580,7 +580,7 @@ public class ObsWebSocketClientConnectionTests
         Assert.IsFalse(client.IsConnected);
         Assert.IsNotNull(disconnectedReason, "DisconnectedReason should not be null.");
         _ = Assert.IsInstanceOfType<ObsWebSocketException>(disconnectedReason);
-        Assert.IsInstanceOfType<ConnectionAttemptFailedException>(
+        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(
             disconnectedReason.InnerException
         );
         Assert.AreEqual(connectException, disconnectedReason.InnerException!.InnerException);
@@ -649,7 +649,7 @@ public class ObsWebSocketClientConnectionTests
         Assert.IsTrue(
             thrownException.Message.Contains($"Failed to connect after {maxAttempts} attempts")
         );
-        Assert.IsInstanceOfType<ConnectionAttemptFailedException>(thrownException.InnerException);
+        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(thrownException.InnerException);
         Assert.AreEqual(connectException, thrownException.InnerException!.InnerException);
 
         _ = await Task.WhenAny(disconnectedSignal.Task, Task.Delay(1000))

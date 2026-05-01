@@ -439,7 +439,7 @@ public class ObsWebSocketClientIntegrationTests
         GetSceneItemIdResponseData? idResponse = await client.GetSceneItemIdAsync(
             new GetSceneItemIdRequestData(
                 s_testOptions.TestInputName!,
-                s_testOptions.TestSceneName!
+                sceneName: s_testOptions.TestSceneName!
             )
         );
         Assert.IsNotNull(
@@ -451,7 +451,7 @@ public class ObsWebSocketClientIntegrationTests
         // Get the transform
         GetSceneItemTransformResponseData? transformResponse =
             await client.GetSceneItemTransformAsync(
-                new GetSceneItemTransformRequestData(sceneItemId, s_testOptions.TestSceneName!)
+                new GetSceneItemTransformRequestData(sceneItemId, sceneName: s_testOptions.TestSceneName!)
             );
 
         Assert.IsNotNull(transformResponse, "GetSceneItemTransform response was null.");
@@ -595,7 +595,7 @@ public class ObsWebSocketClientIntegrationTests
         try
         {
             response = await client.GetSourceFilterListAsync(
-                new GetSourceFilterListRequestData(s_testOptions.TestInputName!)
+                new GetSourceFilterListRequestData(sourceName: s_testOptions.TestInputName!)
             );
         }
         catch (ObsWebSocketException ex) when (ex.Message.Contains("ResourceNotFound"))

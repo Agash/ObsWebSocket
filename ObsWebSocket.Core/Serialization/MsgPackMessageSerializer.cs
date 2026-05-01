@@ -266,10 +266,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         return new EventPayloadBase<object>(eventType ?? string.Empty, eventIntent, eventData);
     }
 
-    private static IFormatterResolver[] CreateResolverChain()
-    {
-        return
-        [
+    private static IFormatterResolver[] CreateResolverChain() => [
             MsgPackJsonElementResolver.Instance,
             MsgPackStubExtensionDataResolver.Instance,
             ObsWebSocketMsgPackResolver.Instance,
@@ -277,7 +274,6 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             SourceGeneratedFormatterResolver.Instance,
             PrimitiveObjectResolver.Instance,
         ];
-    }
 
     private static RequestBatchResponsePayload<object> DeserializeRequestBatchResponsePayload(
         ReadOnlyMemory<byte> raw
