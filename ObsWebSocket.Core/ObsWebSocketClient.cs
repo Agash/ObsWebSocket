@@ -2549,11 +2549,6 @@ public sealed partial class ObsWebSocketClient(
     }
     #endregion
 
-    #region Internal Exception Types
-    internal sealed class ConnectionAttemptFailedException(string message, Exception? inner = null)
-        : ObsWebSocketException(message, inner);
-
-    internal sealed class AuthenticationFailureException(string message, Exception? inner = null)
-        : ObsWebSocketException(message, inner);
-    #endregion
+    // ConnectionAttemptFailedException and AuthenticationFailureException were promoted to
+    // public top-level types in v0.3.1-dev3; their definitions now live in their own files.
 }
