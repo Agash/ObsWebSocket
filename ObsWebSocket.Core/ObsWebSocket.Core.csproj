@@ -1,5 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Reproducibility is delegated to DotNet.ReproducibleBuilds rather than restated here.
+         It sets DebugType to embedded (so the portable PDB with its Source Link map travels
+         inside the assembly and no symbol package is needed), turns on
+         ContinuousIntegrationBuild for every CI provider it recognises, and publishes the
+         repository URL, branch and commit into the nuspec. Source Link itself ships in the
+         SDK. Deterministic is already the SDK default. -->
     <TargetFrameworks>net10.0;net9.0;net11.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -22,7 +28,6 @@
     <EnablePackageValidation>true</EnablePackageValidation>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <MinVerTagPrefix>v</MinVerTagPrefix>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
   <PropertyGroup>
