@@ -31,6 +31,10 @@ jobs:
     runs-on: ubuntu-latest # Use the latest Ubuntu runner
     permissions:
       contents: read
+      # Signing the provenance statement for the packages this job produces. Stated
+      # explicitly because attestation needs more than the read-only default.
+      id-token: write
+      attestations: write
 
     steps:
     - name: Checkout code
