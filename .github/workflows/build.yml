@@ -158,6 +158,11 @@ jobs:
     needs: [build_and_test]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
+    # Declaring an environment is what makes GitHub record a deployment, which is what
+    # surfaces the Deployments tab and the package link on the repo home page.
+    environment:
+      name: nuget.org
+      url: https://www.nuget.org/packages/ObsWebSocket.Core
     permissions:
       contents: read
       id-token: write
