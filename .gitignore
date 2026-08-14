@@ -365,3 +365,9 @@ obswebsocket.xml
 obs-client-example-js.xml
 /ObsWebSocket.Tests/testsettings.local.json
 protocol.json
+
+# The coverage scope config is source, not a coverage report.
+!coverage.settings.xml
+
+# Test run output (coverage reports)
+TestResults/
