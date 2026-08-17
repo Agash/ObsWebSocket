@@ -152,7 +152,7 @@ jobs:
       # exact package files. Anyone who downloads the package can verify it came from this repository
       # rather than from someone who republished it under the same name.
       if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
-      uses: actions/attest-build-provenance@v3
+      uses: actions/attest-build-provenance@v4
       with:
         subject-path: ${{ env.NuGetDirectory }}/*.nupkg
     - name: Upload NuGet Package Artifact (on master push or release)
