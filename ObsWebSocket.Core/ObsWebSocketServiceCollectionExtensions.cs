@@ -27,13 +27,18 @@ public static class ObsWebSocketServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Ensure Options infrastructure is registered
-        _ = services.AddOptions();
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder =
+            services.AddOptions<ObsWebSocketClientOptions>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IValidateOptions<ObsWebSocketClientOptions>,
+                ObsWebSocketClientOptionsValidator
+            >()
+        );
 
-        // Configure options if an action is provided
-        if (configureOptions != null)
+        if (configureOptions is not null)
         {
-            _ = services.Configure(configureOptions);
+            _ = optionsBuilder.Configure(configureOptions);
         }
 
         services.TryAddSingleton<JsonMessageSerializer>();
@@ -54,6 +59,8 @@ public static class ObsWebSocketServiceCollectionExtensions
 
         services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
 
+        services.TryAddSingleton(TimeProvider.System);
+
         services.TryAddSingleton(sp =>
         {
             ILogger<ObsWebSocketClient> logger = sp.GetRequiredService<
@@ -67,9 +74,77 @@ public static class ObsWebSocketServiceCollectionExtensions
             IWebSocketConnectionFactory factory =
                 sp.GetRequiredService<IWebSocketConnectionFactory>();
 
+            TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
+
             // Pass dependencies to the constructor
-            return new ObsWebSocketClient(logger, serializer, options, factory);
+            return new ObsWebSocketClient(logger, serializer, options, factory, timeProvider);
         });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds a named ObsWebSocketClient, for applications driving more than one OBS instance.
+    /// Resolve it with <c>[FromKeyedServices(name)]</c> or
+    /// <see cref="ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService{T}(IServiceProvider, object?)"/>.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add the services to.</param>
+    /// <param name="name">The key identifying this client.</param>
+    /// <param name="configureOptions">An optional action to configure this client's options.</param>
+    /// <returns>The original <see cref="IServiceCollection"/> for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
+    public static IServiceCollection AddObsWebSocketClient(
+        this IServiceCollection services,
+        string name,
+        Action<ObsWebSocketClientOptions>? configureOptions = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder =
+            services.AddOptions<ObsWebSocketClientOptions>(name);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IValidateOptions<ObsWebSocketClientOptions>,
+                ObsWebSocketClientOptionsValidator
+            >()
+        );
+
+        if (configureOptions is not null)
+        {
+            _ = optionsBuilder.Configure(configureOptions);
+        }
+
+        services.TryAddSingleton<JsonMessageSerializer>();
+        services.TryAddSingleton<MsgPackMessageSerializer>();
+        services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
+        services.TryAddSingleton(TimeProvider.System);
+
+        _ = services.AddKeyedSingleton(
+            name,
+            (sp, key) =>
+            {
+                ObsWebSocketClientOptions options = sp.GetRequiredService<
+                    IOptionsMonitor<ObsWebSocketClientOptions>
+                >().Get((string)key!);
+
+                IWebSocketMessageSerializer serializer = options.Format switch
+                {
+                    SerializationFormat.MsgPack => sp.GetRequiredService<MsgPackMessageSerializer>(),
+                    SerializationFormat.Json or _ => sp.GetRequiredService<JsonMessageSerializer>(),
+                };
+
+                return new ObsWebSocketClient(
+                    sp.GetRequiredService<ILogger<ObsWebSocketClient>>(),
+                    serializer,
+                    Options.Create(options),
+                    sp.GetRequiredService<IWebSocketConnectionFactory>(),
+                    sp.GetRequiredService<TimeProvider>()
+                );
+            }
+        );
 
         return services;
     }

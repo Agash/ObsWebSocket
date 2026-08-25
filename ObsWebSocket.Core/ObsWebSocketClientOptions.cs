@@ -1,4 +1,6 @@
-﻿namespace ObsWebSocket.Core;
+using ObsWebSocket.Core.Protocol.Generated;
+
+namespace ObsWebSocket.Core;
 
 /// <summary>
 /// Options for configuring the <see cref="ObsWebSocketClient"/>.
@@ -17,11 +19,9 @@ public sealed class ObsWebSocketClientOptions
     public string? Password { get; set; }
 
     /// <summary>
-    /// Optional bitmask of event subscriptions flags. Consult OBS WebSocket documentation for specific values.
-    /// Defaults to subscribing to all non-high-volume events if null.
-    /// See <see cref="Protocol.Generated.EventSubscription"/>.
+    /// Optional event subscriptions. Defaults to all non-high-volume events when null.
     /// </summary>
-    public uint? EventSubscriptions { get; set; }
+    public EventSubscription? EventSubscriptions { get; set; }
 
     /// <summary>
     /// Timeout in milliseconds for the initial Hello/Identified handshake phase.

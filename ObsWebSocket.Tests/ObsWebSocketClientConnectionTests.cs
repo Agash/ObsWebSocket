@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text.Json;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Networking;
@@ -37,8 +38,36 @@ public class ObsWebSocketClientConnectionTests
         Mock<IWebSocketConnection> mockConnection,
         Mock<IWebSocketMessageSerializer> mockSerializer,
         Mock<IWebSocketConnectionFactory> mockFactory
-    ) BuildMockedInfrastructure(Action<ObsWebSocketClientOptions>? configureOptions = null) =>
-        TestUtils.BuildMockedClientInfrastructure(configureOptions);
+    ) BuildMockedInfrastructure(
+        Action<ObsWebSocketClientOptions>? configureOptions = null,
+        TimeProvider? timeProvider = null
+    ) => TestUtils.BuildMockedClientInfrastructure(configureOptions, timeProvider: timeProvider);
+
+    /// <summary>
+    /// Runs <paramref name="pending"/> to completion, advancing <paramref name="time"/> so that
+    /// reconnect delays elapse on the fake clock rather than in real time.
+    /// </summary>
+    private static async Task PumpAsync(Task pending, FakeTimeProvider time)
+    {
+        while (!pending.IsCompleted)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(25));
+            await Task.Delay(1);
+        }
+
+        await pending;
+    }
+
+    private static async Task<T> PumpAsync<T>(Task<T> pending, FakeTimeProvider time)
+    {
+        while (!pending.IsCompleted)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(25));
+            await Task.Delay(1);
+        }
+
+        return await pending;
+    }
 
     private static void SetupHandshakePayloadDeserialization(
         Mock<IWebSocketMessageSerializer> mockSerializer,
@@ -600,13 +629,17 @@ public class ObsWebSocketClientConnectionTests
         // Arrange
         WebSocketException connectException = new("Server unavailable");
         const int maxAttempts = 2;
+        FakeTimeProvider time = new();
         (ObsWebSocketClient? client, _, _, Mock<IWebSocketConnectionFactory>? mockFactory) =
-            BuildMockedInfrastructure(opts =>
-            {
-                opts.AutoReconnectEnabled = true;
-                opts.MaxReconnectAttempts = maxAttempts;
-                opts.InitialReconnectDelayMs = 5; // Short delay for test speed
-            });
+            BuildMockedInfrastructure(
+                opts =>
+                {
+                    opts.AutoReconnectEnabled = true;
+                    opts.MaxReconnectAttempts = maxAttempts;
+                    opts.InitialReconnectDelayMs = 5000;
+                },
+                time
+            );
 
         List<string> eventLog = [];
         Exception? disconnectedReason = null;
@@ -644,7 +677,9 @@ public class ObsWebSocketClientConnectionTests
 
         // Act & Assert
         ObsWebSocketException thrownException =
-            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() => client.ConnectAsync());
+            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
+                () => PumpAsync(client.ConnectAsync(), time)
+            );
 
         Assert.IsTrue(
             thrownException.Message.Contains($"Failed to connect after {maxAttempts} attempts")
@@ -773,14 +808,18 @@ public class ObsWebSocketClientConnectionTests
         const int minExpectedAttempts = 4;
         WebSocketException connectException = new("Network Error");
         using CancellationTokenSource cts = new(); // Token source to cancel the ConnectAsync call
+        FakeTimeProvider time = new();
         (ObsWebSocketClient? client, _, _, Mock<IWebSocketConnectionFactory>? mockFactory) =
-            BuildMockedInfrastructure(opts =>
-            {
-                opts.AutoReconnectEnabled = true;
-                opts.MaxReconnectAttempts = -1; // Infinite
-                opts.InitialReconnectDelayMs = 10;
-                opts.ReconnectBackoffMultiplier = 1.0; // Fixed delay for faster testing
-            });
+            BuildMockedInfrastructure(
+                opts =>
+                {
+                    opts.AutoReconnectEnabled = true;
+                    opts.MaxReconnectAttempts = -1; // Infinite
+                    opts.InitialReconnectDelayMs = 10;
+                    opts.ReconnectBackoffMultiplier = 1.0;
+                },
+                time
+            );
 
         int attemptCounter = 0;
         object counterLock = new();
@@ -813,18 +852,18 @@ public class ObsWebSocketClientConnectionTests
         // Act
         Task connectTask = client.ConnectAsync(cts.Token); // Pass the cancellation token
 
-        // Wait until enough attempts have occurred or task completes
-        Stopwatch sw = Stopwatch.StartNew();
-        while (
-            Volatile.Read(ref attemptCounter) < minExpectedAttempts
-            && sw.ElapsedMilliseconds < 2500
-            && !connectTask.IsCompleted
+        // Advance the fake clock until enough attempts have occurred or the task completes.
+        for (
+            int i = 0;
+            i < 2000
+                && Volatile.Read(ref attemptCounter) < minExpectedAttempts
+                && !connectTask.IsCompleted;
+            i++
         )
         {
-            await Task.Delay(25);
+            time.Advance(TimeSpan.FromMilliseconds(25));
+            await Task.Delay(1);
         }
-
-        sw.Stop();
 
         // Cancel the operation only if the loop didn't complete unexpectedly
         if (!connectTask.IsCompleted)

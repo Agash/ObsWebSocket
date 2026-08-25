@@ -33,6 +33,8 @@ internal static class ProtocolCodeGenerator
         Emitter.GenerateEventArgs(context, protocol);
         Emitter.GenerateClientEventInfrastructure(context, protocol);
         Emitter.GenerateWaitForEventHelper(context, protocol);
+        Emitter.GenerateEventStreams(context, protocol);
+        Emitter.GenerateBatchBuilder(context, protocol);
         Emitter.GenerateJsonSerializerContext(context, protocol);
         Emitter.GenerateMsgPackResolver(context, protocol);
 

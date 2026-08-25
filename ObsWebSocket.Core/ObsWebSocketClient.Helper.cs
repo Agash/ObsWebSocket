@@ -78,7 +78,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentSceneTransitionAsync(
-                    new SetCurrentSceneTransitionRequestData(transitionName),
+                    new SetCurrentSceneTransitionRequestData(transitionName: transitionName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -109,7 +109,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentProgramSceneAsync(
-                    new SetCurrentProgramSceneRequestData(sceneName),
+                    new SetCurrentProgramSceneRequestData(sceneName: sceneName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -118,7 +118,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentPreviewSceneAsync(
-                    new SetCurrentPreviewSceneRequestData(sceneName),
+                    new SetCurrentPreviewSceneRequestData(sceneName: sceneName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -162,8 +162,8 @@ public static partial class ObsWebSocketClientHelpers
 
         // --- Corrected Event Waiting Setup ---
         // We need separate task variables because Task<T> is not covariant.
-        Task<CurrentProgramSceneChangedEventArgs?>? programWaitTask = null;
-        Task<CurrentPreviewSceneChangedEventArgs?>? previewWaitTask = null;
+        Task<CurrentProgramSceneChangedEventArgs>? programWaitTask = null;
+        Task<CurrentPreviewSceneChangedEventArgs>? previewWaitTask = null;
         string eventDescription;
 
         if (switchToProgram)
@@ -208,50 +208,23 @@ public static partial class ObsWebSocketClientHelpers
                 eventDescription
             );
 
-            ObsEventArgs? eventArgs = null; // Use base type for the result variable
-
-            if (programWaitTask != null)
+            if (programWaitTask is not null)
             {
-                // Await the specific task type
-                eventArgs = await programWaitTask.ConfigureAwait(false);
+                _ = await programWaitTask.ConfigureAwait(false);
             }
-            else if (previewWaitTask != null)
+            else if (previewWaitTask is not null)
             {
-                // Await the specific task type
-                eventArgs = await previewWaitTask.ConfigureAwait(false);
+                _ = await previewWaitTask.ConfigureAwait(false);
             }
             else
             {
-                // Should not happen if logic is correct
                 throw new InvalidOperationException("Internal error: No wait task was assigned.");
             }
 
-            // Check the result (which is now correctly typed as ObsEventArgs?)
-            if (eventArgs == null) // WaitForEventAsync returns null on timeout or cancellation
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    client._logger.LogInformation(
-                        "SwitchSceneAndWaitAsync canceled while waiting for {EventDescription}.",
-                        eventDescription
-                    );
-                    cancellationToken.ThrowIfCancellationRequested(); // Ensure exception propagates
-                }
-                else
-                {
-                    throw new TimeoutException(
-                        $"Timed out ({effectiveTimeout.TotalSeconds}s) waiting for {eventDescription}."
-                    );
-                }
-            }
-            else
-            {
-                client._logger.LogInformation(
-                    "Successfully switched and confirmed {EventDescription}.",
-                    eventDescription
-                );
-            }
-            // ------------------------------------------
+            client._logger.LogInformation(
+                "Successfully switched and confirmed {EventDescription}.",
+                eventDescription
+            );
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -461,7 +434,7 @@ public static partial class ObsWebSocketClientHelpers
             GetSceneItemEnabledResponseData currentStateResponse =
                 await client
                     .GetSceneItemEnabledAsync(
-                        new GetSceneItemEnabledRequestData(sceneItemId, sceneName),
+                        new GetSceneItemEnabledRequestData(sceneItemId: sceneItemId, sceneName: sceneName),
                         cancellationToken: cancellationToken
                     )
                     .ConfigureAwait(false)
@@ -473,7 +446,11 @@ public static partial class ObsWebSocketClientHelpers
 
         await client
             .SetSceneItemEnabledAsync(
-                new SetSceneItemEnabledRequestData(sceneItemId, targetState, sceneName),
+                new SetSceneItemEnabledRequestData(
+                    sceneItemId: sceneItemId,
+                    sceneItemEnabled: targetState,
+                    sceneName: sceneName
+                ),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
@@ -506,7 +483,7 @@ public static partial class ObsWebSocketClientHelpers
         client.EnsureConnected();
 
         double? sceneItemId = await client
-            .TryGetSceneItemIdAsync(sceneName, sourceName, cancellationToken)
+            .FindSceneItemIdAsync(sceneName, sourceName, cancellationToken)
             .ConfigureAwait(false);
 
         return sceneItemId.HasValue
@@ -534,7 +511,25 @@ public static partial class ObsWebSocketClientHelpers
     /// <returns>A Task resulting in the nullable scene item ID (double?). Returns null if the item or scene is not found.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<double?> TryGetSceneItemIdAsync(
+    [Obsolete("Renamed to FindSceneItemIdAsync. Async methods cannot use the out-parameter Try pattern, so the Try prefix was misleading. This forwarder will be removed in a future release.")]
+    public static Task<double?> TryGetSceneItemIdAsync(
+        this ObsWebSocketClient client,
+        string sceneName,
+        string sourceName,
+        CancellationToken cancellationToken = default
+    ) => client.FindSceneItemIdAsync(sceneName, sourceName, cancellationToken);
+
+    /// <summary>
+    /// Returns the scene item id for a source within a scene, or <see langword="null"/> when the
+    /// scene does not contain it.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sceneName">The name of the scene to search.</param>
+    /// <param name="sourceName">The name of the source to locate.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The scene item id, or <see langword="null"/> if the source is not in the scene.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<double?> FindSceneItemIdAsync(
         this ObsWebSocketClient client,
         string sceneName,
         string sourceName,
@@ -1689,7 +1684,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentSceneCollectionAsync(
-                    new SetCurrentSceneCollectionRequestData(targetSceneCollectionName),
+                    new SetCurrentSceneCollectionRequestData(sceneCollectionName: targetSceneCollectionName),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -1753,7 +1748,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentProfileAsync(
-                    new SetCurrentProfileRequestData(targetProfileName),
+                    new SetCurrentProfileRequestData(profileName: targetProfileName),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -1830,7 +1825,7 @@ public static partial class ObsWebSocketClientHelpers
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromSeconds(10);
 
         // Set up the wait before issuing the command to avoid missing the event.
-        Task<VirtualcamStateChangedEventArgs?> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
+        Task<VirtualcamStateChangedEventArgs> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
             predicate: _ => true,
             timeout: effectiveTimeout,
             cancellationToken: cancellationToken);
@@ -1844,8 +1839,15 @@ public static partial class ObsWebSocketClientHelpers
             await client.StopVirtualCamAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        VirtualcamStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
-        return ev?.EventData.OutputActive;
+        try
+        {
+            VirtualcamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
+            return ev.EventData.OutputActive;
+        }
+        catch (TimeoutException)
+        {
+            return null;
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
@@ -109,7 +110,7 @@ internal static class ReadmeCompileCheck
     {
         await client.SwitchSceneAsync("Scene", cancellationToken: ct);
         _ = await client.SetSceneItemEnabledAsync("Scene", "Source", null, ct);
-        _ = await client.TryGetSceneItemIdAsync("Scene", "Source", ct);
+        _ = await client.FindSceneItemIdAsync("Scene", "Source", ct);
         await client.SetInputMutesAsync([("Mic", false), ("Desktop Audio", true)], ct);
         _ = await client.GetSourceScreenshotBytesAsync("Source", cancellationToken: ct);
         _ = await client.GetSourceScreenshotOnCanvasBytesAsync("Source", cancellationToken: ct);
@@ -126,5 +127,129 @@ internal static class ReadmeCompileCheck
             MyContext.Default.OverlaySettings,
             cancellationToken: ct
         );
+    }
+
+    internal static async Task EventStreamsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        await foreach (var e in client.CurrentProgramSceneChangedStream(cancellationToken: ct))
+        {
+            _ = e.EventData.SceneName;
+            break;
+        }
+
+        client.CurrentProgramSceneChanged += (_, e) => _ = e.EventData.SceneName;
+
+        _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(ct);
+        _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+            e => e.EventData.SceneName == "Intro",
+            TimeSpan.FromSeconds(5),
+            ct
+        );
+    }
+
+    internal static async Task TypedBatchAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        var results = await client.CallBatchAsync(
+            batch => batch
+                .GetVersion()
+                .SetCurrentProgramScene(new(sceneName: "Intro"))
+                .Sleep(new(sleepMillis: 100))
+                .SetInputMute(new() { InputName = "Mic", InputMuted = false }),
+            executionType: RequestBatchExecutionType.SerialRealtime,
+            haltOnFailure: false,
+            cancellationToken: ct
+        );
+
+        foreach (var result in results)
+        {
+            _ = $"{result.RequestType}: {result.RequestStatus.Result}";
+        }
+
+        ObsBatchBuilder batch2 = new();
+        _ = batch2.Add("GetStats").Add("SetInputSettings", System.Text.Json.JsonDocument.Parse("{}").RootElement);
+    }
+
+    internal static void TypedEnums(ObsWebSocketClient client)
+    {
+        client.StreamStateChanged += (_, e) =>
+        {
+            string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+            {
+                OutputState.Started => "live",
+                OutputState.Starting or OutputState.Reconnecting => "coming up",
+                OutputState.Stopped or OutputState.Stopping => "going down",
+                null => $"unrecognised ({e.EventData.OutputState})",
+                _ => "in between",
+            };
+
+            _ = what;
+        };
+    }
+
+    internal static async Task NewHelpersAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        await client.PlayMediaAsync("Stinger", ct);
+        await client.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+        _ = MediaInputAction.Play.ToWireValue();
+
+        _ = await client.SetRecordActiveAndWaitAsync(true, cancellationToken: ct);
+        _ = await client.SetStreamActiveAndWaitAsync(false, cancellationToken: ct);
+        _ = await client.IsRecordActiveAsync(ct);
+        _ = await client.IsStreamActiveAsync(ct);
+        _ = await client.SceneExistsAsync("Scene", ct);
+        _ = await client.FindSceneItemIdAsync("Scene", "Source", ct);
+        await client.SetInputVolumeDbAsync("Mic", -6, ct);
+        await client.SetInputVolumeMulAsync("Mic", 0.5, ct);
+    }
+
+    internal static async Task TypedBatchResultsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        var results = await client.CallBatchAsync(
+            batch => batch
+                .GetSceneItemList(new(sceneName: "Intro"))
+                .GetVersion()
+                .GetSceneItemList(new(sceneName: "Outro")),
+            cancellationToken: ct
+        );
+
+        var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
+        var version = results[1].GetRequiredData<GetVersionResponseData>();
+        var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
+        _ = (intro, version, outro);
+
+        if (!results.AllSucceeded())
+        {
+            foreach (var failed in results.GetFailures())
+            {
+                _ = $"{failed.RequestType}: {failed.RequestStatus.Comment}";
+            }
+        }
+
+        _ = results[0].GetData<GetSceneItemListResponseData>();
+    }
+
+    internal static async Task TypedErrorsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        try
+        {
+            await client.SetStudioModeEnabledAsync(new(true), ct);
+        }
+        catch (ObsWebSocketRequestException ex)
+        {
+            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+        }
+        catch (ObsWebSocketTimeoutException)
+        {
+            // No response within the request timeout.
+        }
+    }
+
+    internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
+    {
+        _ = services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"));
+        _ = services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"));
+        _ = ObsWebSocketDiagnostics.ActivitySourceName;
+        _ = ObsWebSocketDiagnostics.MeterName;
+        _ = ObsWebSocketResilience.ReconnectPipelineKey;
     }
 }

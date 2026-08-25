@@ -37,12 +37,8 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
-            _logger.LogError(
-                ex,
-                "JSON serialization failed for message with OpCode {OpCode}",
-                message.Op
-            );
-            throw new ObsWebSocketException("Serialization error", ex);
+            _logger.LogJsonSerializationFailedForMessageWithOpcode(ex, message.Op);
+            throw new ObsWebSocketSerializationException("Serialization error", ex);
         }
     }
 
@@ -55,7 +51,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         ArgumentNullException.ThrowIfNull(messageStream);
         if (messageStream.Length == 0)
         {
-            _logger.LogWarning("Attempted to deserialize an empty message stream.");
+            _logger.LogAttemptedToDeserializeAnEmptyMessageStream();
             return null;
         }
 
@@ -72,11 +68,11 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
 
             if (message is null)
             {
-                _logger.LogWarning("JSON deserialization resulted in null.");
+                _logger.LogJsonDeserializationResultedInNull();
             }
             else if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("Deserialized JSON message: Op={Op}", message.Op);
+                _logger.LogDeserializedJsonMessageOp(message.Op);
             } // Avoid logging potentially large payload
 
             return message;
@@ -86,16 +82,12 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
             messageStream.Position = 0;
             using StreamReader reader = new(messageStream, Encoding.UTF8, leaveOpen: true);
             string rawJson = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogError(
-                ex,
-                "JSON deserialization failed. Raw JSON: {RawJson}",
-                rawJson.Length > 1024 ? rawJson[..1024] + "..." : rawJson
-            );
+            _logger.LogJsonDeserializationFailedRawJson(ex, rawJson.Length > 1024 ? rawJson[..1024] + "..." : rawJson);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize message from stream.");
+            _logger.LogFailedToDeserializeMessageFromStream(ex);
             return null;
         }
     }
@@ -115,11 +107,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                     and not JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined }
             )
             {
-                _logger.LogWarning(
-                    "JSON Deserializer expected JsonElement payload but received {DataType} for {TargetType}.",
-                    rawPayloadData?.GetType().Name,
-                    typeof(TPayload).Name
-                );
+                _logger.LogJsonDeserializerExpectedJsonelementPayloadButReceived(rawPayloadData?.GetType().Name, typeof(TPayload).Name);
             }
 
             return default;
@@ -202,12 +190,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "JSON failed to deserialize payload to {TargetType}. Raw JSON: {Json}",
-                typeof(TPayload).Name,
-                jsonElement.GetRawText()
-            );
+            _logger.LogJsonFailedToDeserializePayloadToRaw(ex, typeof(TPayload).Name, jsonElement.GetRawText());
             return default;
         }
     }
@@ -227,11 +210,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                     and not JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined }
             )
             {
-                _logger.LogWarning(
-                    "JSON Deserializer expected JsonElement payload but received {DataType} for value type {TargetType}.",
-                    rawPayloadData?.GetType().Name,
-                    typeof(TPayload).Name
-                );
+                _logger.LogJsonDeserializerExpectedJsonelementPayloadButReceived2(rawPayloadData?.GetType().Name, typeof(TPayload).Name);
             }
 
             return default;
@@ -248,12 +227,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "JSON failed to deserialize payload to value type {TargetType}. Raw JSON: {Json}",
-                typeof(TPayload).Name,
-                jsonElement.GetRawText()
-            );
+            _logger.LogJsonFailedToDeserializePayloadToValue(ex, typeof(TPayload).Name, jsonElement.GetRawText());
             return default;
         }
     }

@@ -39,7 +39,7 @@ public class ObsWebSocketDiTests
         ServiceCollection services = CreateServiceCollectionWithLogging();
 
         // Act
-        _ = services.AddObsWebSocketClient(); // Register the client and its dependencies
+        _ = services.AddObsWebSocketClient(o => o.ServerUri = new Uri("ws://localhost:4455")); // Register the client and its dependencies
         ServiceProvider provider = services.BuildServiceProvider(); // Build the container
 
         // Assert
@@ -80,7 +80,7 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        _ = services.AddObsWebSocketClient(); // Use default options
+        _ = services.AddObsWebSocketClient(o => o.ServerUri = new Uri("ws://localhost:4455")); // Use default options
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -111,7 +111,11 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        _ = services.AddObsWebSocketClient(options => options.Format = SerializationFormat.Json); // Explicitly configure JSON
+        _ = services.AddObsWebSocketClient(options =>
+        {
+            options.ServerUri = new Uri("ws://localhost:4455");
+            options.Format = SerializationFormat.Json;
+        }); // Explicitly configure JSON
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -138,7 +142,11 @@ public class ObsWebSocketDiTests
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        _ = services.AddObsWebSocketClient(options => options.Format = SerializationFormat.MsgPack); // Configure MsgPack
+        _ = services.AddObsWebSocketClient(options =>
+        {
+            options.ServerUri = new Uri("ws://localhost:4455");
+            options.Format = SerializationFormat.MsgPack;
+        }); // Configure MsgPack
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -183,7 +191,7 @@ public class ObsWebSocketDiTests
         {
             options.ServerUri = testUri;
             options.Password = testPassword;
-            options.EventSubscriptions = (uint)testSubs;
+            options.EventSubscriptions = testSubs;
             options.HandshakeTimeoutMs = testHandshakeTimeout;
             options.RequestTimeoutMs = testRequestTimeout;
             options.Format = SerializationFormat.MsgPack; // Test non-default format
@@ -203,7 +211,7 @@ public class ObsWebSocketDiTests
         ObsWebSocketClientOptions optionsValue = resolvedOptions.Value;
         Assert.AreEqual(testUri, optionsValue.ServerUri);
         Assert.AreEqual(testPassword, optionsValue.Password);
-        Assert.AreEqual((uint)testSubs, optionsValue.EventSubscriptions);
+        Assert.AreEqual(testSubs, optionsValue.EventSubscriptions);
         Assert.AreEqual(testHandshakeTimeout, optionsValue.HandshakeTimeoutMs);
         Assert.AreEqual(testRequestTimeout, optionsValue.RequestTimeoutMs);
         Assert.AreEqual(SerializationFormat.MsgPack, optionsValue.Format);
@@ -225,7 +233,7 @@ public class ObsWebSocketDiTests
         ServiceCollection services = CreateServiceCollectionWithLogging();
 
         // Act
-        _ = services.AddObsWebSocketClient(); // Call without configuration action
+        _ = services.AddObsWebSocketClient(o => o.ServerUri = new Uri("ws://localhost:4455")); // Call without configuration action
         ServiceProvider provider = services.BuildServiceProvider();
         IOptions<ObsWebSocketClientOptions>? resolvedOptions = provider.GetService<
             IOptions<ObsWebSocketClientOptions>
@@ -234,7 +242,7 @@ public class ObsWebSocketDiTests
         // Assert
         Assert.IsNotNull(resolvedOptions?.Value);
         ObsWebSocketClientOptions optionsValue = resolvedOptions.Value;
-        Assert.IsNull(optionsValue.ServerUri, "Default ServerUri should be null.");
+        Assert.AreEqual(new Uri("ws://localhost:4455"), optionsValue.ServerUri);
         Assert.IsNull(optionsValue.Password, "Default Password should be null.");
         Assert.IsNull(
             optionsValue.EventSubscriptions,
@@ -254,29 +262,28 @@ public class ObsWebSocketDiTests
     }
 
     /// <summary>
-    /// Verifies that attempting to connect without setting ServerUri in options throws ArgumentNullException.
+    /// Verifies that omitting ServerUri fails when the client is resolved, rather than later
+    /// when a connection is attempted.
     /// </summary>
     [TestMethod]
-    [Timeout(1000)] // Short timeout as it should fail quickly
-    public async Task ConnectAsync_WithOptions_RequiresServerUri()
+    [Timeout(1000)]
+    public void Resolve_WithoutServerUri_FailsValidation()
     {
-        // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();
-        // Configure *without* setting ServerUri
         _ = services.AddObsWebSocketClient(opts =>
         {
             opts.Password = "abc";
         });
         ServiceProvider provider = services.BuildServiceProvider();
-        ObsWebSocketClient client = provider.GetRequiredService<ObsWebSocketClient>();
 
-        // Act & Assert
-        // Expect ArgumentNullException when ConnectAsync is called without ServerUri
-        ArgumentNullException ex = await Assert.ThrowsExactlyAsync<ArgumentNullException>(() =>
-            client.ConnectAsync()
+        OptionsValidationException ex = Assert.ThrowsExactly<OptionsValidationException>(() =>
+            provider.GetRequiredService<ObsWebSocketClient>()
         );
-        // Verify the exception parameter name points to the missing option
-        Assert.AreEqual("ServerUri", ex.ParamName);
+
+        Assert.IsTrue(
+            ex.Failures.Any(f => f.Contains("ServerUri", StringComparison.Ordinal)),
+            "validation should name the missing option"
+        );
     }
 }
 

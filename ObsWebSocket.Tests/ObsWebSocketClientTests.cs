@@ -98,7 +98,7 @@ public partial class ObsWebSocketClientTests
         ];
 
         // Act
-        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(async () =>
+        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(async () =>
             await client.CallBatchAsync(requests)
         );
 
@@ -367,7 +367,7 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Act & Assert
-        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(
             async () => await client.CallBatchAsync(requests, timeoutMs: timeoutMs) // Use the timeout override
         );
 

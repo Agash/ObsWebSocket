@@ -442,7 +442,7 @@ public class ObsWebSocketClientRequestTests
 
         // Act & Assert
         // Verify that calling the client method throws the correct exception
-        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
+        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(
             async () => await client.GetVersionAsync() // Call the specific extension method
         );
 

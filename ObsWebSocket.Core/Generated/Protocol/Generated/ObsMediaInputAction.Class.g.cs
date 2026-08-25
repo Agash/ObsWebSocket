@@ -18,7 +18,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE";
 
     /// <summary>
     /// Play the media input.
@@ -28,7 +28,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY";
 
     /// <summary>
     /// Pause the media input.
@@ -38,7 +38,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE";
 
     /// <summary>
     /// Stop the media input.
@@ -48,7 +48,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP";
 
     /// <summary>
     /// Restart the media input.
@@ -58,7 +58,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART";
 
     /// <summary>
     /// Go to the next playlist item.
@@ -68,7 +68,7 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT";
 
     /// <summary>
     /// Go to the previous playlist item.
@@ -78,6 +78,6 @@ public static class ObsMediaInputAction
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS";
+    public const string OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS = "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS";
 
 }

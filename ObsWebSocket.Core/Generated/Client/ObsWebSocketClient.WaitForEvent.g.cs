@@ -38,7 +38,7 @@ public static partial class ObsWebSocketClientHelpers
     /// <exception cref="ArgumentNullException">Thrown if client or predicate is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="NotSupportedException">Thrown if waiting for the specified <typeparamref name="TEventArgs"/> type is not supported (e.g., no corresponding event found in the protocol).</exception>
-    public static async Task<TEventArgs?> WaitForEventAsync<TEventArgs>(
+    public static async Task<TEventArgs> WaitForEventAsync<TEventArgs>(
         this ObsWebSocketClient client,
         Func<TEventArgs, bool> predicate,
         TimeSpan timeout,
@@ -50,10 +50,10 @@ public static partial class ObsWebSocketClientHelpers
         client.EnsureConnected(); // Checks if connection is active
 
         // Use RunContinuationsAsynchronously to avoid potential deadlocks if predicate runs synchronously
-        TaskCompletionSource<TEventArgs?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<TEventArgs> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         // Link the external token with our internal timeout token
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedCts.CancelAfter(timeout); // Apply timeout
+        linkedCts.CancelAfterUsing(client._timeProvider, timeout);
 
         Action? unsubscribeAction = null; // Delegate to hold the unsubscribe logic
 
@@ -70,7 +70,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -91,7 +91,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -112,7 +112,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -133,7 +133,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -154,7 +154,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -175,7 +175,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -196,7 +196,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -217,7 +217,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -238,7 +238,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -259,7 +259,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -280,7 +280,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -301,7 +301,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -322,7 +322,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -343,7 +343,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -364,7 +364,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -385,7 +385,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -406,7 +406,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -427,7 +427,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -448,7 +448,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -469,7 +469,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -490,7 +490,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -511,7 +511,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -532,7 +532,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -553,7 +553,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -574,7 +574,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -595,7 +595,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -616,7 +616,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -637,7 +637,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -658,7 +658,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -679,7 +679,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -700,7 +700,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -721,7 +721,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -742,7 +742,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -763,7 +763,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -784,7 +784,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -805,7 +805,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -826,7 +826,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -847,7 +847,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -868,7 +868,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -889,7 +889,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -910,7 +910,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -931,7 +931,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -952,7 +952,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -973,7 +973,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -994,7 +994,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1015,7 +1015,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1036,7 +1036,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1057,7 +1057,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1078,7 +1078,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1099,7 +1099,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1120,7 +1120,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1141,7 +1141,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1162,7 +1162,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1183,7 +1183,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1204,7 +1204,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1225,7 +1225,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1246,7 +1246,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1267,7 +1267,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1288,7 +1288,7 @@ public static partial class ObsWebSocketClientHelpers
                         {
                             if (predicate((TEventArgs)(object)e))
                             {
-                                tcs.TrySetResult((TEventArgs?)(object?)e);
+                                tcs.TrySetResult((TEventArgs)(object)e);
                             }
                         }
                         catch (Exception ex)
@@ -1311,14 +1311,16 @@ public static partial class ObsWebSocketClientHelpers
             // If the TCS was set with an exception (e.g., from predicate), awaiting here will rethrow it.
             return await tcs.Task;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            tcs.TrySetCanceled(cancellationToken);
+            throw;
+        }
         catch (OperationCanceledException) when (linkedCts.IsCancellationRequested)
         {
-            // Timeout occurred or external cancellation token was triggered
-            // Log level Debug is appropriate as timeout/cancellation can be expected conditions
-            client._logger.LogDebug("WaitForEventAsync<{EventType}> timed out or was canceled.", typeof(TEventArgs).Name);
-            // Ensure the TaskCompletionSource reflects the cancellation
+            client._logger.LogDebug("WaitForEventAsync<{EventType}> timed out after {Timeout}.", typeof(TEventArgs).Name, timeout);
             tcs.TrySetCanceled(linkedCts.Token);
-            return null; // Return null as per method contract for timeout/cancellation
+            throw new TimeoutException($"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.");
         }
         catch (Exception ex)
         {
