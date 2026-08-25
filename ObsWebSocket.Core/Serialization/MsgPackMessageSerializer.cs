@@ -40,20 +40,12 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (MessagePackSerializationException ex)
         {
-            _logger.LogError(
-                ex,
-                "MessagePack serialization failed for message with OpCode {OpCode}",
-                message.Op
-            );
+            _logger.LogMessagepackSerializationFailedForMessageWithOpcode(ex, message.Op);
             throw new ObsWebSocketException("MessagePack serialization error", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Unexpected error during MessagePack serialization for OpCode {OpCode}",
-                message.Op
-            );
+            _logger.LogUnexpectedErrorDuringMessagepackSerializationForOpcode(ex, message.Op);
             throw new ObsWebSocketException("Unexpected serialization error", ex);
         }
     }
@@ -72,7 +64,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
         if (messageStream.Length == 0)
         {
-            _logger.LogWarning("Attempted to deserialize an empty message stream.");
+            _logger.LogAttemptedToDeserializeAnEmptyMessageStream();
             return null;
         }
 
@@ -86,19 +78,19 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("Deserialized MessagePack message: Op={Op}", message.Op);
+                _logger.LogDeserializedMessagepackMessageOp(message.Op);
             }
 
             return message;
         }
         catch (MessagePackSerializationException ex)
         {
-            _logger.LogError(ex, "MessagePack deserialization failed.");
+            _logger.LogMessagepackDeserializationFailed(ex);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize message from stream.");
+            _logger.LogFailedToDeserializeMessageFromStream(ex);
             return null;
         }
     }
@@ -131,12 +123,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "MessagePack failed to deserialize payload object to {TargetType}. Object Type: {ObjectType}",
-                typeof(TPayload).Name,
-                rawPayloadData.GetType().Name
-            );
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo(ex, typeof(TPayload).Name, rawPayloadData.GetType().Name);
             return default;
         }
     }
@@ -156,12 +143,7 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "MessagePack failed to deserialize payload object to value type {TargetType}. Object Type: {ObjectType}",
-                typeof(TPayload).Name,
-                rawPayloadData.GetType().Name
-            );
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo2(ex, typeof(TPayload).Name, rawPayloadData.GetType().Name);
             return default;
         }
     }

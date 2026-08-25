@@ -528,6 +528,7 @@ public class ObsWebSocketClientEventTests
     {
         // Arrange
         Mock<ILogger<ObsWebSocketClient>> mockLogger = new();
+        _ = mockLogger.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         Mock<IWebSocketMessageSerializer> mockSerializer = new(MockBehavior.Strict); // Use Strict for serializer too
         (ObsWebSocketClient? client, Mock<IWebSocketConnection>? mockWebSocket, _, _) =
             TestUtils.BuildMockedClientInfrastructure(existingSerializerMock: mockSerializer);
@@ -635,6 +636,7 @@ public class ObsWebSocketClientEventTests
     {
         // Arrange
         Mock<ILogger<ObsWebSocketClient>> mockLogger = new();
+        _ = mockLogger.Setup(l => l.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         Mock<IWebSocketMessageSerializer> mockSerializer = new(MockBehavior.Strict);
         (ObsWebSocketClient? client, Mock<IWebSocketConnection>? mockWebSocket, _, _) =
             TestUtils.BuildMockedClientInfrastructure(existingSerializerMock: mockSerializer);

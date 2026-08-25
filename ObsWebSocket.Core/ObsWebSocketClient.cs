@@ -192,10 +192,7 @@ public sealed partial class ObsWebSocketClient(
             );
         }
 
-        _logger.LogInformation(
-            "Starting connection sequence for {Uri}...",
-            currentOptions.ServerUri
-        );
+        _logger.LogStartingConnectionSequenceFor(currentOptions.ServerUri);
 
         try
         {
@@ -213,11 +210,11 @@ public sealed partial class ObsWebSocketClient(
                 .ConfigureAwait(false);
 
             // If TCS completed successfully, connection is established.
-            _logger.LogInformation("ConnectAsync initial connection confirmed successfully.");
+            _logger.LogConnectasyncInitialConnectionConfirmedSuccessfully();
         }
         catch (Exception ex) // Catches exceptions set on the TCS or cancellation
         {
-            _logger.LogError(ex, "ConnectAsync failed to establish initial connection.");
+            _logger.LogConnectasyncFailedToEstablishInitialConnection(ex);
             // Ensure finalization happens if the TCS faulted, loop might still be running/cleaning up
             if (
                 _connectionState
@@ -264,10 +261,7 @@ public sealed partial class ObsWebSocketClient(
                 )
                 .ConfigureAwait(false);
 
-            _logger.LogDebug(
-                "Waiting for Identified after Reidentify (Timeout: {TimeoutMs}ms)...",
-                effectiveTimeout
-            );
+            _logger.LogWaitingForIdentifiedAfterReidentifyTimeoutMs(effectiveTimeout);
             object identifiedMessageObj = await WaitForHandshakeMessageAsync(
                     _identifiedTcs,
                     effectiveTimeout,
@@ -281,10 +275,7 @@ public sealed partial class ObsWebSocketClient(
                 "Identified (after Reidentify)"
             );
 
-            _logger.LogInformation(
-                "Re-identification successful. RPC Version: {RpcVersion}",
-                identifiedPayload.NegotiatedRpcVersion
-            );
+            _logger.LogReIdentificationSuccessfulRpcVersion(identifiedPayload.NegotiatedRpcVersion);
 
             NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
             CurrentEventSubscriptions = eventSubscriptions; // Store the flags that were just acknowledged
@@ -292,7 +283,7 @@ public sealed partial class ObsWebSocketClient(
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(ex, "ReidentifyAsync failed.");
+            _logger.LogReidentifyasyncFailed(ex);
             _ = (_identifiedTcs?.TrySetException(ex));
             throw ex is ObsWebSocketException or OperationCanceledException
                 ? ex
@@ -300,7 +291,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
-            _logger.LogWarning("ReidentifyAsync canceled due to client shutdown.");
+            _logger.LogReidentifyasyncCanceledDueToClientShutdown();
             _ = (_identifiedTcs?.TrySetCanceled(_clientLifetimeCts.Token));
             throw;
         }
@@ -309,6 +300,32 @@ public sealed partial class ObsWebSocketClient(
             _identifiedTcs = null;
         }
     }
+
+    /// <summary>
+    /// Sends a request whose successful response is expected to carry data, and returns it.
+    /// </summary>
+    /// <typeparam name="TResponse">The expected response data type.</typeparam>
+    /// <param name="requestType">The OBS request type string.</param>
+    /// <param name="requestData">The request payload, or <see langword="null"/>.</param>
+    /// <param name="timeoutMs">Optional override for the request timeout.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The response data.</returns>
+    /// <exception cref="ObsWebSocketException">
+    /// Thrown if the request fails, or if OBS reports success without the expected data.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task<TResponse> CallRequiredAsync<TResponse>(
+        string requestType,
+        object? requestData = null,
+        int? timeoutMs = null,
+        CancellationToken cancellationToken = default
+    )
+        where TResponse : class =>
+        await CallAsync<TResponse>(requestType, requestData, timeoutMs, cancellationToken)
+            .ConfigureAwait(false)
+        ?? throw new ObsWebSocketException(
+            $"OBS reported success for '{requestType}' but returned no {typeof(TResponse).Name} payload."
+        );
 
     /// <summary>
     /// Sends a request to the OBS WebSocket server and awaits its response.
@@ -382,12 +399,7 @@ public sealed partial class ObsWebSocketClient(
 
             int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
 
-            _logger.LogDebug(
-                "Waiting for Response {RequestId} ({RequestType}, Timeout: {TimeoutMs}ms)...",
-                requestId,
-                requestType,
-                effectiveTimeout
-            );
+            _logger.LogWaitingForResponseTimeoutMs(requestId, requestType, effectiveTimeout);
 
             object responseObj = await WaitForResponseAsync(
                     tcs,
@@ -416,12 +428,7 @@ public sealed partial class ObsWebSocketClient(
             ObsWebSocketDiagnostics.RequestsFailed.Add(1, requestTags);
             _ = activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
-            _logger.LogError(
-                ex,
-                "CallAsync failed for {RequestType} ({RequestId})",
-                requestType,
-                requestId
-            );
+            _logger.LogCallasyncFailedFor(ex, requestType, requestId);
 
             _ = tcs.TrySetException(ex); // Ensure TCS is completed on failure
 
@@ -429,11 +436,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
-            _logger.LogWarning(
-                "CallAsync for {RequestType} ({RequestId}) canceled.",
-                requestType,
-                requestId
-            );
+            _logger.LogCallasyncForCanceled(requestType, requestId);
 
             _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
 
@@ -500,12 +503,7 @@ public sealed partial class ObsWebSocketClient(
                 .ConfigureAwait(false);
 
             int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
-            _logger.LogDebug(
-                "Waiting for Response {RequestId} ({RequestType}, Timeout: {TimeoutMs}ms)...",
-                requestId,
-                requestType,
-                effectiveTimeout
-            );
+            _logger.LogWaitingForResponseTimeoutMs(requestId, requestType, effectiveTimeout);
 
             object responseObj = await WaitForResponseAsync(
                     tcs,
@@ -532,12 +530,7 @@ public sealed partial class ObsWebSocketClient(
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(
-                ex,
-                "CallAsyncValue failed for {RequestType} ({RequestId})",
-                requestType,
-                requestId
-            );
+            _logger.LogCallasyncvalueFailedFor(ex, requestType, requestId);
             _ = tcs.TrySetException(ex);
             throw ex is ObsWebSocketException
                 ? ex
@@ -545,11 +538,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
-            _logger.LogWarning(
-                "CallAsyncValue for {RequestType} ({RequestId}) canceled.",
-                requestType,
-                requestId
-            );
+            _logger.LogCallasyncvalueForCanceled(requestType, requestId);
             _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
             throw;
         }
@@ -573,6 +562,16 @@ public sealed partial class ObsWebSocketClient(
         Debug.Assert(_clientLifetimeCts != null);
 
         string batchRequestId = Guid.NewGuid().ToString();
+
+        using Activity? activity = ObsWebSocketDiagnostics.ActivitySource.StartActivity(
+            "obsws batch",
+            ActivityKind.Client
+        );
+        _ = activity?.SetTag("obsws.request_id", batchRequestId);
+
+        long startedAt = _timeProvider.GetTimestamp();
+        TagList batchTags = new() { { "obsws.request_type", "RequestBatch" } };
+
         TaskCompletionSource<object> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         List<RequestPayload> requestPayloads = [];
         int index = 0;
@@ -597,7 +596,7 @@ public sealed partial class ObsWebSocketClient(
 
         if (requestPayloads.Count == 0)
         {
-            _logger.LogWarning("Empty batch request.");
+            _logger.LogEmptyBatchRequest();
             return [];
         }
 
@@ -632,12 +631,7 @@ public sealed partial class ObsWebSocketClient(
                     (baseTimeout * DefaultBatchTimeoutMultiplier)
                     + (baseTimeout * requestPayloads.Count / 2)
                 );
-            _logger.LogDebug(
-                "Waiting for Batch Response {BatchRequestId} ({RequestCount}, Timeout: {TimeoutMs}ms)...",
-                batchRequestId,
-                requestPayloads.Count,
-                effectiveTimeout
-            );
+            _logger.LogWaitingForBatchResponseTimeoutMs(batchRequestId, requestPayloads.Count, effectiveTimeout);
 
             object responseObj = await WaitForResponseAsync(
                     tcs,
@@ -650,21 +644,24 @@ public sealed partial class ObsWebSocketClient(
                 RequestBatchResponsePayload<object>
             >(responseObj, "RequestBatchResponse");
 
-            _logger.LogDebug(
-                "Received Batch Response {BatchRequestId} ({ResultCount} results).",
-                batchRequestId,
-                response.Results.Count
+            _logger.LogReceivedBatchResponseResults(batchRequestId, response.Results.Count);
+
+            _ = activity?.SetTag("obsws.batch.size", requestPayloads.Count);
+            ObsWebSocketDiagnostics.RequestsSent.Add(1, batchTags);
+            ObsWebSocketDiagnostics.RequestDuration.Record(
+                _timeProvider.GetElapsedTime(startedAt).TotalMilliseconds,
+                batchTags
             );
+
             return response.Results;
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(
-                ex,
-                "CallBatchAsync failed for batch {BatchRequestId}",
-                batchRequestId
-            );
+            ObsWebSocketDiagnostics.RequestsFailed.Add(1, batchTags);
+            _ = activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
+            _logger.LogCallbatchasyncFailedForBatch(ex, batchRequestId);
             _ = tcs.TrySetException(ex);
             throw ex is ObsWebSocketException
                 ? ex
@@ -672,7 +669,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
         {
-            _logger.LogWarning("CallBatchAsync for {BatchRequestId} canceled.", batchRequestId);
+            _logger.LogCallbatchasyncForCanceled(batchRequestId);
             _ = tcs.TrySetCanceled(_clientLifetimeCts.Token);
             throw;
         }
@@ -696,15 +693,12 @@ public sealed partial class ObsWebSocketClient(
         {
             if (_connectionState is ConnectionState.Disconnected or ConnectionState.Disconnecting)
             {
-                _logger.LogDebug(
-                    "DisconnectAsync ignored, already {ConnectionState}.",
-                    _connectionState
-                );
+                _logger.LogDisconnectasyncIgnoredAlready(_connectionState);
                 return;
             }
 
             startedDisconnect = true;
-            _logger.LogInformation("DisconnectAsync initiating graceful shutdown...");
+            _logger.LogDisconnectasyncInitiatingGracefulShutdown();
             _connectionState = ConnectionState.Disconnecting;
             IsConnected = false;
             _clientLifetimeCts?.Cancel();
@@ -713,7 +707,7 @@ public sealed partial class ObsWebSocketClient(
 
         if (startedDisconnect && loopTaskToWait != null)
         {
-            _logger.LogDebug("Waiting for connection loop task to complete during disconnect...");
+            _logger.LogWaitingForConnectionLoopTaskToComplete();
             try
             {
                 using CancellationTokenSource combinedWaitCts =
@@ -722,19 +716,15 @@ public sealed partial class ObsWebSocketClient(
                 await loopTaskToWait
                     .WaitAsync(combinedWaitCts.Token)
                     .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-                _logger.LogDebug(
-                    "Connection loop task completed or wait timed out/canceled during DisconnectAsync."
-                );
+                _logger.LogConnectionLoopTaskCompletedOrWaitTimed();
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning(
-                    "Wait for connection loop task timed out or canceled during DisconnectAsync."
-                );
+                _logger.LogWaitForConnectionLoopTaskTimedOut();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception from connection loop task during DisconnectAsync.");
+                _logger.LogExceptionFromConnectionLoopTaskDuringDisconnectasync(ex);
             }
         }
 
@@ -746,7 +736,7 @@ public sealed partial class ObsWebSocketClient(
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        _logger.LogDebug("DisposeAsync called.");
+        _logger.LogDisposeasyncCalled();
         await DisconnectAsync(
                 WebSocketCloseStatus.NormalClosure,
                 "Client disposing",
@@ -754,7 +744,7 @@ public sealed partial class ObsWebSocketClient(
             )
             .ConfigureAwait(false);
         GC.SuppressFinalize(this);
-        _logger.LogDebug("DisposeAsync completed.");
+        _logger.LogDisposeasyncCompleted();
     }
 
     #endregion
@@ -814,10 +804,7 @@ public sealed partial class ObsWebSocketClient(
                             || (maxAttempts >= 0 && (attempt - 1) >= maxAttempts)
                         )
                         {
-                            _logger.LogWarning(
-                                "Max reconnect attempts ({MaxAttempts}) reached or auto-reconnect disabled. Stopping.",
-                                maxAttempts
-                            );
+                            _logger.LogMaxReconnectAttemptsReachedOrAutoReconnect(maxAttempts);
                             _completionException = new ObsWebSocketException(
                                 $"Failed to connect after {attempt - 1} attempts.",
                                 _completionException
@@ -826,12 +813,7 @@ public sealed partial class ObsWebSocketClient(
                             break;
                         }
 
-                        _logger.LogInformation(
-                            "Reconnecting attempt {AttemptNumber}/{MaxAttempts} after {DelayMs}ms...",
-                            attempt,
-                            maxAttempts < 0 ? "Infinite" : maxAttempts,
-                            currentDelayMs
-                        );
+                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts, currentDelayMs);
                         ObsWebSocketDiagnostics.Reconnects.Add(1);
                         await Task.Delay(TimeSpan.FromMilliseconds(currentDelayMs), _timeProvider, loopToken)
                             .ConfigureAwait(false);
@@ -858,10 +840,7 @@ public sealed partial class ObsWebSocketClient(
                     {
                         if (_connectionState == ConnectionState.Disconnecting)
                         {
-                            _logger.LogInformation(
-                                "Connected (Attempt {AttemptNumber}), but disconnect requested. Aborting.",
-                                attempt
-                            );
+                            _logger.LogConnectedAttemptButDisconnectRequestedAborting(attempt);
                             previousWebSocket = currentWebSocket;
                             _webSocket = null;
                             _completionException = new TaskCanceledException(
@@ -881,46 +860,31 @@ public sealed partial class ObsWebSocketClient(
                             _receiveTask != null,
                             "Receive task should have been started by successful TryConnectAndIdentifyAsync."
                         );
-                        _logger.LogDebug(
-                            "[Attempt:{AttemptNumber}] Handshake complete, receive loop is running.",
-                            attempt
-                        );
+                        _logger.LogAttemptHandshakeCompleteReceiveLoopIsRunning(attempt);
                     }
 
                     RaiseConnectedEvent();
-                    _logger.LogInformation(
-                        "Successfully connected and identified (Attempt {AttemptNumber}).",
-                        attempt
-                    );
+                    _logger.LogSuccessfullyConnectedAndIdentifiedAttempt(attempt);
                     _completionException = null;
                     _ = initialTcs.TrySetResult(); // Signal successful initial connection
                     attempt = 0; // Reset attempt count only on full success
                     currentDelayMs = options.InitialReconnectDelayMs;
 
                     Debug.Assert(_receiveTask != null);
-                    _logger.LogDebug(
-                        "Connection established. Waiting for receive loop completion or cancellation..."
-                    );
+                    _logger.LogConnectionEstablishedWaitingForReceiveLoopCompletion();
                     await _receiveTask.WaitAsync(loopToken).ConfigureAwait(false); // Wait for disconnect/shutdown
-                    _logger.LogDebug("Receive loop task completed while connected.");
+                    _logger.LogReceiveLoopTaskCompletedWhileConnected();
                 }
                 catch (OperationCanceledException ex) when (loopToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation(
-                        "Connection loop canceled (Attempt {AttemptNumber}).",
-                        attempt
-                    );
+                    _logger.LogConnectionLoopCanceledAttempt(attempt);
                     attemptException = ex;
                     _ = initialTcs.TrySetCanceled(loopToken); // Signal cancellation
                     break;
                 }
                 catch (AuthenticationFailureException authEx)
                 {
-                    _logger.LogError(
-                        authEx,
-                        "Authentication failed (Attempt {AttemptNumber}). Stopping.",
-                        attempt
-                    );
+                    _logger.LogAuthenticationFailedAttemptStopping(authEx, attempt);
                     attemptException = authEx;
                     RaiseAuthenticationFailureEvent(options.ServerUri!, attempt, authEx);
                     _ = initialTcs.TrySetException(authEx); // Signal auth failure
@@ -928,11 +892,7 @@ public sealed partial class ObsWebSocketClient(
                 }
                 catch (ConnectionAttemptFailedException connEx)
                 {
-                    _logger.LogWarning(
-                        connEx.InnerException ?? connEx,
-                        "Connect attempt {AttemptNumber} failed. Retrying...",
-                        attempt
-                    );
+                    _logger.LogConnectAttemptFailedRetrying(connEx.InnerException ?? connEx, attempt);
                     attemptException = connEx;
                     RaiseConnectionFailedEvent(options.ServerUri!, attempt, connEx);
                     // Only fail initial TCS if retries are disabled or exhausted on the *first* attempt
@@ -946,11 +906,7 @@ public sealed partial class ObsWebSocketClient(
                 }
                 catch (WebSocketException wsEx)
                 {
-                    _logger.LogWarning(
-                        wsEx,
-                        "WebSocketException during connection/receive (Attempt {AttemptNumber}). Retrying...",
-                        attempt
-                    );
+                    _logger.LogWebsocketexceptionDuringConnectionReceiveAttemptRetrying(wsEx, attempt);
                     attemptException = wsEx;
                     RaiseConnectionFailedEvent(options.ServerUri!, attempt, wsEx);
                     if (
@@ -965,11 +921,7 @@ public sealed partial class ObsWebSocketClient(
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
-                        ex,
-                        "Unexpected error in connection loop (Attempt {AttemptNumber}). Retrying...",
-                        attempt
-                    );
+                    _logger.LogUnexpectedErrorInConnectionLoopAttemptRetrying(ex, attempt);
                     attemptException = ex;
                     RaiseConnectionFailedEvent(options.ServerUri!, attempt, ex);
                     if (
@@ -1014,10 +966,7 @@ public sealed partial class ObsWebSocketClient(
 
                         if (isConnectedThisAttempt && attemptException != null)
                         {
-                            _logger.LogWarning(
-                                "Connection lost during connected state due to: {ErrorType}",
-                                attemptException.GetType().Name
-                            );
+                            _logger.LogConnectionLostDuringConnectedStateDueTo(attemptException.GetType().Name);
                         }
                     }
                 }
@@ -1025,13 +974,13 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "Catastrophic error in ConnectionLoopAsync.");
+            _logger.LogCatastrophicErrorInConnectionloopasync(ex);
             _completionException = ex;
             _ = initialTcs.TrySetException(ex); // Ensure TCS is faulted
         }
         finally
         {
-            _logger.LogInformation("Exited connection loop. Finalizing state.");
+            _logger.LogExitedConnectionLoopFinalizingState();
             // If the loop exited without success/explicit failure setting the initial TCS, fail it now.
             _ = initialTcs.TrySetException(
                 _completionException
@@ -1077,11 +1026,7 @@ public sealed partial class ObsWebSocketClient(
                 }
                 catch (ArgumentException ex)
                 {
-                    _logger.LogWarning(
-                        ex,
-                        "Attempted duplicate subprotocol add: {SubProtocol}",
-                        _serializer.ProtocolSubProtocol
-                    );
+                    _logger.LogAttemptedDuplicateSubprotocolAdd(ex, _serializer.ProtocolSubProtocol);
                 }
             }
 
@@ -1089,7 +1034,7 @@ public sealed partial class ObsWebSocketClient(
             using CancellationTokenSource connectTimeoutCts = new(options.HandshakeTimeoutMs);
             using CancellationTokenSource linkedConnectCts =
                 CancellationTokenSource.CreateLinkedTokenSource(ct, connectTimeoutCts.Token);
-            _logger.LogDebug("[Attempt:{AttemptNumber}] Connecting...", attempt);
+            _logger.LogAttemptConnecting(attempt);
             try
             {
                 await ws.ConnectAsync(options.ServerUri!, linkedConnectCts.Token)
@@ -1109,11 +1054,7 @@ public sealed partial class ObsWebSocketClient(
                 );
             }
 
-            _logger.LogInformation(
-                "[Attempt:{AttemptNumber}] WebSocket connection established. Protocol: {SubProtocol}",
-                attempt,
-                ws.SubProtocol ?? "(None)"
-            );
+            _logger.LogAttemptWebsocketConnectionEstablishedProtocol(attempt, ws.SubProtocol ?? "(None)");
 
             // --- Start Receive Loop *before* Handshake ---
             localReceiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -1122,13 +1063,10 @@ public sealed partial class ObsWebSocketClient(
                 () => ReceiveLoopAsync(localReceiveCts.Token),
                 localReceiveCts.Token
             ); // TCS are now initialized before this runs
-            _logger.LogDebug(
-                "[Attempt:{AttemptNumber}] Receive loop started for handshake.",
-                attempt
-            );
+            _logger.LogAttemptReceiveLoopStartedForHandshake(attempt);
 
             // --- Handshake ---
-            _logger.LogDebug("[Attempt:{AttemptNumber}] Waiting for Hello...", attempt);
+            _logger.LogAttemptWaitingForHello(attempt);
             object helloMsgObj = await WaitForHandshakeMessageAsync(
                     _helloTcs,
                     options.HandshakeTimeoutMs,
@@ -1141,15 +1079,11 @@ public sealed partial class ObsWebSocketClient(
                 helloMsgObj,
                 "Hello"
             );
-            _logger.LogDebug(
-                "[Attempt:{AttemptNumber}] Received Hello. RPC Version: {RpcVersion}",
-                attempt,
-                helloPayload.RpcVersion
-            );
+            _logger.LogAttemptReceivedHelloRpcVersion(attempt, helloPayload.RpcVersion);
             string? authResponse = null;
             if (helloPayload.Authentication != null)
             {
-                _logger.LogDebug("[Attempt:{AttemptNumber}] Authentication required.", attempt);
+                _logger.LogAttemptAuthenticationRequired(attempt);
                 if (string.IsNullOrEmpty(options.Password))
                 {
                     throw new AuthenticationFailureException(
@@ -1172,7 +1106,7 @@ public sealed partial class ObsWebSocketClient(
                     ct
                 )
                 .ConfigureAwait(false);
-            _logger.LogDebug("[Attempt:{AttemptNumber}] Waiting for Identified...", attempt);
+            _logger.LogAttemptWaitingForIdentified(attempt);
             object identifiedMsgObj = await WaitForHandshakeMessageAsync(
                     _identifiedTcs,
                     options.HandshakeTimeoutMs,
@@ -1187,11 +1121,7 @@ public sealed partial class ObsWebSocketClient(
                 "Identified"
             );
 
-            _logger.LogDebug(
-                "[Attempt:{AttemptNumber}] Received Identified. Negotiated RPC Version: {NegotiatedRpcVersion}",
-                attempt,
-                identifiedPayload.NegotiatedRpcVersion
-            );
+            _logger.LogAttemptReceivedIdentifiedNegotiatedRpcVersion(attempt, identifiedPayload.NegotiatedRpcVersion);
 
             NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
             CurrentEventSubscriptions = requestedEventSubs; // Store the flags that were just
@@ -1274,19 +1204,13 @@ public sealed partial class ObsWebSocketClient(
                 );
             }
 
-            _logger.LogDebug(
-                "Receive loop starting for WebSocket {HashCode}.",
-                RuntimeHelpers.GetHashCode(currentWebSocket)
-            );
+            _logger.LogReceiveLoopStartingForWebsocket(RuntimeHelpers.GetHashCode(currentWebSocket));
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (currentWebSocket.State != WebSocketState.Open)
                 {
-                    _logger.LogWarning(
-                        "WebSocket state changed to {WebSocketState} during receive loop.",
-                        currentWebSocket.State
-                    );
+                    _logger.LogWebsocketStateChangedToDuringReceiveLoop(currentWebSocket.State);
                     throw new WebSocketException(
                         WebSocketError.InvalidState,
                         $"WebSocket state became {currentWebSocket.State} during receive loop."
@@ -1314,7 +1238,7 @@ public sealed partial class ObsWebSocketClient(
 
                 if (bufferStream.Length == 0)
                 {
-                    _logger.LogTrace("Received empty message.");
+                    _logger.LogReceivedEmptyMessage();
                     continue;
                 }
 
@@ -1324,43 +1248,33 @@ public sealed partial class ObsWebSocketClient(
                     .ConfigureAwait(false);
                 if (incomingMsgObj is null)
                 {
-                    _logger.LogWarning(
-                        "Deserialization returned null (Length: {BufferLength}).",
-                        bufferStream.Length
-                    );
+                    _logger.LogDeserializationReturnedNullLength(bufferStream.Length);
                     continue;
                 }
 
                 ProcessIncomingMessage(incomingMsgObj);
             }
 
-            _logger.LogInformation("Receive loop exiting: cancellation requested.");
+            _logger.LogReceiveLoopExitingCancellationRequested();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Receive loop cancelled gracefully via token.");
+            _logger.LogReceiveLoopCancelledGracefullyViaToken();
         }
         catch (WebSocketException ex)
         {
-            _logger.LogWarning(
-                ex,
-                "WebSocketException in receive loop (Code: {WebSocketErrorCode}).",
-                ex.WebSocketErrorCode
-            );
+            _logger.LogWebsocketexceptionInReceiveLoopCode(ex, ex.WebSocketErrorCode);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected exception in receive loop.");
+            _logger.LogUnexpectedExceptionInReceiveLoop(ex);
             throw;
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
-            _logger.LogDebug(
-                "Receive loop finished for WebSocket {HashCode}.",
-                RuntimeHelpers.GetHashCode(currentWebSocket)
-            );
+            _logger.LogReceiveLoopFinishedForWebsocket(RuntimeHelpers.GetHashCode(currentWebSocket));
         }
     }
 
@@ -1374,19 +1288,11 @@ public sealed partial class ObsWebSocketClient(
 
         if (expectedClosure)
         {
-            _logger.LogInformation(
-                "Server acknowledged client closure. Status: {WebSocketCloseStatus}, Desc: {Description}",
-                status,
-                desc
-            );
+            _logger.LogServerAcknowledgedClientClosureStatusDesc(status, desc);
         }
         else
         {
-            _logger.LogWarning(
-                "Server initiated unexpected close. Status: {WebSocketCloseStatus}, Desc: {Description}",
-                status,
-                desc
-            );
+            _logger.LogServerInitiatedUnexpectedCloseStatusDesc(status, desc);
         }
 
         ObsWebSocketException closeEx = new(
@@ -1396,7 +1302,7 @@ public sealed partial class ObsWebSocketClient(
 
         if (ws?.State == WebSocketState.CloseReceived)
         {
-            _logger.LogDebug("Acknowledging server close frame...");
+            _logger.LogAcknowledgingServerCloseFrame();
             _ = Task.Run(async () =>
             {
                 try
@@ -1407,11 +1313,11 @@ public sealed partial class ObsWebSocketClient(
                         "Acknowledging close",
                         ackCts.Token
                     );
-                    _logger.LogDebug("Server close frame acknowledged.");
+                    _logger.LogServerCloseFrameAcknowledged();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to acknowledge server close frame.");
+                    _logger.LogFailedToAcknowledgeServerCloseFrame(ex);
                 }
             });
         }
@@ -1420,11 +1326,7 @@ public sealed partial class ObsWebSocketClient(
     /// <summary> Cleans up current connection resources and fails pending tasks. </summary>
     private void CleanupConnectionOnly(Exception reasonException)
     {
-        _logger.LogTrace(
-            "CleanupConnectionOnly due to: {ExceptionType} - {ExceptionMessage}",
-            reasonException.GetType().Name,
-            reasonException.Message
-        );
+        _logger.LogCleanupconnectiononlyDueTo(reasonException.GetType().Name, reasonException.Message);
         IsConnected = false;
 
         NegotiatedRpcVersion = null;
@@ -1449,7 +1351,7 @@ public sealed partial class ObsWebSocketClient(
         catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Exception cancelling receive CTS during cleanup.");
+            _logger.LogExceptionCancellingReceiveCtsDuringCleanup(ex);
         }
 
         try
@@ -1459,7 +1361,7 @@ public sealed partial class ObsWebSocketClient(
         catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Exception disposing receive CTS during cleanup.");
+            _logger.LogExceptionDisposingReceiveCtsDuringCleanup(ex);
         }
 
         _receiveTask = null;
@@ -1467,10 +1369,7 @@ public sealed partial class ObsWebSocketClient(
         IWebSocketConnection? socket = Interlocked.Exchange(ref _webSocket, null);
         if (socket != null)
         {
-            _logger.LogDebug(
-                "Disposing WebSocket instance {HashCode}",
-                RuntimeHelpers.GetHashCode(socket)
-            );
+            _logger.LogDisposingWebsocketInstance(RuntimeHelpers.GetHashCode(socket));
             try
             {
                 socket.Abort();
@@ -1502,10 +1401,7 @@ public sealed partial class ObsWebSocketClient(
             }
 
             wasDisconnecting = _connectionState == ConnectionState.Disconnecting; // Check *before* changing state
-            _logger.LogDebug(
-                "Finalizing disconnection... Reason: {ReasonType}",
-                reasonException?.GetType().Name ?? "Graceful"
-            );
+            _logger.LogFinalizingDisconnectionReason(reasonException?.GetType().Name ?? "Graceful");
             _connectionState = ConnectionState.Disconnected;
             needsEvent = true;
         }
@@ -1541,10 +1437,7 @@ public sealed partial class ObsWebSocketClient(
             RaiseDisconnectedEvent(eventReason); // Use potentially overridden reason
         }
 
-        _logger.LogInformation(
-            "Client definitively disconnected. Reason: {DisconnectionReason}",
-            eventReason?.Message ?? statusDescription
-        );
+        _logger.LogClientDefinitivelyDisconnectedReason(eventReason?.Message ?? statusDescription);
         return Task.CompletedTask;
     }
 
@@ -1569,21 +1462,18 @@ public sealed partial class ObsWebSocketClient(
                 (opCode, payloadData) = (msgpackMsg.Op, msgpackMsg.D);
                 break;
             default:
-                _logger.LogError(
-                    "Unexpected incoming message type encountered: {MessageType}",
-                    messageObject.GetType().FullName
-                );
+                _logger.LogUnexpectedIncomingMessageTypeEncountered(messageObject.GetType().FullName);
                 return;
         }
 
         switch (opCode)
         {
             case WebSocketOpCode.Hello:
-                _logger.LogTrace("Processing Hello message.");
+                _logger.LogProcessingHelloMessage();
                 _ = (_helloTcs?.TrySetResult(messageObject));
                 break;
             case WebSocketOpCode.Identified:
-                _logger.LogTrace("Processing Identified message.");
+                _logger.LogProcessingIdentifiedMessage();
                 _ = (_identifiedTcs?.TrySetResult(messageObject));
                 break;
             case WebSocketOpCode.Event:
@@ -1596,7 +1486,7 @@ public sealed partial class ObsWebSocketClient(
                 HandleRequestBatchResponseMessage(payloadData);
                 break;
             default:
-                _logger.LogWarning("Received message with unhandled OpCode: {OpCode}", opCode);
+                _logger.LogReceivedMessageWithUnhandledOpcode(opCode);
                 break;
         }
     }
@@ -1605,7 +1495,7 @@ public sealed partial class ObsWebSocketClient(
     {
         if (payloadData == null)
         {
-            _logger.LogWarning("Received null payload for RequestResponse.");
+            _logger.LogReceivedNullPayloadForRequestresponse();
             return;
         }
 
@@ -1620,11 +1510,7 @@ public sealed partial class ObsWebSocketClient(
                 return;
             }
 
-            _logger.LogTrace(
-                "Processing RequestResponse for RequestId: {RequestId}, Status: {StatusResult}",
-                response.RequestId,
-                response.RequestStatus.Result
-            );
+            _logger.LogProcessingRequestresponseForRequestidStatus(response.RequestId, response.RequestStatus.Result);
             if (
                 _pendingRequests.TryRemove(
                     response.RequestId,
@@ -1636,19 +1522,12 @@ public sealed partial class ObsWebSocketClient(
             }
             else
             {
-                _logger.LogWarning(
-                    "Received response for unknown or timed out RequestId: {RequestId}",
-                    response.RequestId
-                );
+                _logger.LogReceivedResponseForUnknownOrTimedOut(response.RequestId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Exception during processing of RequestResponse payload: {Payload}",
-                payloadData
-            );
+            _logger.LogExceptionDuringProcessingOfRequestresponsePayload(ex, payloadData);
         }
     }
 
@@ -1656,7 +1535,7 @@ public sealed partial class ObsWebSocketClient(
     {
         if (payloadData == null)
         {
-            _logger.LogWarning("Received null payload for RequestBatchResponse.");
+            _logger.LogReceivedNullPayloadForRequestbatchresponse();
             return;
         }
 
@@ -1671,11 +1550,7 @@ public sealed partial class ObsWebSocketClient(
                 return;
             }
 
-            _logger.LogTrace(
-                "Processing RequestBatchResponse for RequestId: {RequestId} ({ResultCount} results)",
-                response.RequestId,
-                response.Results?.Count ?? 0
-            );
+            _logger.LogProcessingRequestbatchresponseForRequestidResults(response.RequestId, response.Results?.Count ?? 0);
             if (
                 _pendingBatchRequests.TryRemove(
                     response.RequestId,
@@ -1687,19 +1562,12 @@ public sealed partial class ObsWebSocketClient(
             }
             else
             {
-                _logger.LogWarning(
-                    "Received response for unknown or timed out BatchRequestId: {RequestId}",
-                    response.RequestId
-                );
+                _logger.LogReceivedResponseForUnknownOrTimedOut2(response.RequestId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Exception during processing of RequestBatchResponse payload: {Payload}",
-                payloadData
-            );
+            _logger.LogExceptionDuringProcessingOfRequestbatchresponsePayload(ex, payloadData);
         }
     }
 
@@ -1707,7 +1575,7 @@ public sealed partial class ObsWebSocketClient(
     {
         if (payloadData == null)
         {
-            _logger.LogWarning("Received null payload for Event.");
+            _logger.LogReceivedNullPayloadForEvent();
             return;
         }
 
@@ -1723,7 +1591,7 @@ public sealed partial class ObsWebSocketClient(
                 return;
             }
 
-            _logger.LogTrace("Handling incoming event: {EventType}", eventPayloadBase.EventType);
+            _logger.LogHandlingIncomingEvent(eventPayloadBase.EventType);
             if (
                 s_eventHandlers.TryGetValue(
                     eventPayloadBase.EventType,
@@ -1737,29 +1605,17 @@ public sealed partial class ObsWebSocketClient(
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
-                        ex,
-                        "Exception occurred within the event handler for {EventType}.",
-                        eventPayloadBase.EventType
-                    );
+                    _logger.LogExceptionOccurredWithinTheEventHandlerFor(ex, eventPayloadBase.EventType);
                 }
             }
             else
             {
-                _logger.LogWarning(
-                    "Received event with unhandled type: {EventType}",
-                    eventPayloadBase.EventType
-                );
+                _logger.LogReceivedEventWithUnhandledType(eventPayloadBase.EventType);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Critical exception during event handling for '{EventType}': {Payload}",
-                eventPayloadBase?.EventType ?? "Unknown Type",
-                payloadData
-            );
+            _logger.LogCriticalExceptionDuringEventHandlingFor(ex, eventPayloadBase?.EventType ?? "Unknown Type", payloadData);
         }
     }
 
@@ -1790,7 +1646,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception while trying to handle event {EventType}.", "CustomEvent");
+            _logger.LogExceptionWhileTryingToHandleEvent(ex, "CustomEvent");
         }
     }
 
@@ -1821,7 +1677,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception while trying to handle event {EventType}.", eventType);
+            _logger.LogExceptionWhileTryingToHandleEvent(ex, eventType);
         }
     }
 
@@ -2414,7 +2270,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("{RequestDescription} canceled.", requestDescription);
+            _logger.LogCanceled(requestDescription);
             throw;
         }
         catch (Exception ex)
@@ -2443,7 +2299,7 @@ public sealed partial class ObsWebSocketClient(
         ArgumentNullException.ThrowIfNull(payload);
 
         OutgoingMessage<T> message = new(opCode, payload);
-        _logger.LogTrace("Sending {OpCode} message...", opCode);
+        _logger.LogSendingMessage(opCode);
 
         byte[] messageBytes;
         try
@@ -2454,7 +2310,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Serialization failed for {OpCode} message.", opCode);
+            _logger.LogSerializationFailedForMessage(ex, opCode);
             throw new ObsWebSocketException($"Serialization failed for {opCode}.", ex);
         }
 
@@ -2470,16 +2326,16 @@ public sealed partial class ObsWebSocketClient(
             await currentWebSocket
                 .SendAsync(messageBytes.AsMemory(), messageType, true, linkedToken)
                 .ConfigureAwait(false);
-            _logger.LogTrace("{OpCode} message sent.", opCode);
+            _logger.LogMessageSent(opCode);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Send operation for {OpCode} canceled.", opCode);
+            _logger.LogSendOperationForCanceled(opCode);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send {OpCode} message via WebSocket.", opCode);
+            _logger.LogFailedToSendMessageViaWebsocket(ex, opCode);
             throw;
         }
     }
@@ -2497,11 +2353,7 @@ public sealed partial class ObsWebSocketClient(
 
         KeyValuePair<string, TaskCompletionSource<object>>[] requestsToFail = [.. pending];
         pending.Clear();
-        _logger.LogDebug(
-            "Failing {RequestCount} pending request(s) due to: {ExceptionType}",
-            requestsToFail.Length,
-            ex.GetType().Name
-        );
+        _logger.LogFailingPendingRequestSDueTo(requestsToFail.Length, ex.GetType().Name);
         bool isCancellation = ex is OperationCanceledException;
         foreach ((_, TaskCompletionSource<object> tcs) in requestsToFail)
         {
@@ -2521,7 +2373,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in user-provided Connecting event handler.");
+            _logger.LogExceptionInUserProvidedConnectingEventHandler(ex);
         }
     }
 
@@ -2533,7 +2385,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in user-provided Connected event handler.");
+            _logger.LogExceptionInUserProvidedConnectedEventHandler(ex);
         }
     }
 
@@ -2545,7 +2397,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in user-provided Disconnected event handler.");
+            _logger.LogExceptionInUserProvidedDisconnectedEventHandler(ex);
         }
     }
 
@@ -2557,7 +2409,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in user-provided ConnectionFailed event handler.");
+            _logger.LogExceptionInUserProvidedConnectionfailedEventHandler(ex);
         }
     }
 
@@ -2569,7 +2421,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in user-provided AuthenticationFailure event handler.");
+            _logger.LogExceptionInUserProvidedAuthenticationfailureEventHandler(ex);
         }
     }
     #endregion

@@ -1841,11 +1841,11 @@ internal sealed partial class Worker(
         string selectedScene = displayToSceneName[selectedSceneDisplay];
 
         // Step 3: Fetch scene items and all global browser_source inputs in parallel
-        Task<GetSceneItemListResponseData?> sceneItemsTask = _obsClient.GetSceneItemListAsync(
+        Task<GetSceneItemListResponseData> sceneItemsTask = _obsClient.GetSceneItemListAsync(
             new GetSceneItemListRequestData(sceneName: selectedScene),
             cancellationToken: cancellationToken
         );
-        Task<GetInputListResponseData?> browserInputsTask = _obsClient.GetInputListAsync(
+        Task<GetInputListResponseData> browserInputsTask = _obsClient.GetInputListAsync(
             new GetInputListRequestData("browser_source"),
             cancellationToken: cancellationToken
         );

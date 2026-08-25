@@ -761,8 +761,8 @@ internal static partial class Emitter
         if (hasResponseData)
         {
             bool responseIsValueType = false; // Assume class/record
-            returnType = $"Task<{responseDtoType}?>";
-            baseCallMethod = responseIsValueType ? "CallAsyncValue" : "CallAsync";
+            returnType = $"Task<{responseDtoType}>";
+            baseCallMethod = responseIsValueType ? "CallAsyncValue" : "CallRequiredAsync";
         }
         else
         {
@@ -795,13 +795,13 @@ internal static partial class Emitter
             if (baseCallMethod == "CallAsyncValue")
             {
                 builder.Append(
-                    $"Yields a nullable <see cref=\"{responseDtoType}\"/> containing the deserialized response data, or <c>null</c> if the successful response does not contain data."
+                    $"Yields the <see cref=\"{responseDtoType}\"/> response data."
                 );
             }
             else // Assumed CallAsync (reference type)
             {
                 builder.Append(
-                    $"Yields the <see cref=\"{responseDtoType}\"/> response data, or <c>null</c> if the successful response does not contain data."
+                    $"Yields the <see cref=\"{responseDtoType}\"/> response data."
                 );
             }
         }
