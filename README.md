@@ -71,7 +71,7 @@ public sealed class Worker(ObsWebSocketClient client) : IHostedService
         client.CurrentProgramSceneChanged += OnSceneChanged;
         await client.ConnectAsync(ct);
 
-        var version = await client.GetVersionAsync(cancellationToken: ct);
+        var version = await client.General.GetVersionAsync(cancellationToken: ct);
         Console.WriteLine($"Connected to OBS {version?.ObsVersion}");
     }
 
@@ -130,11 +130,11 @@ var intro = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
 
 ```csharp
 // One-liner helper
-await client.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
+await client.Inputs.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
 
 // Or use a typed settings object to update multiple properties at once
 var settings = new TextGdiPlusInputSettings(Text: "Breaking: Live now!", WordWrap: true);
-await client.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
+await client.Inputs.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
 ```
 
 `TextGdiPlusInputSettings` is a built-in library type. The same pattern applies to `TextFreetype2InputSettings`, `BrowserSourceSettings`, and the filter settings types, which live in `ObsWebSocket.Core.Protocol.Common.InputSettings` and `ObsWebSocket.Core.Protocol.Common.FilterSettings`.
@@ -142,10 +142,10 @@ await client.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct
 ### Check and save the replay buffer
 
 ```csharp
-var status = await client.GetReplayBufferStatusAsync(cancellationToken: ct);
+var status = await client.Outputs.GetReplayBufferStatusAsync(cancellationToken: ct);
 if (status?.OutputActive == true)
 {
-    await client.SaveReplayBufferAsync(cancellationToken: ct);
+    await client.Outputs.SaveReplayBufferAsync(cancellationToken: ct);
     Console.WriteLine("Replay saved.");
 }
 ```
@@ -156,10 +156,10 @@ Use a library type for common properties, or define your own type to target exac
 
 ```csharp
 // Library type, covers the standard browser source properties
-var current = await client.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
+var current = await client.Inputs.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
 Console.WriteLine($"Current URL: {current?.Url}");
 
-await client.SetInputSettingsAsync(
+await client.Inputs.SetInputSettingsAsync(
     "StreamOverlay",
     new BrowserSourceSettings(Url: "https://myoverlay.example.com", Width: 1920, Height: 1080),
     cancellationToken: ct
@@ -176,7 +176,7 @@ internal sealed record OverlaySettings(
     [property: JsonPropertyName("css")]  string? Css = null
 );
 
-await client.SetInputSettingsAsync(
+await client.Inputs.SetInputSettingsAsync(
     "StreamOverlay",
     new OverlaySettings(Url: "https://myoverlay.example.com"),
     MyContext.Default.OverlaySettings,
@@ -188,7 +188,23 @@ Both `Set` overloads take `overlay` before the cancellation token. It defaults t
 
 > Raw `JsonElement` access is also available. All settings helpers have counterparts in the generated types under `ObsWebSocket.Core.Protocol.Requests` if you need full control.
 
-## Helper API
+## Requests and helpers
+
+Everything the client can do is reached through the category the OBS protocol puts it in, so a
+generated request and a convenience that wraps several of them sit together and read the same way:
+
+```csharp
+await client.Scenes.GetSceneListAsync(new(), ct);            // generated request
+await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
+```
+
+The categories are OBS's own: `Canvases`, `Config`, `Filters`, `General`, `Inputs`, `MediaInputs`,
+`Outputs`, `Record`, `SceneItems`, `Scenes`, `Sources`, `Stream`, `Transitions`, `Ui`. They follow
+the protocol, so a refresh that recategorises a request moves it here too. The batch builder uses
+the same grouping.
+
+`WaitForEventAsync` and `CallBatchAsync` stay directly on the client, since neither belongs to one
+category.
 
 Every typed settings helper has two overloads: an implicit one for library-registered types, and an explicit one taking a `JsonTypeInfo<T>` for consumer-provided types. Use the explicit overload to stay AOT-safe.
 
@@ -264,8 +280,8 @@ client.StreamStateChanged += (_, e) =>
 Media transport works the same way, with shorthands for the common actions:
 
 ```csharp
-await client.PlayMediaAsync("Stinger", ct);
-await client.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+await client.MediaInputs.PlayMediaAsync("Stinger", ct);
+await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
 ```
 
 The wire constants remain available as `const` strings on `ObsOutputState` and
@@ -363,7 +379,7 @@ Failures are typed, so they can be caught by category rather than matched by mes
 ```csharp
 try
 {
-    await client.SetStudioModeEnabledAsync(new(true), ct);
+    await client.Ui.SetStudioModeEnabledAsync(new(true), ct);
 }
 catch (ObsWebSocketRequestException ex)
 {
