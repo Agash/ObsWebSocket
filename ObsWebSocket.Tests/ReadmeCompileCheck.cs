@@ -24,34 +24,32 @@ internal static class ReadmeCompileCheck
 {
     internal static async Task TextSourceAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await client.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
+        await client.Inputs.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
 
         var settings = new TextGdiPlusInputSettings(Text: "Breaking: Live now!", WordWrap: true);
-        await client.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
+        await client.Inputs.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
     }
 
     internal static async Task ReplayBufferAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        var status = await client.GetReplayBufferStatusAsync(cancellationToken: ct);
+        var status = await client.Outputs.GetReplayBufferStatusAsync(cancellationToken: ct);
         if (status?.OutputActive == true)
         {
-            await client.SaveReplayBufferAsync(cancellationToken: ct);
+            await client.Outputs.SaveReplayBufferAsync(cancellationToken: ct);
         }
     }
 
     internal static async Task BrowserSourceAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        var current = await client.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
+        var current = await client.Inputs.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
         _ = current?.Url;
 
-        await client.SetInputSettingsAsync(
-            "StreamOverlay",
+        await client.Inputs.SetInputSettingsAsync("StreamOverlay",
             new BrowserSourceSettings(Url: "https://myoverlay.example.com", Width: 1920, Height: 1080),
             cancellationToken: ct
         );
 
-        await client.SetInputSettingsAsync(
-            "StreamOverlay",
+        await client.Inputs.SetInputSettingsAsync("StreamOverlay",
             new OverlaySettings(Url: "https://myoverlay.example.com"),
             MyContext.Default.OverlaySettings,
             cancellationToken: ct
@@ -60,10 +58,9 @@ internal static class ReadmeCompileCheck
 
     internal static async Task UtilitiesAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await client.SwitchSceneAndWaitAsync("Scene", cancellationToken: ct);
-        _ = await client.SourceExistsAsync("Source", ct);
-        await client.CreateSourceFilterAsync(
-            "Source",
+        await client.Scenes.SwitchSceneAndWaitAsync("Scene", cancellationToken: ct);
+        _ = await client.Sources.SourceExistsAsync("Source", ct);
+        await client.Filters.CreateSourceFilterAsync("Source",
             "MyFilter",
             "gain_filter",
             new OverlaySettings(),
@@ -79,7 +76,7 @@ internal static class ReadmeCompileCheck
 
     internal static async Task VersionAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        GetVersionResponseData? version = await client.GetVersionAsync(cancellationToken: ct);
+        GetVersionResponseData? version = await client.General.GetVersionAsync(cancellationToken: ct);
         _ = version?.ObsVersion;
     }
 
@@ -108,20 +105,19 @@ internal static class ReadmeCompileCheck
 
     internal static async Task UtilitiesExtendedAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await client.SwitchSceneAsync("Scene", cancellationToken: ct);
-        _ = await client.SetSceneItemEnabledAsync("Scene", "Source", null, ct);
-        _ = await client.FindSceneItemIdAsync("Scene", "Source", ct);
-        await client.SetInputMutesAsync([("Mic", false), ("Desktop Audio", true)], ct);
-        _ = await client.GetSourceScreenshotBytesAsync("Source", cancellationToken: ct);
-        _ = await client.GetSourceScreenshotOnCanvasBytesAsync("Source", cancellationToken: ct);
-        await client.SaveSourceScreenshotToFileAsync("Source", "shot.png", cancellationToken: ct);
-        _ = await client.EnsureProfileActiveAsync("Profile", ct);
-        _ = await client.EnsureSceneCollectionActiveAsync("Collection", ct);
-        _ = await client.IsVirtualCamActiveAsync(ct);
-        _ = await client.SetVirtualCamActiveAndWaitAsync(true, cancellationToken: ct);
-        await client.TriggerHotkeyAsync("OBSBasic.StartRecording", ct);
-        _ = await client.CreateInputAsync(
-            "browser_source",
+        await client.Scenes.SwitchSceneAsync("Scene", cancellationToken: ct);
+        _ = await client.SceneItems.SetSceneItemEnabledAsync("Scene", "Source", null, ct);
+        _ = await client.SceneItems.FindSceneItemIdAsync("Scene", "Source", ct);
+        await client.Inputs.SetInputMutesAsync([("Mic", false), ("Desktop Audio", true)], ct);
+        _ = await client.Sources.GetSourceScreenshotBytesAsync("Source", cancellationToken: ct);
+        _ = await client.Sources.GetSourceScreenshotOnCanvasBytesAsync("Source", cancellationToken: ct);
+        await client.Sources.SaveSourceScreenshotToFileAsync("Source", "shot.png", cancellationToken: ct);
+        _ = await client.Config.EnsureProfileActiveAsync("Profile", ct);
+        _ = await client.Config.EnsureSceneCollectionActiveAsync("Collection", ct);
+        _ = await client.Outputs.IsVirtualCamActiveAsync(ct);
+        _ = await client.Outputs.SetVirtualCamActiveAndWaitAsync(true, cancellationToken: ct);
+        await client.General.TriggerHotkeyAsync("OBSBasic.StartRecording", ct);
+        _ = await client.Inputs.CreateInputAsync("browser_source",
             "NewOverlay",
             new OverlaySettings(),
             MyContext.Default.OverlaySettings,
@@ -198,18 +194,18 @@ internal static class ReadmeCompileCheck
 
     internal static async Task NewHelpersAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await client.PlayMediaAsync("Stinger", ct);
-        await client.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+        await client.MediaInputs.PlayMediaAsync("Stinger", ct);
+        await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
         _ = MediaInputAction.Play.ToWireValue();
 
-        _ = await client.SetRecordActiveAndWaitAsync(true, cancellationToken: ct);
-        _ = await client.SetStreamActiveAndWaitAsync(false, cancellationToken: ct);
-        _ = await client.IsRecordActiveAsync(ct);
-        _ = await client.IsStreamActiveAsync(ct);
-        _ = await client.SceneExistsAsync("Scene", ct);
-        _ = await client.FindSceneItemIdAsync("Scene", "Source", ct);
-        await client.SetInputVolumeDbAsync("Mic", -6, ct);
-        await client.SetInputVolumeMulAsync("Mic", 0.5, ct);
+        _ = await client.Record.SetRecordActiveAndWaitAsync(true, cancellationToken: ct);
+        _ = await client.Stream.SetStreamActiveAndWaitAsync(false, cancellationToken: ct);
+        _ = await client.Record.IsRecordActiveAsync(ct);
+        _ = await client.Stream.IsStreamActiveAsync(ct);
+        _ = await client.Scenes.SceneExistsAsync("Scene", ct);
+        _ = await client.SceneItems.FindSceneItemIdAsync("Scene", "Source", ct);
+        await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
+        await client.Inputs.SetInputVolumeMulAsync("Mic", 0.5, ct);
     }
 
     internal static async Task TypedBatchResultsAsync(ObsWebSocketClient client, CancellationToken ct)
@@ -230,7 +226,7 @@ internal static class ReadmeCompileCheck
     {
         try
         {
-            await client.SetStudioModeEnabledAsync(new(true), ct);
+            await client.Ui.SetStudioModeEnabledAsync(new(true), ct);
         }
         catch (ObsWebSocketRequestException ex)
         {

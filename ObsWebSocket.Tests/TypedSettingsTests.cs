@@ -205,7 +205,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.SetInputSettingsAsync("TestSource", settings, overlay: true);
+        await client.Inputs.SetInputSettingsAsync("TestSource", settings, overlay: true);
 
         Assert.IsNotNull(capturedSettings, "Settings element should have been sent");
         Assert.AreEqual("https://test.com", capturedSettings.Value.GetProperty("url").GetString());
@@ -244,7 +244,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.SetInputSettingsAsync("TestSource", settings, typeInfo, overlay: true);
+        await client.Inputs.SetInputSettingsAsync("TestSource", settings, typeInfo, overlay: true);
 
         Assert.IsNotNull(capturedSettings);
         Assert.AreEqual("abc", capturedSettings.Value.GetProperty("custom_key").GetString());
@@ -257,7 +257,7 @@ public class TypedSettingsTests
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
 
         _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
-            () => client.SetInputSettingsAsync("TestSource", new TestConsumerSettings(), overlay: true)
+            () => client.Inputs.SetInputSettingsAsync("TestSource", new TestConsumerSettings(), overlay: true)
         );
     }
 
@@ -295,7 +295,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        BrowserSourceSettings? result = await client.GetInputSettingsAsync<BrowserSourceSettings>("TestInput");
+        BrowserSourceSettings? result = await client.Inputs.GetInputSettingsAsync<BrowserSourceSettings>("TestInput");
 
         Assert.IsNotNull(result);
         Assert.AreEqual("https://obs.test", result.Url);
@@ -337,7 +337,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<GetInputSettingsResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        TestConsumerSettings? result = await client.GetInputSettingsAsync("TestInput", typeInfo);
+        TestConsumerSettings? result = await client.Inputs.GetInputSettingsAsync("TestInput", typeInfo);
 
         Assert.IsNotNull(result);
         Assert.AreEqual("xyz", result.CustomKey);
@@ -375,7 +375,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.SetSourceFilterSettingsAsync("AudioSource", "Gain", settings, overlay: true);
+        await client.Filters.SetSourceFilterSettingsAsync("AudioSource", "Gain", settings, overlay: true);
 
         Assert.IsNotNull(capturedSettings);
         Assert.AreEqual(-12.0, capturedSettings.Value.GetProperty("db").GetDouble(), 0.0001d);
@@ -411,7 +411,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.SetSourceFilterSettingsAsync("AudioSource", "CustomFilter", settings, typeInfo, overlay: true);
+        await client.Filters.SetSourceFilterSettingsAsync("AudioSource", "CustomFilter", settings, typeInfo, overlay: true);
 
         Assert.IsNotNull(capturedSettings);
         Assert.AreEqual("filter-val", capturedSettings.Value.GetProperty("custom_key").GetString());
@@ -453,7 +453,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        GainFilterSettings? result = await client.GetSourceFilterSettingsAsync<GainFilterSettings>("AudioSource", "Gain");
+        GainFilterSettings? result = await client.Filters.GetSourceFilterSettingsAsync<GainFilterSettings>("AudioSource", "Gain");
 
         Assert.IsNotNull(result);
         Assert.AreEqual(-6.0, result.Db!.Value, 0.0001d);
@@ -492,7 +492,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<GetSourceFilterResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        TestConsumerSettings? result = await client.GetSourceFilterSettingsAsync("AudioSource", "CustomFilter", typeInfo);
+        TestConsumerSettings? result = await client.Filters.GetSourceFilterSettingsAsync("AudioSource", "CustomFilter", typeInfo);
 
         Assert.IsNotNull(result);
         Assert.AreEqual("my-filter", result.CustomKey);
@@ -534,8 +534,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        CreateInputResponseData? result = await client.CreateInputAsync(
-            inputKind: "browser_source",
+        CreateInputResponseData? result = await client.Inputs.CreateInputAsync(inputKind: "browser_source",
             inputName: "New Browser",
             settings: settings,
             sceneName: "Scene A",
@@ -582,8 +581,7 @@ public class TypedSettingsTests
         _ = mockSerializer.Setup(s => s.DeserializePayload<CreateInputResponseData>(It.IsAny<object>()))
             .Returns(responseDto);
 
-        CreateInputResponseData? result = await client.CreateInputAsync(
-            inputKind: "custom_source",
+        CreateInputResponseData? result = await client.Inputs.CreateInputAsync(inputKind: "custom_source",
             inputName: "My Custom",
             settings: settings,
             typeInfo: typeInfo);
@@ -626,8 +624,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.CreateSourceFilterAsync(
-            sourceName: "AudioSource",
+        await client.Filters.CreateSourceFilterAsync(sourceName: "AudioSource",
             filterName: "My Gain",
             filterKind: "gain_filter",
             settings: settings);
@@ -666,8 +663,7 @@ public class TypedSettingsTests
         })
         .Returns(ValueTask.CompletedTask);
 
-        await client.CreateSourceFilterAsync(
-            sourceName: "VideoSource",
+        await client.Filters.CreateSourceFilterAsync(sourceName: "VideoSource",
             filterName: "CustomFilter",
             filterKind: "custom_filter_kind",
             settings: settings,

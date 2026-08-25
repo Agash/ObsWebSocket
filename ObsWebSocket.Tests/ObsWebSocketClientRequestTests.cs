@@ -112,7 +112,7 @@ public class ObsWebSocketClientRequestTests
             .Returns(expectedResponsePayload);
 
         // Act
-        GetVersionResponseData? actualResponse = await client.GetVersionAsync();
+        GetVersionResponseData? actualResponse = await client.General.GetVersionAsync();
 
         // Assert
         // Verify the response DTO is correct
@@ -222,7 +222,7 @@ public class ObsWebSocketClientRequestTests
 
         // Act
         // This call should complete without throwing when the simulated response arrives.
-        await client.SetCurrentProgramSceneAsync(requestData);
+        await client.Scenes.SetCurrentProgramSceneAsync(requestData);
 
         // Assert
         // Verify SendAsync was called once with the correct request type and data
@@ -332,7 +332,7 @@ public class ObsWebSocketClientRequestTests
             .Returns(responseDto);
 
         // Act
-        GetInputMuteResponseData? actualResponseDto = await client.GetInputMuteAsync(requestDto);
+        GetInputMuteResponseData? actualResponseDto = await client.Inputs.GetInputMuteAsync(requestDto);
 
         // Assert
         Assert.IsNotNull(actualResponseDto, "Response DTO should not be null.");
@@ -443,7 +443,7 @@ public class ObsWebSocketClientRequestTests
         // Act & Assert
         // Verify that calling the client method throws the correct exception
         ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(
-            async () => await client.GetVersionAsync() // Call the specific extension method
+            async () => await client.General.GetVersionAsync() // Call the specific extension method
         );
 
         // Check the exception details
@@ -538,7 +538,7 @@ public class ObsWebSocketClientRequestTests
             async () =>
             {
                 using CancellationTokenSource cts = new(timeoutMs); // Create token source with short delay
-                _ = await client.GetVersionAsync(cts.Token); // Pass the token
+                _ = await client.General.GetVersionAsync(cts.Token); // Pass the token
             },
             "Expected TaskCanceledException when caller token times out."
         );

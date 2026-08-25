@@ -697,36 +697,76 @@ internal static partial class Emitter
         builder.AppendLine();
         builder.AppendLine($"namespace {ExtensionsNamespace};");
         builder.AppendLine();
-        builder.AppendLine("/// <summary>");
-        builder.AppendLine(
-            "/// Provides strongly-typed extension methods for the <see cref=\"ObsWebSocketClient\"/>,"
-        );
-        builder.AppendLine(
-            "/// corresponding to the requests defined in the OBS WebSocket v5 protocol."
-        );
-        builder.AppendLine("/// </summary>");
-        builder.AppendLine("public static partial class ObsWebSocketClientExtensions");
-        builder.AppendLine("{");
-        foreach (RequestDefinition reqDef in protocol.Requests)
+        List<(string Category, string GroupName)> groups = [];
+        foreach (
+            IGrouping<string, RequestDefinition> group in protocol
+                .Requests.GroupBy(r => r.Category ?? "general", StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.Ordinal)
+        )
         {
-            try
+            string groupName = ToGroupName(group.Key);
+            groups.Add((group.Key, groupName));
+
+            builder.AppendLine("/// <summary>");
+            builder.AppendLine(
+                $"/// Requests in the <c>{System.Security.SecurityElement.Escape(group.Key)}</c> category."
+            );
+            builder.AppendLine("/// </summary>");
+            builder.AppendLine("/// <param name=\"client\">The client these requests are sent on.</param>");
+            builder.AppendLine(
+                $"public readonly partial struct {groupName}RequestGroup(ObsWebSocketClient client)"
+            );
+            builder.AppendLine("{");
+
+            foreach (RequestDefinition reqDef in group)
             {
-                GenerateSingleExtensionMethod(builder, reqDef);
-                builder.AppendLine();
+                try
+                {
+                    GenerateSingleExtensionMethod(builder, reqDef);
+                    builder.AppendLine();
+                }
+                catch (Exception ex)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            Diagnostics.IdentifierGenerationError,
+                            Location.None,
+                            reqDef.RequestType,
+                            $"Extension method for {reqDef.RequestType}",
+                            ex.Message
+                        )
+                    );
+                }
             }
-            catch (Exception ex)
-            {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        Diagnostics.IdentifierGenerationError,
-                        Location.None,
-                        reqDef.RequestType,
-                        $"Extension method for {reqDef.RequestType}",
-                        ex.Message
-                    )
-                );
-            }
+
+            builder.AppendLine("}");
+            builder.AppendLine();
         }
+
+        builder.AppendLine("/// <summary>");
+        builder.AppendLine("/// Exposes the request categories defined by the OBS WebSocket protocol.");
+        builder.AppendLine("/// </summary>");
+        builder.AppendLine("public static class ObsWebSocketClientExtensions");
+        builder.AppendLine("{");
+        foreach ((string category, string groupName) in groups)
+        {
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine(
+                $"    /// Requests in the <c>{System.Security.SecurityElement.Escape(category)}</c> category."
+            );
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine("    /// <param name=\"client\">The client to send on.</param>");
+            builder.AppendLine(
+                $"    extension(ObsWebSocketClient client)"
+            );
+            builder.AppendLine("    {");
+            builder.AppendLine(
+                $"        public {groupName}RequestGroup {groupName} => new(client);"
+            );
+            builder.AppendLine("    }");
+            builder.AppendLine();
+        }
+
         builder.AppendLine("}");
         context.AddSource(
             "ObsWebSocketClient.Extensions.g.cs",
@@ -775,9 +815,6 @@ internal static partial class Emitter
         builder.AppendLine("    /// <summary>");
         AppendMultiLineXmlDoc(builder, reqDef.Description, "    ///");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    /// <param name=\"client\">The <see cref=\"ObsWebSocketClient\"/> instance.</param>"
-        );
         if (hasRequestData)
         {
             builder.AppendLine(
@@ -843,7 +880,7 @@ internal static partial class Emitter
         }
 
         builder.AppendLine(
-            $"    public static async {returnType} {methodName}(this ObsWebSocketClient client, {parameterList})"
+            $"    public async {returnType} {methodName}({parameterList})"
         );
         builder.AppendLine("    {");
         // Method Body

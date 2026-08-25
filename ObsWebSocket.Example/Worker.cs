@@ -260,7 +260,7 @@ internal sealed partial class Worker(
                 return false;
 
             case "version":
-                GetVersionResponseData? version = await _obsClient.GetVersionAsync(
+                GetVersionResponseData? version = await _obsClient.General.GetVersionAsync(
                     cancellationToken: cancellationToken
                 );
                 if (version is not null)
@@ -295,7 +295,7 @@ internal sealed partial class Worker(
 
             case "scene":
                 GetCurrentProgramSceneResponseData? scene =
-                    await _obsClient.GetCurrentProgramSceneAsync(
+                    await _obsClient.Scenes.GetCurrentProgramSceneAsync(
                         cancellationToken: cancellationToken
                     );
                 if (scene is null)
@@ -320,7 +320,7 @@ internal sealed partial class Worker(
 
                 string inputNameToMute = string.Join(" ", args);
                 _logger.LogInformation("Toggling mute for input: {InputName}", inputNameToMute);
-                ToggleInputMuteResponseData? muteState = await _obsClient.ToggleInputMuteAsync(
+                ToggleInputMuteResponseData? muteState = await _obsClient.Inputs.ToggleInputMuteAsync(
                     new ToggleInputMuteRequestData(inputNameToMute),
                     cancellationToken: cancellationToken
                 );
@@ -355,8 +355,7 @@ internal sealed partial class Worker(
                     );
 
                     // Now get the input settings using the *source name* (not the scene item ID)
-                    GetInputSettingsResponseData? settings = await _obsClient.GetInputSettingsAsync(
-                        new GetInputSettingsRequestData(inputForGetSettings),
+                    GetInputSettingsResponseData? settings = await _obsClient.Inputs.GetInputSettingsAsync(new GetInputSettingsRequestData(inputForGetSettings),
                         cancellationToken: cancellationToken
                     );
 
@@ -409,7 +408,7 @@ internal sealed partial class Worker(
                     );
 
                     // Uses SetInputTextAsync helper which serializes TextGdiPlusInputSettings internally.
-                    await _obsClient.SetInputTextAsync(inputForSetText, newText, cancellationToken);
+                    await _obsClient.Inputs.SetInputTextAsync(inputForSetText, newText, cancellationToken);
                     UiSuccess($"Successfully set text for '{inputForSetText}' to: '{newText}'");
                 }
                 catch (SceneItemNotFoundException ex)
@@ -438,7 +437,7 @@ internal sealed partial class Worker(
 
                 string sourceForFilters = string.Join(" ", args);
                 GetSourceFilterListResponseData? filterList =
-                    await _obsClient.GetSourceFilterListAsync(
+                    await _obsClient.Filters.GetSourceFilterListAsync(
                         new GetSourceFilterListRequestData(sourceName: sourceForFilters),
                         cancellationToken: cancellationToken
                     );
@@ -483,7 +482,7 @@ internal sealed partial class Worker(
 
                 // 1. Get current filter state
                 GetSourceFilterResponseData? currentFilterState =
-                    await _obsClient.GetSourceFilterAsync(
+                    await _obsClient.Filters.GetSourceFilterAsync(
                         new GetSourceFilterRequestData
                         {
                             SourceName = sourceForToggle,
@@ -502,7 +501,7 @@ internal sealed partial class Worker(
 
                 // 2. Toggle the state
                 bool newState = !currentFilterState.FilterEnabled;
-                await _obsClient.SetSourceFilterEnabledAsync(
+                await _obsClient.Filters.SetSourceFilterEnabledAsync(
                     new SetSourceFilterEnabledRequestData
                     {
                         SourceName = sourceForToggle,
@@ -678,7 +677,7 @@ internal sealed partial class Worker(
 
                 try
                 {
-                    await _obsClient.TriggerMediaActionAsync(args[0], action, cancellationToken);
+                    await _obsClient.MediaInputs.TriggerMediaActionAsync(args[0], action, cancellationToken);
                     UiSuccess($"Sent {action} ({action.ToWireValue()}) to '{args[0]}'.");
                 }
                 catch (ObsWebSocketRequestException ex)
@@ -775,7 +774,7 @@ internal sealed partial class Worker(
         try
         {
             GetVersionResponseData? version = await cycleClient
-                .GetVersionAsync(cancellationToken: cancellationToken)
+                .General.GetVersionAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (
                 version is null
@@ -799,7 +798,7 @@ internal sealed partial class Worker(
             );
 
             GetSceneListResponseData? scenes = await cycleClient
-                .GetSceneListAsync(new(), cancellationToken)
+                .Scenes.GetSceneListAsync(new(), cancellationToken)
                 .ConfigureAwait(false);
             if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
             {
@@ -816,7 +815,7 @@ internal sealed partial class Worker(
             int sceneCount = scenes?.Scenes?.Count ?? 0;
 
             GetInputListResponseData? inputs = await cycleClient
-                .GetInputListAsync(new GetInputListRequestData(), cancellationToken)
+                .Inputs.GetInputListAsync(new GetInputListRequestData(), cancellationToken)
                 .ConfigureAwait(false);
             if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
             {
@@ -837,7 +836,7 @@ internal sealed partial class Worker(
             if (!string.IsNullOrWhiteSpace(inputName))
             {
                 GetSourceFilterListResponseData? filters = await cycleClient
-                    .GetSourceFilterListAsync(
+                    .Filters.GetSourceFilterListAsync(
                         new GetSourceFilterListRequestData(sourceName: inputName),
                         cancellationToken
                     )
@@ -852,7 +851,7 @@ internal sealed partial class Worker(
             }
 
             GetSourceFilterKindListResponseData? filterKinds = await cycleClient
-                .GetSourceFilterKindListAsync(cancellationToken)
+                .Filters.GetSourceFilterKindListAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (filterKinds?.SourceFilterKinds is null || filterKinds.SourceFilterKinds.Count == 0)
             {
@@ -907,7 +906,7 @@ internal sealed partial class Worker(
             );
 
             await cycleClient
-                .BroadcastCustomEventAsync(
+                .General.BroadcastCustomEventAsync(
                     new BroadcastCustomEventRequestData(customPayload),
                     cancellationToken
                 )
@@ -1053,15 +1052,13 @@ internal sealed partial class Worker(
             // Mode 1: raw JsonElement via protocol-level call
             results.Add(await TrySettingsCheckAsync("InputSettings Mode1 (raw JsonElement)", async () =>
             {
-                GetInputSettingsResponseData? r = await client.GetInputSettingsAsync(
-                    new GetInputSettingsRequestData(browserInputName), cancellationToken);
+                GetInputSettingsResponseData? r = await client.Inputs.GetInputSettingsAsync(new GetInputSettingsRequestData(browserInputName), cancellationToken);
                 if (r?.InputSettings is not JsonElement el)
                 {
                     return (false, "null InputSettings in response");
                 }
 
-                await client.SetInputSettingsAsync(
-                    new SetInputSettingsRequestData(el, inputName: browserInputName, overlay: true),
+                await client.Inputs.SetInputSettingsAsync(new SetInputSettingsRequestData(el, inputName: browserInputName, overlay: true),
                     cancellationToken);
                 string url = el.TryGetProperty("url", out JsonElement p) ? p.GetString() ?? "(no url)" : "(no url key)";
                 return (true, $"'{browserInputName}' url={url}");
@@ -1070,14 +1067,14 @@ internal sealed partial class Worker(
             // Mode 2: library-registered type via implicit GetTypeInfo lookup
             results.Add(await TrySettingsCheckAsync("InputSettings Mode2 (BrowserSourceSettings)", async () =>
             {
-                BrowserSourceSettings? s = await client.GetInputSettingsAsync<BrowserSourceSettings>(
+                BrowserSourceSettings? s = await client.Inputs.GetInputSettingsAsync<BrowserSourceSettings>(
                     browserInputName, cancellationToken);
                 if (s is null)
                 {
                     return (false, "null result");
                 }
 
-                await client.SetInputSettingsAsync(browserInputName, s, overlay: true, cancellationToken: cancellationToken);
+                await client.Inputs.SetInputSettingsAsync(browserInputName, s, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
             }));
 
@@ -1085,14 +1082,13 @@ internal sealed partial class Worker(
             results.Add(await TrySettingsCheckAsync("InputSettings Mode3 (consumer JsonTypeInfo)", async () =>
             {
                 JsonTypeInfo<WorkerBrowserUrlSettings> typeInfo = WorkerSettingsJsonContext.Default.WorkerBrowserUrlSettings;
-                WorkerBrowserUrlSettings? s = await client.GetInputSettingsAsync(
-                    browserInputName, typeInfo, cancellationToken);
+                WorkerBrowserUrlSettings? s = await client.Inputs.GetInputSettingsAsync(browserInputName, typeInfo, cancellationToken);
                 if (s is null)
                 {
                     return (false, "null result");
                 }
 
-                await client.SetInputSettingsAsync(browserInputName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
+                await client.Inputs.SetInputSettingsAsync(browserInputName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{browserInputName}' url={s.Url ?? "(null)"}");
             }));
         }
@@ -1105,7 +1101,7 @@ internal sealed partial class Worker(
         {
             try
             {
-                GetSourceFilterListResponseData? fl = await client.GetSourceFilterListAsync(
+                GetSourceFilterListResponseData? fl = await client.Filters.GetSourceFilterListAsync(
                     new GetSourceFilterListRequestData(sourceName: input.InputName!), cancellationToken);
                 Core.Protocol.Common.FilterStub? gain = fl?.Filters?.FirstOrDefault(f =>
                     string.Equals(f.FilterKind, "gain_filter", StringComparison.OrdinalIgnoreCase));
@@ -1128,7 +1124,7 @@ internal sealed partial class Worker(
             // Mode 1: raw JsonElement via protocol-level call
             results.Add(await TrySettingsCheckAsync("FilterSettings Mode1 (raw JsonElement)", async () =>
             {
-                GetSourceFilterResponseData? r = await client.GetSourceFilterAsync(
+                GetSourceFilterResponseData? r = await client.Filters.GetSourceFilterAsync(
                     new GetSourceFilterRequestData { SourceName = filterSourceName, FilterName = gainFilterName },
                     cancellationToken);
                 if (r?.FilterSettings is not JsonElement el)
@@ -1136,8 +1132,7 @@ internal sealed partial class Worker(
                     return (false, "null FilterSettings in response");
                 }
 
-                await client.SetSourceFilterSettingsAsync(
-                    new SetSourceFilterSettingsRequestData(gainFilterName, el, sourceName: filterSourceName, overlay: true),
+                await client.Filters.SetSourceFilterSettingsAsync(new SetSourceFilterSettingsRequestData(gainFilterName, el, sourceName: filterSourceName, overlay: true),
                     cancellationToken);
                 string db = el.TryGetProperty("db", out JsonElement p) ? p.GetDouble().ToString("F1") : "(no db key)";
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={db}");
@@ -1146,14 +1141,14 @@ internal sealed partial class Worker(
             // Mode 2: library-registered type via implicit GetTypeInfo lookup
             results.Add(await TrySettingsCheckAsync("FilterSettings Mode2 (GainFilterSettings)", async () =>
             {
-                GainFilterSettings? s = await client.GetSourceFilterSettingsAsync<GainFilterSettings>(
+                GainFilterSettings? s = await client.Filters.GetSourceFilterSettingsAsync<GainFilterSettings>(
                     filterSourceName, gainFilterName, cancellationToken);
                 if (s is null)
                 {
                     return (false, "null result");
                 }
 
-                await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, overlay: true, cancellationToken: cancellationToken);
+                await client.Filters.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
             }));
 
@@ -1161,14 +1156,14 @@ internal sealed partial class Worker(
             results.Add(await TrySettingsCheckAsync("FilterSettings Mode3 (consumer JsonTypeInfo)", async () =>
             {
                 JsonTypeInfo<WorkerGainDbSettings> typeInfo = WorkerSettingsJsonContext.Default.WorkerGainDbSettings;
-                WorkerGainDbSettings? s = await client.GetSourceFilterSettingsAsync(
+                WorkerGainDbSettings? s = await client.Filters.GetSourceFilterSettingsAsync(
                     filterSourceName, gainFilterName, typeInfo, cancellationToken);
                 if (s is null)
                 {
                     return (false, "null result");
                 }
 
-                await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
+                await client.Filters.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
             }));
         }
@@ -1192,7 +1187,7 @@ internal sealed partial class Worker(
         string inputName = $"__obsws_input_{suffix}";
 
         GetSceneListResponseData? sceneList = await client
-            .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
             .ConfigureAwait(false);
         string originalScene = sceneList?.CurrentProgramSceneName ?? string.Empty;
 
@@ -1202,21 +1197,20 @@ internal sealed partial class Worker(
         try
         {
             await client
-                .CreateSceneAsync(new CreateSceneRequestData(sceneName), cancellationToken)
+                .Scenes.CreateSceneAsync(new CreateSceneRequestData(sceneName), cancellationToken)
                 .ConfigureAwait(false);
             sceneCreated = true;
 
             results.Add(await TrySettingsCheckAsync("SceneExistsAsync", async () =>
             {
-                bool present = await client.SceneExistsAsync(sceneName, cancellationToken).ConfigureAwait(false);
-                bool absent = await client.SceneExistsAsync(sceneName + "__nope", cancellationToken).ConfigureAwait(false);
+                bool present = await client.Scenes.SceneExistsAsync(sceneName, cancellationToken).ConfigureAwait(false);
+                bool absent = await client.Scenes.SceneExistsAsync(sceneName + "__nope", cancellationToken).ConfigureAwait(false);
                 return (present && !absent, $"present={present}, absent={!absent}");
             }).ConfigureAwait(false));
 
             // A media source carries audio, so the volume and media transport helpers apply.
             _ = await client
-                .CreateInputAsync(
-                    "ffmpeg_source",
+                .Inputs.CreateInputAsync("ffmpeg_source",
                     inputName,
                     new MediaSourceSettings(IsLocalFile: true),
                     sceneName: sceneName,
@@ -1226,23 +1220,23 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("FindSceneItemIdAsync", async () =>
             {
-                double? hit = await client.FindSceneItemIdAsync(sceneName, inputName, cancellationToken).ConfigureAwait(false);
-                double? miss = await client.FindSceneItemIdAsync(sceneName, "__not_here__", cancellationToken).ConfigureAwait(false);
+                double? hit = await client.SceneItems.FindSceneItemIdAsync(sceneName, inputName, cancellationToken).ConfigureAwait(false);
+                double? miss = await client.SceneItems.FindSceneItemIdAsync(sceneName, "__not_here__", cancellationToken).ConfigureAwait(false);
                 return (hit is not null && miss is null, $"hit={hit}, miss={(miss is null ? "null" : "unexpected")}");
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("SetSceneItemEnabledAsync (toggle)", async () =>
             {
-                bool off = await client.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
-                bool toggled = await client.SetSceneItemEnabledAsync(sceneName, inputName, null, cancellationToken).ConfigureAwait(false);
+                bool off = await client.SceneItems.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
+                bool toggled = await client.SceneItems.SetSceneItemEnabledAsync(sceneName, inputName, null, cancellationToken).ConfigureAwait(false);
                 return (!off && toggled, $"set false -> {off}, toggled -> {toggled}");
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("SetInputVolumeDbAsync", async () =>
             {
-                await client.SetInputVolumeDbAsync(inputName, -6, cancellationToken).ConfigureAwait(false);
+                await client.Inputs.SetInputVolumeDbAsync(inputName, -6, cancellationToken).ConfigureAwait(false);
                 GetInputVolumeResponseData? volume = await client
-                    .GetInputVolumeAsync(new GetInputVolumeRequestData(inputName: inputName), cancellationToken)
+                    .Inputs.GetInputVolumeAsync(new GetInputVolumeRequestData(inputName: inputName), cancellationToken)
                     .ConfigureAwait(false);
                 double db = volume?.InputVolumeDb ?? double.NaN;
                 return (Math.Abs(db + 6) < 0.5, $"db={db:0.##}");
@@ -1251,13 +1245,13 @@ internal sealed partial class Worker(
             results.Add(await TrySettingsCheckAsync("Media transport (typed enum)", async () =>
             {
                 await client
-                    .TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken)
+                    .MediaInputs.TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken)
                     .ConfigureAwait(false);
 
                 // Read the state back, so this proves the action landed rather than only that
                 // the request was accepted.
                 GetMediaInputStatusResponseData? status = await client
-                    .GetMediaInputStatusAsync(
+                    .MediaInputs.GetMediaInputStatusAsync(
                         new GetMediaInputStatusRequestData(inputName: inputName),
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -1299,11 +1293,11 @@ internal sealed partial class Worker(
                 }, CancellationToken.None);
 
                 await Task.Delay(250, cancellationToken).ConfigureAwait(false);
-                await client.SwitchSceneAsync(sceneName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await client.Scenes.SwitchSceneAsync(sceneName, cancellationToken: cancellationToken).ConfigureAwait(false);
                 await Task.Delay(400, cancellationToken).ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(originalScene))
                 {
-                    await client.SwitchSceneAsync(originalScene, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    await client.Scenes.SwitchSceneAsync(originalScene, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
 
                 await consume.ConfigureAwait(false);
@@ -1314,7 +1308,7 @@ internal sealed partial class Worker(
             {
                 Task<SceneItemEnableStateChangedEventArgs> wait = client
                     .WaitForEventAsync<SceneItemEnableStateChangedEventArgs>(TimeSpan.FromSeconds(5), cancellationToken);
-                _ = await client.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
+                _ = await client.SceneItems.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
                 try
                 {
                     SceneItemEnableStateChangedEventArgs observed = await wait.ConfigureAwait(false);
@@ -1364,7 +1358,7 @@ internal sealed partial class Worker(
                 // Repeats one request type with different payloads and interleaves others, so a
                 // result can only be matched to its request by position.
                 GetSceneListResponseData? allScenes = await client
-                    .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+                    .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
                     .ConfigureAwait(false);
                 string otherScene = allScenes!
                     .Scenes!.Select(scene => scene.SceneName!)
@@ -1484,7 +1478,7 @@ internal sealed partial class Worker(
                     for (int i = 0; i < 4; i++)
                     {
                         _ = await client
-                            .SetSceneItemEnabledAsync(sceneName, inputName, i % 2 == 0, cancellationToken)
+                            .SceneItems.SetSceneItemEnabledAsync(sceneName, inputName, i % 2 == 0, cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -1501,10 +1495,10 @@ internal sealed partial class Worker(
             {
                 // The same response types that come back empty inside a batch, fetched singly.
                 GetSceneItemListResponseData? items = await client
-                    .GetSceneItemListAsync(new GetSceneItemListRequestData(sceneName: sceneName), cancellationToken)
+                    .SceneItems.GetSceneItemListAsync(new GetSceneItemListRequestData(sceneName: sceneName), cancellationToken)
                     .ConfigureAwait(false);
-                GetStatsResponseData? st = await client.GetStatsAsync(cancellationToken).ConfigureAwait(false);
-                GetVersionResponseData? ver = await client.GetVersionAsync(cancellationToken).ConfigureAwait(false);
+                GetStatsResponseData? st = await client.General.GetStatsAsync(cancellationToken).ConfigureAwait(false);
+                GetVersionResponseData? ver = await client.General.GetVersionAsync(cancellationToken).ConfigureAwait(false);
 
                 int itemCount = items?.SceneItems?.Count ?? -1;
                 double fps = st?.ActiveFps ?? 0;
@@ -1596,19 +1590,19 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
             {
-                bool recording = await client.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
-                bool streaming = await client.IsStreamActiveAsync(cancellationToken).ConfigureAwait(false);
-                bool virtualCam = await client.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
+                bool recording = await client.Record.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
+                bool streaming = await client.Stream.IsStreamActiveAsync(cancellationToken).ConfigureAwait(false);
+                bool virtualCam = await client.Outputs.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
 
                 // Each helper has to agree with the request it wraps.
                 GetRecordStatusResponseData? recordStatus = await client
-                    .GetRecordStatusAsync(cancellationToken)
+                    .Record.GetRecordStatusAsync(cancellationToken)
                     .ConfigureAwait(false);
                 GetStreamStatusResponseData? streamStatus = await client
-                    .GetStreamStatusAsync(cancellationToken)
+                    .Stream.GetStreamStatusAsync(cancellationToken)
                     .ConfigureAwait(false);
                 GetVirtualCamStatusResponseData? camStatus = await client
-                    .GetVirtualCamStatusAsync(cancellationToken)
+                    .Outputs.GetVirtualCamStatusAsync(cancellationToken)
                     .ConfigureAwait(false);
 
                 bool agrees =
@@ -1629,20 +1623,20 @@ internal sealed partial class Worker(
             {
                 if (!string.IsNullOrEmpty(originalScene))
                 {
-                    await client.SwitchSceneAsync(originalScene, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                    await client.Scenes.SwitchSceneAsync(originalScene, cancellationToken: CancellationToken.None).ConfigureAwait(false);
                 }
 
                 if (inputCreated)
                 {
                     await client
-                        .RemoveInputAsync(new RemoveInputRequestData(inputName: inputName), CancellationToken.None)
+                        .Inputs.RemoveInputAsync(new RemoveInputRequestData(inputName: inputName), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
 
                 if (sceneCreated)
                 {
                     await client
-                        .RemoveSceneAsync(new RemoveSceneRequestData(sceneName: sceneName), CancellationToken.None)
+                        .Scenes.RemoveSceneAsync(new RemoveSceneRequestData(sceneName: sceneName), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
             }
@@ -1885,7 +1879,7 @@ internal sealed partial class Worker(
         CancellationToken cancellationToken
     )
     {
-        GetSceneItemIdResponseData? response = await _obsClient.GetSceneItemIdAsync(
+        GetSceneItemIdResponseData? response = await _obsClient.SceneItems.GetSceneItemIdAsync(
             new GetSceneItemIdRequestData { SceneName = sceneName, SourceName = sourceName },
             cancellationToken: cancellationToken
         );
@@ -1905,13 +1899,12 @@ internal sealed partial class Worker(
             "Filter Kind Defaults",
             async ct =>
             {
-                GetSourceFilterKindListResponseData? r = await _obsClient.GetSourceFilterKindListAsync(cancellationToken: ct);
+                GetSourceFilterKindListResponseData? r = await _obsClient.Filters.GetSourceFilterKindListAsync(cancellationToken: ct);
                 return r?.SourceFilterKinds ?? [];
             },
             async (kind, ct) =>
             {
-                GetSourceFilterDefaultSettingsResponseData? r = await _obsClient.GetSourceFilterDefaultSettingsAsync(
-                    new GetSourceFilterDefaultSettingsRequestData(kind),
+                GetSourceFilterDefaultSettingsResponseData? r = await _obsClient.Filters.GetSourceFilterDefaultSettingsAsync(new GetSourceFilterDefaultSettingsRequestData(kind),
                     cancellationToken: ct
                 );
                 return r?.DefaultFilterSettings;
@@ -1923,7 +1916,7 @@ internal sealed partial class Worker(
             "Input Kind Defaults",
             async ct =>
             {
-                GetInputKindListResponseData? r = await _obsClient.GetInputKindListAsync(
+                GetInputKindListResponseData? r = await _obsClient.Inputs.GetInputKindListAsync(
                     new GetInputKindListRequestData(unversioned: false),
                     cancellationToken: ct
                 );
@@ -1931,8 +1924,7 @@ internal sealed partial class Worker(
             },
             async (kind, ct) =>
             {
-                GetInputDefaultSettingsResponseData? r = await _obsClient.GetInputDefaultSettingsAsync(
-                    new GetInputDefaultSettingsRequestData(kind),
+                GetInputDefaultSettingsResponseData? r = await _obsClient.Inputs.GetInputDefaultSettingsAsync(new GetInputDefaultSettingsRequestData(kind),
                     cancellationToken: ct
                 );
                 return r?.DefaultInputSettings;
@@ -1998,7 +1990,7 @@ internal sealed partial class Worker(
         List<OutputStub> outputs;
         try
         {
-            GetOutputListResponseData? response = await _obsClient.GetOutputListAsync(
+            GetOutputListResponseData? response = await _obsClient.Outputs.GetOutputListAsync(
                 cancellationToken: cancellationToken
             );
             outputs = response?.Outputs ?? [];
@@ -2027,8 +2019,7 @@ internal sealed partial class Worker(
             string key = output.OutputKind is { } kind ? $"{name} ({kind})" : name;
             try
             {
-                GetOutputSettingsResponseData? r = await _obsClient.GetOutputSettingsAsync(
-                    new GetOutputSettingsRequestData(outputName: name),
+                GetOutputSettingsResponseData? r = await _obsClient.Outputs.GetOutputSettingsAsync(new GetOutputSettingsRequestData(outputName: name),
                     cancellationToken: cancellationToken
                 );
                 results[key] = r?.OutputSettings;
@@ -2052,8 +2043,7 @@ internal sealed partial class Worker(
     {
         try
         {
-            GetStreamServiceSettingsResponseData? response = await _obsClient.GetStreamServiceSettingsAsync(
-                cancellationToken: cancellationToken
+            GetStreamServiceSettingsResponseData? response = await _obsClient.Config.GetStreamServiceSettingsAsync(cancellationToken: cancellationToken
             );
 
             ArrayBufferWriter<byte> buf = new();
@@ -2109,7 +2099,7 @@ internal sealed partial class Worker(
     private async Task AddBrowserSourceAsync(CancellationToken cancellationToken)
     {
         // Step 1: Fetch scene list and determine current program scene
-        GetSceneListResponseData? sceneList = await _obsClient.GetSceneListAsync(
+        GetSceneListResponseData? sceneList = await _obsClient.Scenes.GetSceneListAsync(
             new(),
             cancellationToken: cancellationToken
         );
@@ -2160,11 +2150,11 @@ internal sealed partial class Worker(
         string selectedScene = displayToSceneName[selectedSceneDisplay];
 
         // Step 3: Fetch scene items and all global browser_source inputs in parallel
-        Task<GetSceneItemListResponseData> sceneItemsTask = _obsClient.GetSceneItemListAsync(
+        Task<GetSceneItemListResponseData> sceneItemsTask = _obsClient.SceneItems.GetSceneItemListAsync(
             new GetSceneItemListRequestData(sceneName: selectedScene),
             cancellationToken: cancellationToken
         );
-        Task<GetInputListResponseData> browserInputsTask = _obsClient.GetInputListAsync(
+        Task<GetInputListResponseData> browserInputsTask = _obsClient.Inputs.GetInputListAsync(
             new GetInputListRequestData("browser_source"),
             cancellationToken: cancellationToken
         );
@@ -2211,7 +2201,7 @@ internal sealed partial class Worker(
             : selectedSourceChoice;
 
         // Step 5: Get canvas dimensions from video settings
-        GetVideoSettingsResponseData? videoSettings = await _obsClient.GetVideoSettingsAsync(
+        GetVideoSettingsResponseData? videoSettings = await _obsClient.Config.GetVideoSettingsAsync(
             cancellationToken: cancellationToken
         );
 
@@ -2258,8 +2248,7 @@ internal sealed partial class Worker(
         {
             UiInfo($"Creating browser source '{sourceName}' in scene '{selectedScene}'...");
 
-            CreateInputResponseData? createResult = await _obsClient.CreateInputAsync(
-                inputKind: "browser_source",
+            CreateInputResponseData? createResult = await _obsClient.Inputs.CreateInputAsync(inputKind: "browser_source",
                 inputName: sourceName,
                 settings: browserSettings,
                 sceneName: selectedScene,
@@ -2281,8 +2270,7 @@ internal sealed partial class Worker(
             UiInfo($"Updating browser source '{sourceName}' settings...");
 
             // overlay: false — reset to defaults then apply all new settings cleanly
-            await _obsClient.SetInputSettingsAsync(
-                inputName: sourceName,
+            await _obsClient.Inputs.SetInputSettingsAsync(inputName: sourceName,
                 settings: browserSettings,
                 overlay: false,
                 cancellationToken: cancellationToken
@@ -2293,7 +2281,7 @@ internal sealed partial class Worker(
         }
 
         // Step 9: Set Blend Mode to Normal (explicit, even though it is the default)
-        await _obsClient.SetSceneItemBlendModeAsync(
+        await _obsClient.SceneItems.SetSceneItemBlendModeAsync(
             new SetSceneItemBlendModeRequestData(
                 sceneItemId: sceneItemId,
                 sceneItemBlendMode: "OBS_BLEND_NORMAL",
