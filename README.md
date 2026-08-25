@@ -382,6 +382,10 @@ The password may travel in the connection string or be set on the options; eithe
 off `ServerUri`. A connection that cannot be established at startup is logged rather than thrown,
 because OBS is often started after the application, and reconnect takes over from there.
 
+Options are read through `IOptionsMonitor`, so editing configuration takes effect without a
+restart. Timeouts and reconnect settings apply to the next call that uses them; changing the
+endpoint, password or transport reconnects, which `WithAutoConnect` performs.
+
 ## Multiple OBS instances
 
 Register clients by name and resolve them with `[FromKeyedServices]`:

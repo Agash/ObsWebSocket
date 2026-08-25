@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 
 namespace ObsWebSocket.Tests;
@@ -105,6 +106,28 @@ public sealed class HostingTests
 
         await host.StartAsync(TestContext.CancellationTokenSource.Token);
         await host.StopAsync(TestContext.CancellationTokenSource.Token);
+    }
+
+    [TestMethod]
+    public void Options_ResolveThroughTheMonitor_SoChangesAreSeen()
+    {
+        ServiceCollection services = new();
+        _ = services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
+        _ = services.AddObsWebSocketClient(o => o.ServerUri = new Uri("ws://localhost:4455"));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IOptions<ObsWebSocketClientOptions> options = provider.GetRequiredService<
+            IOptions<ObsWebSocketClientOptions>
+        >();
+        IOptionsMonitor<ObsWebSocketClientOptions> monitor = provider.GetRequiredService<
+            IOptionsMonitor<ObsWebSocketClientOptions>
+        >();
+
+        Assert.AreSame(
+            monitor.CurrentValue,
+            options.Value,
+            "IOptions must report what the monitor currently holds"
+        );
     }
 
     public TestContext TestContext { get; set; } = null!;

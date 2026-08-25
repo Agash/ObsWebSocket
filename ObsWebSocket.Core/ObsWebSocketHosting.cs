@@ -3,6 +3,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ObsWebSocket.Core;
 
@@ -10,15 +11,29 @@ namespace ObsWebSocket.Core;
 /// Connects the client when the host starts and disconnects when it stops.
 /// </summary>
 /// <param name="client">The client to manage.</param>
+/// <param name="options">Monitored options, watched for endpoint changes.</param>
 /// <param name="logger">Logger for connection outcomes.</param>
 internal sealed class ObsWebSocketConnectionService(
     ObsWebSocketClient client,
+    IOptionsMonitor<ObsWebSocketClientOptions> options,
     ILogger<ObsWebSocketConnectionService> logger
-) : IHostedService
+) : IHostedService, IDisposable
 {
+    private IDisposable? _optionsWatch;
+    private (Uri? Uri, string? Password, SerializationFormat Format) _connectedWith;
+
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        _optionsWatch = options.OnChange(OnOptionsChanged);
+        await ConnectAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ConnectAsync(CancellationToken cancellationToken)
+    {
+        ObsWebSocketClientOptions current = options.CurrentValue;
+        _connectedWith = (current.ServerUri, current.Password, current.Format);
+
         try
         {
             await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
@@ -33,6 +48,47 @@ internal sealed class ObsWebSocketConnectionService(
             );
         }
     }
+
+    /// <summary>
+    /// Reconnects when the endpoint changes. Timeouts and reconnect settings are read per call,
+    /// so only the things fixed at connection time are worth cycling the connection for.
+    /// </summary>
+    private void OnOptionsChanged(ObsWebSocketClientOptions updated)
+    {
+        if (
+            updated.ServerUri == _connectedWith.Uri
+            && updated.Password == _connectedWith.Password
+            && updated.Format == _connectedWith.Format
+        )
+        {
+            return;
+        }
+
+        logger.LogInformation(
+            "OBS connection settings changed, reconnecting to {ServerUri}.",
+            updated.ServerUri
+        );
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (client.IsConnected)
+                {
+                    await client.DisconnectAsync().ConfigureAwait(false);
+                }
+
+                await ConnectAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is ObsWebSocketException or OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Reconnect after a settings change did not succeed.");
+            }
+        });
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() => _optionsWatch?.Dispose();
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)

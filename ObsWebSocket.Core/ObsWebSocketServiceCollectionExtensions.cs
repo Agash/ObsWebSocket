@@ -60,6 +60,12 @@ public static class ObsWebSocketServiceCollectionExtensions
         services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
 
         services.TryAddSingleton(TimeProvider.System);
+
+        // Resolve options through the monitor, so a configuration change is picked up rather
+        // than the values captured when the container was built.
+        _ = services.AddSingleton<IOptions<ObsWebSocketClientOptions>>(sp =>
+            new MonitorBackedOptions(sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>())
+        );
         _ = services.AddMetrics();
         services.TryAddSingleton<ObsWebSocketMetrics>();
 
@@ -158,4 +164,15 @@ public static class ObsWebSocketServiceCollectionExtensions
 
         return services;
     }
+}
+
+/// <summary>
+/// Presents the current monitored value as <see cref="IOptions{T}"/>.
+/// </summary>
+/// <param name="monitor">The monitor to read from.</param>
+internal sealed class MonitorBackedOptions(IOptionsMonitor<ObsWebSocketClientOptions> monitor)
+    : IOptions<ObsWebSocketClientOptions>
+{
+    /// <inheritdoc/>
+    public ObsWebSocketClientOptions Value => monitor.CurrentValue;
 }
