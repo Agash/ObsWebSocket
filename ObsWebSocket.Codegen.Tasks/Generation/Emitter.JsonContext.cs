@@ -34,7 +34,7 @@ internal static partial class Emitter
             _ = builder.AppendLine();
             _ = builder.AppendLine("[JsonSourceGenerationOptions(");
             _ = builder.AppendLine("    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,");
-            _ = builder.AppendLine("    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]");
+            _ = builder.AppendLine("    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]");
 
             // Fixed protocol wrapper and payload types.
             _ = builder.AppendLine("[JsonSerializable(typeof(OutgoingMessage<RequestPayload>))]");

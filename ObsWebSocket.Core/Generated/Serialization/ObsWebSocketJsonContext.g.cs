@@ -15,7 +15,7 @@ namespace ObsWebSocket.Core.Serialization;
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(OutgoingMessage<RequestPayload>))]
 [JsonSerializable(typeof(OutgoingMessage<IdentifyPayload>))]
 [JsonSerializable(typeof(OutgoingMessage<ReidentifyPayload>))]
