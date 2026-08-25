@@ -1,4 +1,3 @@
-﻿using System.ComponentModel.DataAnnotations;
 using ObsWebSocket.Core.Protocol.Generated;
 
 namespace ObsWebSocket.Core;
@@ -12,7 +11,6 @@ public sealed class ObsWebSocketClientOptions
     /// The URI of the OBS WebSocket server (e.g., ws://localhost:4455).
     /// This must be provided either directly or via configuration.
     /// </summary>
-    [Required(ErrorMessage = "ServerUri is required, for example ws://localhost:4455.")]
     public Uri? ServerUri { get; set; }
 
     /// <summary>
@@ -29,14 +27,12 @@ public sealed class ObsWebSocketClientOptions
     /// Timeout in milliseconds for the initial Hello/Identified handshake phase.
     /// Defaults to <see cref="ObsWebSocketClient.DefaultHandshakeTimeoutMs"/>.
     /// </summary>
-    [Range(1, int.MaxValue)]
     public int HandshakeTimeoutMs { get; set; } = ObsWebSocketClient.DefaultHandshakeTimeoutMs;
 
     /// <summary>
     /// Default timeout in milliseconds for awaiting individual request responses.
     /// Defaults to <see cref="ObsWebSocketClient.DefaultRequestTimeoutMs"/>.
     /// </summary>
-    [Range(1, int.MaxValue)]
     public int RequestTimeoutMs { get; set; } = ObsWebSocketClient.DefaultRequestTimeoutMs;
 
     /// <summary>
@@ -55,7 +51,6 @@ public sealed class ObsWebSocketClientOptions
     /// Gets or sets the initial delay in milliseconds before the first reconnection attempt.
     /// Defaults to 5000ms (5 seconds).
     /// </summary>
-    [Range(0, int.MaxValue)]
     public int InitialReconnectDelayMs { get; set; } = 5000;
 
     /// <summary>

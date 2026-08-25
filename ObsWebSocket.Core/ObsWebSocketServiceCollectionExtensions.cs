@@ -27,9 +27,14 @@ public static class ObsWebSocketServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder = services
-            .AddOptions<ObsWebSocketClientOptions>()
-            .ValidateDataAnnotations();
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder =
+            services.AddOptions<ObsWebSocketClientOptions>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IValidateOptions<ObsWebSocketClientOptions>,
+                ObsWebSocketClientOptionsValidator
+            >()
+        );
 
         if (configureOptions is not null)
         {
@@ -98,9 +103,14 @@ public static class ObsWebSocketServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder = services
-            .AddOptions<ObsWebSocketClientOptions>(name)
-            .ValidateDataAnnotations();
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder =
+            services.AddOptions<ObsWebSocketClientOptions>(name);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IValidateOptions<ObsWebSocketClientOptions>,
+                ObsWebSocketClientOptionsValidator
+            >()
+        );
 
         if (configureOptions is not null)
         {

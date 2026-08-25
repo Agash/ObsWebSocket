@@ -40,7 +40,6 @@
     <PackageReference Include="MessagePack" Version="3.1.8" ExcludeAssets="build;buildTransitive;analyzers" />
     <PackageReference Include="MessagePackAnalyzer" Version="3.1.8" IncludeAssets="none" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.11" />
     <PackageReference Include="MinVer" Version="7.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
