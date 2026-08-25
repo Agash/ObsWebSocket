@@ -1291,8 +1291,13 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                bool allOk = typedBatch.Count == 4 && typedBatch.All(r => r.RequestStatus.Result);
-                return (allOk, $"{typedBatch.Count} result(s), all ok = {allOk}");
+                bool allOk = typedBatch.Count == 4 && typedBatch.AllSucceeded();
+                GetVersionResponseData version = typedBatch[0].GetRequiredData<GetVersionResponseData>();
+                GetSceneListResponseData scenes = typedBatch[2].GetRequiredData<GetSceneListResponseData>();
+                return (
+                    allOk && version.ObsVersion is not null && scenes.Scenes is not null,
+                    $"{typedBatch.Count} result(s), OBS {version.ObsVersion}, {scenes.Scenes?.Count} scene(s)"
+                );
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
