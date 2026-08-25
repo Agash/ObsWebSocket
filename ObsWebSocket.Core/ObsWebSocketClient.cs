@@ -130,7 +130,7 @@ public sealed partial class ObsWebSocketClient(
     /// Returns <c>null</c> if the client is not connected or the handshake hasn't completed.
     /// See <see cref="ObsWebSocket.Core.Protocol.Generated.EventSubscription"/> for flag values.
     /// </summary>
-    public uint? CurrentEventSubscriptions { get; private set; }
+    public EventSubscription? CurrentEventSubscriptions { get; private set; }
     #endregion
 
     #region Connection State Events
@@ -278,7 +278,9 @@ public sealed partial class ObsWebSocketClient(
             _logger.LogReIdentificationSuccessfulRpcVersion(identifiedPayload.NegotiatedRpcVersion);
 
             NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
-            CurrentEventSubscriptions = eventSubscriptions; // Store the flags that were just acknowledged
+            CurrentEventSubscriptions = eventSubscriptions is null
+                ? null
+                : (EventSubscription)eventSubscriptions.Value;
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
@@ -624,6 +626,8 @@ public sealed partial class ObsWebSocketClient(
                 )
                 .ConfigureAwait(false);
 
+            // A batch is one round trip but OBS executes each item in turn, so allow the base
+            // request timeout for the round trip plus a share of it per item.
             int baseTimeout = _options.Value.RequestTimeoutMs;
             int effectiveTimeout =
                 timeoutMs
@@ -1098,11 +1102,11 @@ public sealed partial class ObsWebSocketClient(
                 );
             }
 
-            uint requestedEventSubs = options.EventSubscriptions ?? (uint)EventSubscription.All; // Get flags being requested or default to All
+            EventSubscription requestedEventSubs = options.EventSubscriptions ?? EventSubscription.All;
 
             await SendMessageAsync(
                     WebSocketOpCode.Identify,
-                    new IdentifyPayload(helloPayload.RpcVersion, authResponse, requestedEventSubs),
+                    new IdentifyPayload(helloPayload.RpcVersion, authResponse, (uint)requestedEventSubs),
                     ct
                 )
                 .ConfigureAwait(false);
@@ -1124,7 +1128,7 @@ public sealed partial class ObsWebSocketClient(
             _logger.LogAttemptReceivedIdentifiedNegotiatedRpcVersion(attempt, identifiedPayload.NegotiatedRpcVersion);
 
             NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
-            CurrentEventSubscriptions = requestedEventSubs; // Store the flags that were just
+            CurrentEventSubscriptions = requestedEventSubs; //
 
             // Success! Transfer ownership of CTS/Task to class members. ConnectionLoopAsync sets final state.
             _receiveCts = localReceiveCts;
@@ -2130,14 +2134,14 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (InvalidOperationException ex)
         {
-            throw new ObsWebSocketException(
+            throw new ObsWebSocketSerializationException(
                 $"Failed to serialize request data for {requestContext}. In Native AOT builds, request data must be null, JsonElement, or a generated *RequestData record registered in ObsWebSocketJsonContext.",
                 ex
             );
         }
         catch (Exception ex)
         {
-            throw new ObsWebSocketException($"Failed to serialize request data.", ex);
+            throw new ObsWebSocketSerializationException("Failed to serialize request data.", ex);
         }
     }
 
@@ -2160,8 +2164,12 @@ public sealed partial class ObsWebSocketClient(
     {
         if (!status.Result)
         {
-            throw new ObsWebSocketException(
-                $"OBS request '{requestType}' ({requestId}) failed with code {status.Code}: {status.Comment ?? "No comment"}"
+            throw new ObsWebSocketRequestException(
+                $"OBS request '{requestType}' ({requestId}) failed with code {status.Code}: {status.Comment ?? "No comment"}",
+                requestType,
+                requestId,
+                status,
+                status.Comment
             );
         }
     }
@@ -2263,7 +2271,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
         {
-            throw new ObsWebSocketException(
+            throw new ObsWebSocketTimeoutException(
                 $"{requestDescription} timed out after {timeoutMs}ms.",
                 ex
             );

@@ -38,7 +38,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
             _logger.LogJsonSerializationFailedForMessageWithOpcode(ex, message.Op);
-            throw new ObsWebSocketException("Serialization error", ex);
+            throw new ObsWebSocketSerializationException("Serialization error", ex);
         }
     }
 

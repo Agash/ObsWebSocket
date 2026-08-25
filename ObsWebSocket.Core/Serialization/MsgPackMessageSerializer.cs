@@ -41,12 +41,12 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         catch (MessagePackSerializationException ex)
         {
             _logger.LogMessagepackSerializationFailedForMessageWithOpcode(ex, message.Op);
-            throw new ObsWebSocketException("MessagePack serialization error", ex);
+            throw new ObsWebSocketSerializationException("MessagePack serialization error", ex);
         }
         catch (Exception ex)
         {
             _logger.LogUnexpectedErrorDuringMessagepackSerializationForOpcode(ex, message.Op);
-            throw new ObsWebSocketException("Unexpected serialization error", ex);
+            throw new ObsWebSocketSerializationException("Unexpected serialization error", ex);
         }
     }
 

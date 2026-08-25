@@ -47,7 +47,7 @@ public sealed class TimeProviderTests
 
         time.Advance(TimeSpan.FromMilliseconds(2));
 
-        ObsWebSocketException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
+        ObsWebSocketTimeoutException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketTimeoutException>(
             async () => await pending
         );
         StringAssert.Contains(ex.Message, "timed out");

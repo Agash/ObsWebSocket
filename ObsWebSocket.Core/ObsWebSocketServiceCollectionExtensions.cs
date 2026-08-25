@@ -27,13 +27,13 @@ public static class ObsWebSocketServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Ensure Options infrastructure is registered
-        _ = services.AddOptions();
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder = services
+            .AddOptions<ObsWebSocketClientOptions>()
+            .ValidateDataAnnotations();
 
-        // Configure options if an action is provided
-        if (configureOptions != null)
+        if (configureOptions is not null)
         {
-            _ = services.Configure(configureOptions);
+            _ = optionsBuilder.Configure(configureOptions);
         }
 
         services.TryAddSingleton<JsonMessageSerializer>();
@@ -98,10 +98,13 @@ public static class ObsWebSocketServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        _ = services.AddOptions();
+        OptionsBuilder<ObsWebSocketClientOptions> optionsBuilder = services
+            .AddOptions<ObsWebSocketClientOptions>(name)
+            .ValidateDataAnnotations();
+
         if (configureOptions is not null)
         {
-            _ = services.Configure(name, configureOptions);
+            _ = optionsBuilder.Configure(configureOptions);
         }
 
         services.TryAddSingleton<JsonMessageSerializer>();

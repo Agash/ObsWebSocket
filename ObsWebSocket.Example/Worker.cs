@@ -43,8 +43,8 @@ internal sealed partial class Worker(
 
     // Store the *intended* subscription flags (initialized from options, updated by set-subs)
     // Note: The client doesn't currently expose the *actual* negotiated flags from the server.
-    private uint _currentSubscriptionFlags =
-        obsOptions.Value.EventSubscriptions ?? (uint)EventSubscription.All; // Default to All if null
+    private EventSubscription _currentSubscriptionFlags =
+        obsOptions.Value.EventSubscriptions ?? EventSubscription.All;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -680,9 +680,9 @@ internal sealed partial class Worker(
                     newFlags,
                     cancellationToken: cancellationToken
                 );
-                _currentSubscriptionFlags = newFlags; // Update our stored value *after* successful re-identify
+                _currentSubscriptionFlags = (EventSubscription)newFlags;
                 UiSuccess(
-                    $"Re-identified successfully. Intended subscriptions set to: {_currentSubscriptionFlags} ({(EventSubscription)_currentSubscriptionFlags})"
+                    $"Re-identified successfully. Intended subscriptions set to: {_currentSubscriptionFlags}"
                 );
                 return false;
 

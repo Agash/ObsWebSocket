@@ -409,5 +409,54 @@ public static class ObsWebSocketClientConvenienceExtensions
                 .ConfigureAwait(false);
             return id is null ? null : checked((int)id.Value);
         }
+
+        /// <summary>Switches the Program scene.</summary>
+        /// <param name="sceneName">The scene to switch to.</param>
+        /// <param name="transitionName">Optional transition to use for this switch only.</param>
+        /// <param name="transitionDurationMs">Optional transition duration for this switch only.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        public Task SwitchProgramSceneAsync(
+            string sceneName,
+            string? transitionName = null,
+            int? transitionDurationMs = null,
+            CancellationToken cancellationToken = default
+        ) =>
+            client.SwitchSceneAsync(
+                sceneName,
+                transitionName,
+                transitionDurationMs,
+                switchToProgram: true,
+                cancellationToken
+            );
+
+        /// <summary>Switches the Preview scene. Requires Studio Mode.</summary>
+        /// <param name="sceneName">The scene to switch to.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        public Task SwitchPreviewSceneAsync(
+            string sceneName,
+            CancellationToken cancellationToken = default
+        ) =>
+            client.SwitchSceneAsync(
+                sceneName,
+                switchToProgram: false,
+                cancellationToken: cancellationToken
+            );
+
+        /// <summary>Switches the Program scene and waits for OBS to confirm it.</summary>
+        /// <param name="sceneName">The scene to switch to.</param>
+        /// <param name="timeout">How long to wait for confirmation.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="TimeoutException">Thrown if the confirmation does not arrive in time.</exception>
+        public Task SwitchProgramSceneAndWaitAsync(
+            string sceneName,
+            TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default
+        ) =>
+            client.SwitchSceneAndWaitAsync(
+                sceneName,
+                switchToProgram: true,
+                timeout: timeout,
+                cancellationToken: cancellationToken
+            );
     }
 }
