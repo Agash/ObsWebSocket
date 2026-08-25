@@ -66,6 +66,8 @@ public sealed partial class ObsWebSocketClient(
     /// <summary>Source of time for all timeouts and reconnect delays.</summary>
     internal readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
+    private ReconnectDelays _reconnectDelays = ReconnectDelays.Disabled;
+
     /// <summary>
     /// Default size of the receive buffer for WebSocket messages.
     /// </summary>
@@ -761,7 +763,7 @@ public sealed partial class ObsWebSocketClient(
     )
     {
         int attempt = 0;
-        int currentDelayMs = options.InitialReconnectDelayMs;
+        _reconnectDelays = new ReconnectDelays(options);
         IWebSocketConnection? previousWebSocket = null;
         Debug.Assert(_clientLifetimeCts != null);
         CancellationToken clientLifetimeToken = _clientLifetimeCts.Token;
@@ -817,18 +819,12 @@ public sealed partial class ObsWebSocketClient(
                             break;
                         }
 
-                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts, currentDelayMs);
-                        ObsWebSocketDiagnostics.Reconnects.Add(1);
-                        await Task.Delay(TimeSpan.FromMilliseconds(currentDelayMs), _timeProvider, loopToken)
+                        TimeSpan backoff = await _reconnectDelays
+                            .GetDelayAsync(attempt - 2, loopToken)
                             .ConfigureAwait(false);
-                        if (options.ReconnectBackoffMultiplier > 1.0)
-                        {
-                            currentDelayMs = (int)
-                                Math.Min(
-                                    options.MaxReconnectDelayMs,
-                                    currentDelayMs * options.ReconnectBackoffMultiplier
-                                );
-                        }
+                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts, (int)backoff.TotalMilliseconds);
+                        ObsWebSocketDiagnostics.Reconnects.Add(1);
+                        await Task.Delay(backoff, _timeProvider, loopToken).ConfigureAwait(false);
                     }
 
                     previousWebSocket?.Dispose();
@@ -872,7 +868,6 @@ public sealed partial class ObsWebSocketClient(
                     _completionException = null;
                     _ = initialTcs.TrySetResult(); // Signal successful initial connection
                     attempt = 0; // Reset attempt count only on full success
-                    currentDelayMs = options.InitialReconnectDelayMs;
 
                     Debug.Assert(_receiveTask != null);
                     _logger.LogConnectionEstablishedWaitingForReceiveLoopCompletion();
