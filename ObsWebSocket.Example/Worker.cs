@@ -1300,6 +1300,108 @@ internal sealed partial class Worker(
                 );
             }).ConfigureAwait(false));
 
+            results.Add(await TrySettingsCheckAsync("Batch order and duplicates", async () =>
+            {
+                // Repeats one request type with different payloads and interleaves others, so a
+                // result can only be matched to its request by position.
+                GetSceneListResponseData? allScenes = await client
+                    .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+                    .ConfigureAwait(false);
+                string otherScene = allScenes!
+                    .Scenes!.Select(scene => scene.SceneName!)
+                    .First(name => !string.Equals(name, sceneName, StringComparison.Ordinal));
+
+                List<RequestResponsePayload<object>> mixed = await client
+                    .CallBatchAsync(
+                        batch => batch
+                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: sceneName))
+                            .GetVersion()
+                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: otherScene))
+                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: sceneName))
+                            .GetStats(),
+                        executionType: RequestBatchExecutionType.SerialRealtime,
+                        haltOnFailure: false,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (mixed.Count != 5 || !mixed.AllSucceeded())
+                {
+                    return (false, $"expected 5 successes, got {mixed.Count} with {mixed.Failures().Count()} failure(s)");
+                }
+
+                // Results must line up with the requests by position, including the repeats.
+                string[] expectedOrder =
+                [
+                    "GetSceneItemList",
+                    "GetVersion",
+                    "GetSceneItemList",
+                    "GetSceneItemList",
+                    "GetStats",
+                ];
+                if (!mixed.Select(r => r.RequestType).SequenceEqual(expectedOrder, StringComparer.Ordinal))
+                {
+                    return (false, "order: " + string.Join(", ", mixed.Select(r => r.RequestType)));
+                }
+
+                GetSceneItemListResponseData first = mixed[0].GetRequiredData<GetSceneItemListResponseData>();
+                GetVersionResponseData version = mixed[1].GetRequiredData<GetVersionResponseData>();
+                GetSceneItemListResponseData second = mixed[2].GetRequiredData<GetSceneItemListResponseData>();
+                GetSceneItemListResponseData third = mixed[3].GetRequiredData<GetSceneItemListResponseData>();
+
+                // The two lookups of the same scene must agree, and differ from the other scene.
+                int firstCount = first.SceneItems?.Count ?? -1;
+                int secondCount = second.SceneItems?.Count ?? -1;
+                int thirdCount = third.SceneItems?.Count ?? -1;
+                bool repeatsAgree = firstCount == thirdCount;
+                bool distinguishable = firstCount != secondCount || !string.Equals(sceneName, otherScene, StringComparison.Ordinal);
+
+                return (
+                    repeatsAgree && distinguishable && version.ObsVersion is not null,
+                    $"[{firstCount}, v{version.ObsVersion}, {secondCount}, {thirdCount}] repeats agree = {repeatsAgree}"
+                );
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Batch partial failure", async () =>
+            {
+                // haltOnFailure false, so the good requests either side of a bad one still run.
+                List<RequestResponsePayload<object>> partial = await client
+                    .CallBatchAsync(
+                        batch => batch
+                            .GetVersion()
+                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: "__no_such_scene__"))
+                            .GetStats(),
+                        executionType: RequestBatchExecutionType.SerialRealtime,
+                        haltOnFailure: false,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                RequestResponsePayload<object>[] failures = [.. partial.Failures()];
+                if (partial.Count != 3 || failures.Length != 1)
+                {
+                    return (false, $"{partial.Count} result(s), {failures.Length} failure(s)");
+                }
+
+                // GetRequiredData surfaces the OBS status rather than a null payload.
+                string caught;
+                try
+                {
+                    _ = failures[0].GetRequiredData<GetSceneItemListResponseData>();
+                    caught = "no exception";
+                }
+                catch (ObsWebSocketRequestException ex)
+                {
+                    caught = $"code {ex.Status?.Code}";
+                }
+
+                bool neighboursOk =
+                    partial[0].GetRequiredData<GetVersionResponseData>().ObsVersion is not null;
+
+                return (
+                    neighboursOk && caught.StartsWith("code ", StringComparison.Ordinal),
+                    $"1 failed ({caught}), neighbours ran"
+                );
+            }).ConfigureAwait(false));
+
             results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
             {
                 bool recording = await client.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
