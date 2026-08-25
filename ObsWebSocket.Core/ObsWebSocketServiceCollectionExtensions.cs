@@ -54,6 +54,8 @@ public static class ObsWebSocketServiceCollectionExtensions
 
         services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
 
+        services.TryAddSingleton(TimeProvider.System);
+
         services.TryAddSingleton(sp =>
         {
             ILogger<ObsWebSocketClient> logger = sp.GetRequiredService<
@@ -67,8 +69,10 @@ public static class ObsWebSocketServiceCollectionExtensions
             IWebSocketConnectionFactory factory =
                 sp.GetRequiredService<IWebSocketConnectionFactory>();
 
+            TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
+
             // Pass dependencies to the constructor
-            return new ObsWebSocketClient(logger, serializer, options, factory);
+            return new ObsWebSocketClient(logger, serializer, options, factory, timeProvider);
         });
 
         return services;

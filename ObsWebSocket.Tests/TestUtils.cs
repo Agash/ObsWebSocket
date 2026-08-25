@@ -51,7 +51,8 @@ internal static class TestUtils
         Mock<IWebSocketConnectionFactory> mockFactory
     ) BuildMockedClientInfrastructure(
         Action<ObsWebSocketClientOptions>? configureOptions = null,
-        Mock<IWebSocketMessageSerializer>? existingSerializerMock = null
+        Mock<IWebSocketMessageSerializer>? existingSerializerMock = null,
+        TimeProvider? timeProvider = null
     )
     {
         ServiceCollection services = new();
@@ -169,6 +170,7 @@ internal static class TestUtils
             opts.Format = SerializationFormat.Json;
             configureOptions?.Invoke(opts);
         });
+        _ = services.AddSingleton(timeProvider ?? TimeProvider.System);
         _ = services.AddSingleton<ObsWebSocketClient>();
 
         // --- Build and Return ---
@@ -199,14 +201,14 @@ internal static class TestUtils
         ObsWebSocketClient client,
         Mock<IWebSocketMessageSerializer> mockSerializer,
         Mock<IWebSocketConnection> mockConnection
-    ) SetupConnectedClientForceState()
+    ) SetupConnectedClientForceState(TimeProvider? timeProvider = null)
     {
         (
             ObsWebSocketClient? client,
             Mock<IWebSocketConnection>? mockConnection,
             Mock<IWebSocketMessageSerializer>? mockSerializer,
             _
-        ) = BuildMockedClientInfrastructure();
+        ) = BuildMockedClientInfrastructure(timeProvider: timeProvider);
 
         SetPrivateField(client, "_webSocket", mockConnection.Object);
         SetPrivateField(client, "_connectionState", ConnectionState.Connected);

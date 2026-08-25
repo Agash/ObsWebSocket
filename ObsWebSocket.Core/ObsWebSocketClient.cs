@@ -49,7 +49,8 @@ public sealed partial class ObsWebSocketClient(
     ILogger<ObsWebSocketClient> logger,
     IWebSocketMessageSerializer serializer,
     IOptions<ObsWebSocketClientOptions> options,
-    IWebSocketConnectionFactory? connectionFactory = null
+    IWebSocketConnectionFactory? connectionFactory = null,
+    TimeProvider? timeProvider = null
 ) : IAsyncDisposable
 {
     #region Fields
@@ -60,6 +61,9 @@ public sealed partial class ObsWebSocketClient(
         options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWebSocketConnectionFactory _connectionFactory =
         connectionFactory ?? new WebSocketConnectionFactory();
+
+    /// <summary>Source of time for all timeouts and reconnect delays.</summary>
+    internal readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <summary>
     /// Default size of the receive buffer for WebSocket messages.
@@ -201,7 +205,7 @@ public sealed partial class ObsWebSocketClient(
                 options.Value.HandshakeTimeoutMs * 2,
                 DefaultRequestTimeoutMs
             ); // Be generous
-            linkedTimeoutCts.CancelAfter(TimeSpan.FromMilliseconds(overallTimeout));
+            linkedTimeoutCts.CancelAfterUsing(_timeProvider, TimeSpan.FromMilliseconds(overallTimeout));
 
             await currentInitialConnectionTcs
                 .Task.WaitAsync(linkedTimeoutCts.Token)
@@ -267,6 +271,7 @@ public sealed partial class ObsWebSocketClient(
                     _identifiedTcs,
                     effectiveTimeout,
                     "Identified (after Reidentify)",
+                    _timeProvider,
                     linkedCts.Token
                 )
                 .ConfigureAwait(false);
@@ -692,7 +697,7 @@ public sealed partial class ObsWebSocketClient(
             {
                 using CancellationTokenSource combinedWaitCts =
                     CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                combinedWaitCts.CancelAfter(TimeSpan.FromSeconds(5));
+                combinedWaitCts.CancelAfterUsing(_timeProvider, TimeSpan.FromSeconds(5));
                 await loopTaskToWait
                     .WaitAsync(combinedWaitCts.Token)
                     .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
@@ -806,7 +811,8 @@ public sealed partial class ObsWebSocketClient(
                             maxAttempts < 0 ? "Infinite" : maxAttempts,
                             currentDelayMs
                         );
-                        await Task.Delay(currentDelayMs, loopToken).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromMilliseconds(currentDelayMs), _timeProvider, loopToken)
+                            .ConfigureAwait(false);
                         if (options.ReconnectBackoffMultiplier > 1.0)
                         {
                             currentDelayMs = (int)
@@ -1105,6 +1111,7 @@ public sealed partial class ObsWebSocketClient(
                     _helloTcs,
                     options.HandshakeTimeoutMs,
                     "Hello",
+                    _timeProvider,
                     ct
                 )
                 .ConfigureAwait(false);
@@ -1148,6 +1155,7 @@ public sealed partial class ObsWebSocketClient(
                     _identifiedTcs,
                     options.HandshakeTimeoutMs,
                     "Identified",
+                    _timeProvider,
                     ct
                 )
                 .ConfigureAwait(false);
@@ -2316,11 +2324,15 @@ public sealed partial class ObsWebSocketClient(
         TaskCompletionSource<object>? tcs,
         int timeoutMs,
         string messageName,
+        TimeProvider timeProvider,
         CancellationToken attemptCancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(tcs);
-        using CancellationTokenSource timeoutCts = new(timeoutMs);
+        using CancellationTokenSource timeoutCts = new(
+            TimeSpan.FromMilliseconds(timeoutMs),
+            timeProvider
+        );
         using CancellationTokenSource linkedWaitCts =
             CancellationTokenSource.CreateLinkedTokenSource(
                 attemptCancellationToken,
@@ -2354,7 +2366,10 @@ public sealed partial class ObsWebSocketClient(
         CancellationToken linkedRequestAndLifetimeToken
     )
     {
-        using CancellationTokenSource timeoutCts = new(timeoutMs);
+        using CancellationTokenSource timeoutCts = new(
+            TimeSpan.FromMilliseconds(timeoutMs),
+            _timeProvider
+        );
         using CancellationTokenSource linkedWaitCts =
             CancellationTokenSource.CreateLinkedTokenSource(
                 linkedRequestAndLifetimeToken,
