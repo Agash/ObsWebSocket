@@ -1500,14 +1500,14 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("Batch parallel execution", async () =>
             {
-                // OBS runs these on the thread pool and may answer out of order, so this proves
-                // the references still resolve to the right requests.
+                // OBS pairs each result with another request's response data under parallel
+                // execution, so reading by reference must refuse rather than return the wrong
+                // request's payload.
                 ObsBatchBuilder par = new();
                 BatchRef<GetVersionResponseData> v = par.General.GetVersion();
-                BatchRef<GetSceneItemListResponseData> items = par.SceneItems.GetSceneItemList(
+                _ = par.SceneItems.GetSceneItemList(
                     new GetSceneItemListRequestData(sceneName: sceneName)
                 );
-                BatchRef<GetStatsResponseData> stats = par.General.GetStats();
 
                 BatchResults r = await client
                     .CallBatchAsync(
@@ -1517,18 +1517,22 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (r.Count != 3 || !r.AllSucceeded())
+                string guarded;
+                try
                 {
-                    return (false, $"{r.Count} result(s), {r.GetFailures().Count()} failure(s)");
+                    _ = r.Get(v);
+                    guarded = "returned data";
+                }
+                catch (ObsWebSocketException ex)
+                {
+                    guarded = ex.Message.Contains("Parallel", StringComparison.Ordinal)
+                        ? "refused"
+                        : "threw: " + ex.Message;
                 }
 
-                string? version = r.Get(v).ObsVersion;
-                int itemCount = r.Get(items).SceneItems?.Count ?? -1;
-                double fps = r.Get(stats).ActiveFps;
-
                 return (
-                    version is not null && itemCount >= 0 && fps > 0,
-                    $"v={version}, items={itemCount}, {fps:0} fps"
+                    r.Count == 2 && guarded == "refused" && !r.TryGet(v, out GetVersionResponseData? _),
+                    $"{r.Count} raw result(s), reference {guarded}"
                 );
             }).ConfigureAwait(false));
 

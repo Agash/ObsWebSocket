@@ -37,12 +37,22 @@ public sealed class BatchResults : IReadOnlyList<RequestResponsePayload<object>>
 {
     private readonly IReadOnlyList<RequestResponsePayload<object>> _results;
 
+    private readonly bool _payloadsTrustworthy;
+
     /// <summary>Initializes results from the payloads OBS returned.</summary>
     /// <param name="results">The results, in submission order.</param>
-    public BatchResults(IReadOnlyList<RequestResponsePayload<object>> results)
+    /// <param name="payloadsTrustworthy">
+    /// Whether each result's data belongs to the request it is attached to. False for parallel
+    /// execution, where OBS pairs every result with another request's response.
+    /// </param>
+    public BatchResults(
+        IReadOnlyList<RequestResponsePayload<object>> results,
+        bool payloadsTrustworthy = true
+    )
     {
         ArgumentNullException.ThrowIfNull(results);
         _results = results;
+        _payloadsTrustworthy = payloadsTrustworthy;
     }
 
     /// <summary>Number of results returned.</summary>
@@ -80,7 +90,7 @@ public sealed class BatchResults : IReadOnlyList<RequestResponsePayload<object>>
     public bool TryGet<TResponse>(BatchRef<TResponse> reference, out TResponse? data)
         where TResponse : class
     {
-        if (reference.Index >= _results.Count)
+        if (!_payloadsTrustworthy || reference.Index >= _results.Count)
         {
             data = null;
             return false;
@@ -102,7 +112,19 @@ public sealed class BatchResults : IReadOnlyList<RequestResponsePayload<object>>
     public IEnumerable<RequestResponsePayload<object>> GetFailures() =>
         _results.Where(r => !r.RequestStatus.Result);
 
-    private RequestResponsePayload<object> Require(int index) =>
+    private RequestResponsePayload<object> Require(int index)
+    {
+        if (!_payloadsTrustworthy)
+        {
+            throw new ObsWebSocketException(
+                "OBS pairs each result with another request's response data when a batch runs with RequestBatchExecutionType.Parallel, so reading one by reference would return the wrong request's data. Its own response is already mis-paired, so this cannot be corrected here. Use a serial execution type, or read Raw and accept that the payloads are unreliable."
+            );
+        }
+
+        return RequireCore(index);
+    }
+
+    private RequestResponsePayload<object> RequireCore(int index) =>
         index < _results.Count
             ? _results[index]
             : throw new ObsWebSocketException(

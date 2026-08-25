@@ -1241,13 +1241,16 @@ public sealed partial class ObsWebSocketClient(
                     continue;
                 }
 
-                bufferStream.Position = 0;
+                // Deserialize from a copy. The payload is parsed later, off this thread, and
+                // the assembly buffer is reused by the next message, so anything pointing into
+                // it would be reading the following message by then.
+                using MemoryStream messageStream = new(bufferStream.ToArray(), writable: false);
                 object? incomingMsgObj = await _serializer
-                    .DeserializeAsync(bufferStream, cancellationToken)
+                    .DeserializeAsync(messageStream, cancellationToken)
                     .ConfigureAwait(false);
                 if (incomingMsgObj is null)
                 {
-                    _logger.LogDeserializationReturnedNullLength(bufferStream.Length);
+                    _logger.LogDeserializationReturnedNullLength(messageStream.Length);
                     continue;
                 }
 

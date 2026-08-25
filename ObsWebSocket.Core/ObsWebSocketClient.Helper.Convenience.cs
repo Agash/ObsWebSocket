@@ -366,7 +366,11 @@ public static class ObsWebSocketClientConvenienceExtensions
                 )
                 .ConfigureAwait(false);
 
-            return new BatchResults(results);
+            // OBS mis-pairs result payloads under parallel execution.
+            return new BatchResults(
+                results,
+                payloadsTrustworthy: executionType != RequestBatchExecutionType.Parallel
+            );
         }
 
         /// <summary>
