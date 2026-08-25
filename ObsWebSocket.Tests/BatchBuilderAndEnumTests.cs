@@ -3,6 +3,7 @@ using ObsWebSocket.Core;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
+using ObsWebSocket.Core.Protocol.Responses;
 
 namespace ObsWebSocket.Tests;
 
@@ -17,10 +18,11 @@ public sealed class ObsBatchBuilderTests
     public void Builder_PairsRequestTypeWithItsOwnPayload()
     {
         ObsBatchBuilder builder = new();
-        _ = builder
-            .GetVersion()
-            .SetCurrentProgramScene(new SetCurrentProgramSceneRequestData(sceneName: "Intro"))
-            .Sleep(new SleepRequestData(sleepMillis: 100));
+        _ = builder.General.GetVersion();
+        _ = builder.Scenes.SetCurrentProgramScene(
+            new SetCurrentProgramSceneRequestData(sceneName: "Intro")
+        );
+        _ = builder.General.Sleep(new SleepRequestData(sleepMillis: 100));
 
         List<BatchRequestItem> items = builder.Build();
 
@@ -37,10 +39,18 @@ public sealed class ObsBatchBuilderTests
     }
 
     [TestMethod]
-    public void Builder_PreservesOrder()
+    public void Builder_ReturnsReferencesInSubmissionOrder()
     {
         ObsBatchBuilder builder = new();
-        _ = builder.GetVersion().GetStats().GetSceneList(new GetSceneListRequestData());
+        BatchRef<GetVersionResponseData> version = builder.General.GetVersion();
+        BatchRef<GetStatsResponseData> stats = builder.General.GetStats();
+        BatchRef<GetSceneListResponseData> scenes = builder.Scenes.GetSceneList(
+            new GetSceneListRequestData()
+        );
+
+        Assert.AreEqual(0, version.Index);
+        Assert.AreEqual(1, stats.Index);
+        Assert.AreEqual(2, scenes.Index);
 
         CollectionAssert.AreEqual(
             new[] { "GetVersion", "GetStats", "GetSceneList" },
@@ -49,12 +59,29 @@ public sealed class ObsBatchBuilderTests
     }
 
     [TestMethod]
+    public void Builder_RepeatedRequestType_YieldsDistinctReferences()
+    {
+        ObsBatchBuilder builder = new();
+        BatchRef<GetSceneItemListResponseData> first = builder.SceneItems.GetSceneItemList(
+            new GetSceneItemListRequestData(sceneName: "Intro")
+        );
+        BatchRef<GetSceneItemListResponseData> second = builder.SceneItems.GetSceneItemList(
+            new GetSceneItemListRequestData(sceneName: "Outro")
+        );
+
+        Assert.AreNotEqual(first, second);
+        Assert.AreEqual(0, first.Index);
+        Assert.AreEqual(1, second.Index);
+    }
+
+    [TestMethod]
     public void Add_AcceptsRawRequestTypesAndPayloads()
     {
         using JsonDocument doc = JsonDocument.Parse("""{"inputName":"Mic"}""");
 
         ObsBatchBuilder builder = new();
-        _ = builder.Add("GetStats").Add("SetInputSettings", doc.RootElement.Clone());
+        _ = builder.Add("GetStats");
+        _ = builder.Add("SetInputSettings", doc.RootElement.Clone());
 
         List<BatchRequestItem> items = builder.Build();
         Assert.AreEqual("GetStats", items[0].RequestType);
@@ -67,10 +94,10 @@ public sealed class ObsBatchBuilderTests
     public void Build_ReturnsIndependentCopies()
     {
         ObsBatchBuilder builder = new();
-        _ = builder.GetVersion();
+        _ = builder.General.GetVersion();
 
         List<BatchRequestItem> first = builder.Build();
-        _ = builder.GetStats();
+        _ = builder.General.GetStats();
 
         Assert.AreEqual(1, first.Count, "an already-built list must not grow with the builder");
         Assert.AreEqual(2, builder.Build().Count);
@@ -79,7 +106,7 @@ public sealed class ObsBatchBuilderTests
     [TestMethod]
     public void TypedMethod_WithNullPayload_Throws() =>
         Assert.ThrowsExactly<ArgumentNullException>(() =>
-            new ObsBatchBuilder().SetCurrentProgramScene(null!)
+            new ObsBatchBuilder().Scenes.SetCurrentProgramScene(null!)
         );
 }
 

@@ -186,7 +186,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetVersionResponseData? version = await client.GetVersionAsync();
+        GetVersionResponseData? version = await client.General.GetVersionAsync();
 
         Assert.IsNotNull(version);
         Assert.IsFalse(
@@ -218,7 +218,7 @@ public class ObsWebSocketClientIntegrationTests
         GetCurrentProgramSceneResponseData? originalScene = null;
         try
         {
-            originalScene = await client.GetCurrentProgramSceneAsync();
+            originalScene = await client.Scenes.GetCurrentProgramSceneAsync();
             Trace.WriteLine($"Original scene: {originalScene?.SceneName}");
         }
         catch (Exception ex)
@@ -229,13 +229,13 @@ public class ObsWebSocketClientIntegrationTests
         try
         {
             // Act: Set the scene
-            await client.SetCurrentProgramSceneAsync(
+            await client.Scenes.SetCurrentProgramSceneAsync(
                 new SetCurrentProgramSceneRequestData(sceneName)
             );
 
             // Assert: Check if the scene was actually changed
             GetCurrentProgramSceneResponseData? newScene =
-                await client.GetCurrentProgramSceneAsync();
+                await client.Scenes.GetCurrentProgramSceneAsync();
             Assert.IsNotNull(newScene);
             Assert.AreEqual(
                 sceneName,
@@ -266,7 +266,7 @@ public class ObsWebSocketClientIntegrationTests
                 try
                 {
                     Trace.WriteLine($"Attempting to restore scene to: {originalScene.SceneName}");
-                    await client.SetCurrentProgramSceneAsync(
+                    await client.Scenes.SetCurrentProgramSceneAsync(
                         new SetCurrentProgramSceneRequestData(originalScene.SceneName)
                     );
                 }
@@ -306,7 +306,7 @@ public class ObsWebSocketClientIntegrationTests
         GetCurrentProgramSceneResponseData? initialScene = null;
         try
         {
-            initialScene = await client.GetCurrentProgramSceneAsync();
+            initialScene = await client.Scenes.GetCurrentProgramSceneAsync();
         }
         catch
         { /* Ignore if fails */
@@ -352,7 +352,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetSceneListResponseData? response = await client.GetSceneListAsync(new());
+        GetSceneListResponseData? response = await client.Scenes.GetSceneListAsync(new());
 
         Assert.IsNotNull(response, "GetSceneList response was null.");
         Assert.IsNotNull(response.Scenes, "Scenes list was null.");
@@ -392,7 +392,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetInputListResponseData? response = await client.GetInputListAsync(
+        GetInputListResponseData? response = await client.Inputs.GetInputListAsync(
             new GetInputListRequestData()
         ); // Empty request data
 
@@ -435,7 +435,7 @@ public class ObsWebSocketClientIntegrationTests
         Assert.IsTrue(client.IsConnected);
 
         // Get the scene item ID first
-        GetSceneItemIdResponseData? idResponse = await client.GetSceneItemIdAsync(
+        GetSceneItemIdResponseData? idResponse = await client.SceneItems.GetSceneItemIdAsync(
             new GetSceneItemIdRequestData(
                 s_testOptions.TestInputName!,
                 sceneName: s_testOptions.TestSceneName!
@@ -449,7 +449,7 @@ public class ObsWebSocketClientIntegrationTests
 
         // Get the transform
         GetSceneItemTransformResponseData? transformResponse =
-            await client.GetSceneItemTransformAsync(
+            await client.SceneItems.GetSceneItemTransformAsync(
                 new GetSceneItemTransformRequestData(sceneItemId, sceneName: s_testOptions.TestSceneName!)
             );
 
@@ -481,7 +481,7 @@ public class ObsWebSocketClientIntegrationTests
         GetInputAudioTracksResponseData? response;
         try
         {
-            response = await client.GetInputAudioTracksAsync(
+            response = await client.Inputs.GetInputAudioTracksAsync(
                 new GetInputAudioTracksRequestData(s_testOptions.TestAudioInputName!)
             );
         }
@@ -526,8 +526,7 @@ public class ObsWebSocketClientIntegrationTests
         GetInputSettingsResponseData? response;
         try
         {
-            response = await client.GetInputSettingsAsync(
-                new GetInputSettingsRequestData(s_testOptions.TestInputName!)
+            response = await client.Inputs.GetInputSettingsAsync(new GetInputSettingsRequestData(s_testOptions.TestInputName!)
             );
         }
         catch (ObsWebSocketException ex) when (ex.Message.Contains("ResourceNotFound"))
@@ -584,7 +583,7 @@ public class ObsWebSocketClientIntegrationTests
         GetSourceFilterListResponseData? response;
         try
         {
-            response = await client.GetSourceFilterListAsync(
+            response = await client.Filters.GetSourceFilterListAsync(
                 new GetSourceFilterListRequestData(sourceName: s_testOptions.TestInputName!)
             );
         }
@@ -637,7 +636,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetSceneTransitionListResponseData? response = await client.GetSceneTransitionListAsync();
+        GetSceneTransitionListResponseData? response = await client.Transitions.GetSceneTransitionListAsync();
 
         Assert.IsNotNull(response, "GetSceneTransitionList response was null.");
         Assert.IsNotNull(response.Transitions, "Transitions list was null.");
@@ -677,7 +676,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetOutputListResponseData? response = await client.GetOutputListAsync();
+        GetOutputListResponseData? response = await client.Outputs.GetOutputListAsync();
 
         Assert.IsNotNull(response, "GetOutputList response was null.");
         Assert.IsNotNull(response.Outputs, "Outputs list was null.");
@@ -709,7 +708,7 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetMonitorListResponseData? response = await client.GetMonitorListAsync();
+        GetMonitorListResponseData? response = await client.Ui.GetMonitorListAsync();
 
         Assert.IsNotNull(response, "GetMonitorList response was null.");
         Assert.IsNotNull(response.Monitors, "Monitors list was null.");
@@ -813,8 +812,7 @@ public class ObsWebSocketClientIntegrationTests
         GetInputDefaultSettingsResponseData? response;
         try
         {
-            response = await client.GetInputDefaultSettingsAsync(
-                new GetInputDefaultSettingsRequestData(inputKind)
+            response = await client.Inputs.GetInputDefaultSettingsAsync(new GetInputDefaultSettingsRequestData(inputKind)
             );
         }
         catch (ObsWebSocketException ex) when (ex.Message.Contains("InvalidInputKind"))

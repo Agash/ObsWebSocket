@@ -14,15 +14,14 @@ using ObsWebSocket.Core.Protocol.Common;
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Provides strongly-typed extension methods for the <see cref="ObsWebSocketClient"/>,
-/// corresponding to the requests defined in the OBS WebSocket v5 protocol.
+/// Requests in the <c>canvases</c> category.
 /// </summary>
-public static partial class ObsWebSocketClientExtensions
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct CanvasesRequestGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of canvases in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData"/> response data.</returns>
     /// <remarks>
@@ -33,15 +32,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData> GetCanvasListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData> GetCanvasListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetCanvasListResponseData>("GetCanvasList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>config</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct ConfigRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the value of a &quot;slot&quot; from the selected persistent data realm.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetPersistentDataRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetPersistentDataResponseData"/> response data.</returns>
@@ -53,7 +59,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetPersistentDataResponseData> GetPersistentDataAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetPersistentDataRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetPersistentDataResponseData> GetPersistentDataAsync(ObsWebSocket.Core.Protocol.Requests.GetPersistentDataRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetPersistentDataResponseData>("GetPersistentData", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -61,7 +67,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the value of a &quot;slot&quot; from the selected persistent data realm.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetPersistentDataRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -73,7 +78,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetPersistentDataAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetPersistentDataRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetPersistentDataAsync(ObsWebSocket.Core.Protocol.Requests.SetPersistentDataRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetPersistentData", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -81,7 +86,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets an array of all scene collections
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneCollectionListResponseData"/> response data.</returns>
     /// <remarks>
@@ -92,7 +96,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneCollectionListResponseData> GetSceneCollectionListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneCollectionListResponseData> GetSceneCollectionListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneCollectionListResponseData>("GetSceneCollectionList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -102,7 +106,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: This will block until the collection has finished changing.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneCollectionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -114,7 +117,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentSceneCollectionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneCollectionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentSceneCollectionAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneCollectionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentSceneCollection", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -124,7 +127,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: This will block until the collection has finished changing.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateSceneCollectionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -136,7 +138,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task CreateSceneCollectionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateSceneCollectionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task CreateSceneCollectionAsync(ObsWebSocket.Core.Protocol.Requests.CreateSceneCollectionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("CreateSceneCollection", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -144,7 +146,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets an array of all profiles
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetProfileListResponseData"/> response data.</returns>
     /// <remarks>
@@ -155,7 +156,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetProfileListResponseData> GetProfileListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetProfileListResponseData> GetProfileListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetProfileListResponseData>("GetProfileList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -163,7 +164,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Switches to a profile.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentProfileRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -175,7 +175,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentProfileAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentProfileRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentProfileAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentProfileRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentProfile", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -183,7 +183,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Creates a new profile, switching to it in the process
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateProfileRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -195,7 +194,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task CreateProfileAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateProfileRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task CreateProfileAsync(ObsWebSocket.Core.Protocol.Requests.CreateProfileRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("CreateProfile", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -203,7 +202,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Removes a profile. If the current profile is chosen, it will change to a different profile first.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.RemoveProfileRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -215,7 +213,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task RemoveProfileAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.RemoveProfileRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task RemoveProfileAsync(ObsWebSocket.Core.Protocol.Requests.RemoveProfileRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("RemoveProfile", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -223,7 +221,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets a parameter from the current profile&apos;s configuration.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetProfileParameterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetProfileParameterResponseData"/> response data.</returns>
@@ -235,7 +232,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetProfileParameterResponseData> GetProfileParameterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetProfileParameterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetProfileParameterResponseData> GetProfileParameterAsync(ObsWebSocket.Core.Protocol.Requests.GetProfileParameterRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetProfileParameterResponseData>("GetProfileParameter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -243,7 +240,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the value of a parameter in the current profile&apos;s configuration.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetProfileParameterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -255,7 +251,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetProfileParameterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetProfileParameterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetProfileParameterAsync(ObsWebSocket.Core.Protocol.Requests.SetProfileParameterRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetProfileParameter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -265,7 +261,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: To get the true FPS value, divide the FPS numerator by the FPS denominator. Example: `60000/1001`
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetVideoSettingsResponseData"/> response data.</returns>
     /// <remarks>
@@ -276,7 +271,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetVideoSettingsResponseData> GetVideoSettingsAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetVideoSettingsResponseData> GetVideoSettingsAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetVideoSettingsResponseData>("GetVideoSettings", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -286,7 +281,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Fields must be specified in pairs. For example, you cannot set only `baseWidth` without needing to specify `baseHeight`.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetVideoSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -298,7 +292,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetVideoSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetVideoSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetVideoSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetVideoSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetVideoSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -306,7 +300,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the current stream service settings (stream destination).
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetStreamServiceSettingsResponseData"/> response data.</returns>
     /// <remarks>
@@ -317,7 +310,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetStreamServiceSettingsResponseData> GetStreamServiceSettingsAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetStreamServiceSettingsResponseData> GetStreamServiceSettingsAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetStreamServiceSettingsResponseData>("GetStreamServiceSettings", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -327,7 +320,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Simple RTMP settings can be set with type `rtmp_custom` and the settings fields `server` and `key`.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetStreamServiceSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -339,7 +331,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetStreamServiceSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetStreamServiceSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetStreamServiceSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetStreamServiceSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetStreamServiceSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -347,7 +339,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the current directory that the record output is set to.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetRecordDirectoryResponseData"/> response data.</returns>
     /// <remarks>
@@ -358,7 +349,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetRecordDirectoryResponseData> GetRecordDirectoryAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetRecordDirectoryResponseData> GetRecordDirectoryAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetRecordDirectoryResponseData>("GetRecordDirectory", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -366,7 +357,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the current directory that the record output writes files to.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetRecordDirectoryRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -378,17 +368,24 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetRecordDirectoryAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetRecordDirectoryRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetRecordDirectoryAsync(ObsWebSocket.Core.Protocol.Requests.SetRecordDirectoryRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetRecordDirectory", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>filters</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct FiltersRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets an array of all available source filter kinds.
     /// 
     /// Similar to `GetInputKindList`
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceFilterKindListResponseData"/> response data.</returns>
     /// <remarks>
@@ -399,7 +396,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterKindListResponseData> GetSourceFilterKindListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterKindListResponseData> GetSourceFilterKindListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterKindListResponseData>("GetSourceFilterKindList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -407,7 +404,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets an array of all of a source&apos;s filters.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSourceFilterListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData"/> response data.</returns>
@@ -419,7 +415,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData> GetSourceFilterListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSourceFilterListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData> GetSourceFilterListAsync(ObsWebSocket.Core.Protocol.Requests.GetSourceFilterListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData>("GetSourceFilterList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -427,7 +423,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the default settings for a filter kind.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSourceFilterDefaultSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceFilterDefaultSettingsResponseData"/> response data.</returns>
@@ -439,7 +434,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterDefaultSettingsResponseData> GetSourceFilterDefaultSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSourceFilterDefaultSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterDefaultSettingsResponseData> GetSourceFilterDefaultSettingsAsync(ObsWebSocket.Core.Protocol.Requests.GetSourceFilterDefaultSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterDefaultSettingsResponseData>("GetSourceFilterDefaultSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -447,7 +442,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Creates a new filter, adding it to the specified source.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateSourceFilterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -459,7 +453,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task CreateSourceFilterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task CreateSourceFilterAsync(ObsWebSocket.Core.Protocol.Requests.CreateSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("CreateSourceFilter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -467,7 +461,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Removes a filter from a source.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.RemoveSourceFilterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -479,7 +472,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task RemoveSourceFilterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.RemoveSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task RemoveSourceFilterAsync(ObsWebSocket.Core.Protocol.Requests.RemoveSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("RemoveSourceFilter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -487,7 +480,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the name of a source filter (rename).
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSourceFilterNameRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -499,7 +491,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSourceFilterNameAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSourceFilterNameRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSourceFilterNameAsync(ObsWebSocket.Core.Protocol.Requests.SetSourceFilterNameRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSourceFilterName", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -507,7 +499,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the info for a specific source filter.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSourceFilterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData"/> response data.</returns>
@@ -519,7 +510,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData> GetSourceFilterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData> GetSourceFilterAsync(ObsWebSocket.Core.Protocol.Requests.GetSourceFilterRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData>("GetSourceFilter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -527,7 +518,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the index position of a filter on a source.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSourceFilterIndexRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -539,7 +529,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSourceFilterIndexAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSourceFilterIndexRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSourceFilterIndexAsync(ObsWebSocket.Core.Protocol.Requests.SetSourceFilterIndexRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSourceFilterIndex", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -547,7 +537,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the settings of a source filter.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSourceFilterSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -559,7 +548,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSourceFilterSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSourceFilterSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSourceFilterSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetSourceFilterSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSourceFilterSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -567,7 +556,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the enable state of a source filter.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSourceFilterEnabledRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -579,15 +567,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSourceFilterEnabledAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSourceFilterEnabledRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSourceFilterEnabledAsync(ObsWebSocket.Core.Protocol.Requests.SetSourceFilterEnabledRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSourceFilterEnabled", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>general</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct GeneralRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets data about the current plugin and RPC version.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetVersionResponseData"/> response data.</returns>
     /// <remarks>
@@ -598,7 +593,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetVersionResponseData> GetVersionAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetVersionResponseData> GetVersionAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetVersionResponseData>("GetVersion", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -606,7 +601,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets statistics about OBS, obs-websocket, and the current session.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetStatsResponseData"/> response data.</returns>
     /// <remarks>
@@ -617,7 +611,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetStatsResponseData> GetStatsAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetStatsResponseData> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetStatsResponseData>("GetStats", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -625,7 +619,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Broadcasts a `CustomEvent` to all WebSocket clients. Receivers are clients which are identified and subscribed.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.BroadcastCustomEventRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -637,7 +630,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task BroadcastCustomEventAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.BroadcastCustomEventRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task BroadcastCustomEventAsync(ObsWebSocket.Core.Protocol.Requests.BroadcastCustomEventRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("BroadcastCustomEvent", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -648,7 +641,6 @@ public static partial class ObsWebSocketClientExtensions
     /// A vendor is a unique name registered by a third-party plugin or script, which allows for custom requests and events to be added to obs-websocket.
     /// If a plugin or script implements vendor requests or events, documentation is expected to be provided with them.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CallVendorRequestRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.CallVendorRequestResponseData"/> response data.</returns>
@@ -660,7 +652,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.CallVendorRequestResponseData> CallVendorRequestAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CallVendorRequestRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.CallVendorRequestResponseData> CallVendorRequestAsync(ObsWebSocket.Core.Protocol.Requests.CallVendorRequestRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.CallVendorRequestResponseData>("CallVendorRequest", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -670,7 +662,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken. In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetHotkeyListResponseData"/> response data.</returns>
     /// <remarks>
@@ -681,7 +672,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetHotkeyListResponseData> GetHotkeyListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetHotkeyListResponseData> GetHotkeyListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetHotkeyListResponseData>("GetHotkeyList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -691,7 +682,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken. In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByNameRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -703,7 +693,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task TriggerHotkeyByNameAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByNameRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task TriggerHotkeyByNameAsync(ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByNameRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("TriggerHotkeyByName", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -713,7 +703,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken. In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByKeySequenceRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -725,7 +714,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task TriggerHotkeyByKeySequenceAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByKeySequenceRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task TriggerHotkeyByKeySequenceAsync(ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByKeySequenceRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("TriggerHotkeyByKeySequence", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -733,7 +722,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sleeps for a time duration or number of frames. Only available in request batches with types `SERIAL_REALTIME` or `SERIAL_FRAME`.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SleepRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -745,15 +733,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SleepAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SleepRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SleepAsync(ObsWebSocket.Core.Protocol.Requests.SleepRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("Sleep", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>inputs</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct InputsRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets an array of all inputs in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputListResponseData"/> response data.</returns>
@@ -765,7 +760,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputListResponseData> GetInputListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputListResponseData> GetInputListAsync(ObsWebSocket.Core.Protocol.Requests.GetInputListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputListResponseData>("GetInputList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -773,7 +768,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets an array of all available input kinds in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputKindListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData"/> response data.</returns>
@@ -785,7 +779,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData> GetInputKindListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputKindListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData> GetInputKindListAsync(ObsWebSocket.Core.Protocol.Requests.GetInputKindListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData>("GetInputKindList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -793,7 +787,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the names of all special inputs.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSpecialInputsResponseData"/> response data.</returns>
     /// <remarks>
@@ -804,7 +797,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSpecialInputsResponseData> GetSpecialInputsAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSpecialInputsResponseData> GetSpecialInputsAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSpecialInputsResponseData>("GetSpecialInputs", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -812,7 +805,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Creates a new input, adding it as a scene item to the specified scene.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateInputRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.CreateInputResponseData"/> response data.</returns>
@@ -824,7 +816,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.CreateInputResponseData> CreateInputAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateInputRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.CreateInputResponseData> CreateInputAsync(ObsWebSocket.Core.Protocol.Requests.CreateInputRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.CreateInputResponseData>("CreateInput", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -834,7 +826,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Will immediately remove all associated scene items.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.RemoveInputRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -846,7 +837,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task RemoveInputAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.RemoveInputRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task RemoveInputAsync(ObsWebSocket.Core.Protocol.Requests.RemoveInputRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("RemoveInput", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -854,7 +845,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the name of an input (rename).
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputNameRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -866,7 +856,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputNameAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputNameRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputNameAsync(ObsWebSocket.Core.Protocol.Requests.SetInputNameRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputName", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -874,7 +864,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the default settings for an input kind.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputDefaultSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputDefaultSettingsResponseData"/> response data.</returns>
@@ -886,7 +875,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDefaultSettingsResponseData> GetInputDefaultSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputDefaultSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDefaultSettingsResponseData> GetInputDefaultSettingsAsync(ObsWebSocket.Core.Protocol.Requests.GetInputDefaultSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputDefaultSettingsResponseData>("GetInputDefaultSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -896,7 +885,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Does not include defaults. To create the entire settings object, overlay `inputSettings` over the `defaultInputSettings` provided by `GetInputDefaultSettings`.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData"/> response data.</returns>
@@ -908,7 +896,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData> GetInputSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData> GetInputSettingsAsync(ObsWebSocket.Core.Protocol.Requests.GetInputSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData>("GetInputSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -916,7 +904,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the settings of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -928,7 +915,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetInputSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -936,7 +923,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the audio mute state of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputMuteRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData"/> response data.</returns>
@@ -948,7 +934,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData> GetInputMuteAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputMuteRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData> GetInputMuteAsync(ObsWebSocket.Core.Protocol.Requests.GetInputMuteRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData>("GetInputMute", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -956,7 +942,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the audio mute state of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputMuteRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -968,7 +953,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputMuteAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputMuteRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputMuteAsync(ObsWebSocket.Core.Protocol.Requests.SetInputMuteRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputMute", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -976,7 +961,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the audio mute state of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.ToggleInputMuteRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData"/> response data.</returns>
@@ -988,7 +972,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData> ToggleInputMuteAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.ToggleInputMuteRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData> ToggleInputMuteAsync(ObsWebSocket.Core.Protocol.Requests.ToggleInputMuteRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData>("ToggleInputMute", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -996,7 +980,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the current volume setting of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputVolumeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData"/> response data.</returns>
@@ -1008,7 +991,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData> GetInputVolumeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputVolumeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData> GetInputVolumeAsync(ObsWebSocket.Core.Protocol.Requests.GetInputVolumeRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData>("GetInputVolume", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1016,7 +999,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the volume setting of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputVolumeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1028,7 +1010,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputVolumeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputVolumeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputVolumeAsync(ObsWebSocket.Core.Protocol.Requests.SetInputVolumeRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputVolume", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1036,7 +1018,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the audio balance of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputAudioBalanceRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData"/> response data.</returns>
@@ -1048,7 +1029,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData> GetInputAudioBalanceAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputAudioBalanceRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData> GetInputAudioBalanceAsync(ObsWebSocket.Core.Protocol.Requests.GetInputAudioBalanceRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData>("GetInputAudioBalance", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1056,7 +1037,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the audio balance of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputAudioBalanceRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1068,7 +1048,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputAudioBalanceAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputAudioBalanceRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputAudioBalanceAsync(ObsWebSocket.Core.Protocol.Requests.SetInputAudioBalanceRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputAudioBalance", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1078,7 +1058,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: The audio sync offset can be negative too!
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputAudioSyncOffsetRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData"/> response data.</returns>
@@ -1090,7 +1069,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData> GetInputAudioSyncOffsetAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputAudioSyncOffsetRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData> GetInputAudioSyncOffsetAsync(ObsWebSocket.Core.Protocol.Requests.GetInputAudioSyncOffsetRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData>("GetInputAudioSyncOffset", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1098,7 +1077,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the audio sync offset of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputAudioSyncOffsetRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1110,7 +1088,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputAudioSyncOffsetAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputAudioSyncOffsetRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputAudioSyncOffsetAsync(ObsWebSocket.Core.Protocol.Requests.SetInputAudioSyncOffsetRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputAudioSyncOffset", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1124,7 +1102,6 @@ public static partial class ObsWebSocketClientExtensions
     /// - `OBS_MONITORING_TYPE_MONITOR_ONLY`
     /// - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputAudioMonitorTypeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData"/> response data.</returns>
@@ -1136,7 +1113,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData> GetInputAudioMonitorTypeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputAudioMonitorTypeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData> GetInputAudioMonitorTypeAsync(ObsWebSocket.Core.Protocol.Requests.GetInputAudioMonitorTypeRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData>("GetInputAudioMonitorType", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1144,7 +1121,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the audio monitor type of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputAudioMonitorTypeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1156,7 +1132,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputAudioMonitorTypeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputAudioMonitorTypeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputAudioMonitorTypeAsync(ObsWebSocket.Core.Protocol.Requests.SetInputAudioMonitorTypeRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputAudioMonitorType", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1164,7 +1140,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the enable state of all audio tracks of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputAudioTracksRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData"/> response data.</returns>
@@ -1176,7 +1151,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData> GetInputAudioTracksAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputAudioTracksRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData> GetInputAudioTracksAsync(ObsWebSocket.Core.Protocol.Requests.GetInputAudioTracksRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData>("GetInputAudioTracks", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1184,7 +1159,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the enable state of audio tracks of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputAudioTracksRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1196,7 +1170,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputAudioTracksAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputAudioTracksRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputAudioTracksAsync(ObsWebSocket.Core.Protocol.Requests.SetInputAudioTracksRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputAudioTracks", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1218,7 +1192,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceModeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData"/> response data.</returns>
@@ -1230,7 +1203,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData> GetInputDeinterlaceModeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceModeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData> GetInputDeinterlaceModeAsync(ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceModeRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData>("GetInputDeinterlaceMode", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1240,7 +1213,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceModeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1252,7 +1224,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputDeinterlaceModeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceModeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputDeinterlaceModeAsync(ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceModeRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputDeinterlaceMode", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1267,7 +1239,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceFieldOrderRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData"/> response data.</returns>
@@ -1279,7 +1250,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData> GetInputDeinterlaceFieldOrderAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceFieldOrderRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData> GetInputDeinterlaceFieldOrderAsync(ObsWebSocket.Core.Protocol.Requests.GetInputDeinterlaceFieldOrderRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData>("GetInputDeinterlaceFieldOrder", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1289,7 +1260,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceFieldOrderRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1301,7 +1271,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetInputDeinterlaceFieldOrderAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceFieldOrderRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetInputDeinterlaceFieldOrderAsync(ObsWebSocket.Core.Protocol.Requests.SetInputDeinterlaceFieldOrderRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetInputDeinterlaceFieldOrder", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1311,7 +1281,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Use this in cases where an input provides a dynamic, selectable list of items. For example, display capture, where it provides a list of available displays.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputPropertiesListPropertyItemsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData"/> response data.</returns>
@@ -1323,7 +1292,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData> GetInputPropertiesListPropertyItemsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetInputPropertiesListPropertyItemsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData> GetInputPropertiesListPropertyItemsAsync(ObsWebSocket.Core.Protocol.Requests.GetInputPropertiesListPropertyItemsRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData>("GetInputPropertiesListPropertyItems", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1337,7 +1306,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: Use this in cases where there is a button in the properties of an input that cannot be accessed in any other way. For example, browser sources, where there is a refresh button.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.PressInputPropertiesButtonRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1349,11 +1317,19 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task PressInputPropertiesButtonAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.PressInputPropertiesButtonRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task PressInputPropertiesButtonAsync(ObsWebSocket.Core.Protocol.Requests.PressInputPropertiesButtonRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("PressInputPropertiesButton", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>media inputs</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct MediaInputsRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the status of a media input.
     /// 
@@ -1368,7 +1344,6 @@ public static partial class ObsWebSocketClientExtensions
     /// - `OBS_MEDIA_STATE_ENDED`
     /// - `OBS_MEDIA_STATE_ERROR`
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetMediaInputStatusRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData"/> response data.</returns>
@@ -1380,7 +1355,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData> GetMediaInputStatusAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetMediaInputStatusRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData> GetMediaInputStatusAsync(ObsWebSocket.Core.Protocol.Requests.GetMediaInputStatusRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData>("GetMediaInputStatus", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1390,7 +1365,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// This request does not perform bounds checking of the cursor position.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetMediaInputCursorRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1402,7 +1376,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetMediaInputCursorAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetMediaInputCursorRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetMediaInputCursorAsync(ObsWebSocket.Core.Protocol.Requests.SetMediaInputCursorRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetMediaInputCursor", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1412,7 +1386,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// This request does not perform bounds checking of the cursor position.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OffsetMediaInputCursorRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1424,7 +1397,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OffsetMediaInputCursorAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OffsetMediaInputCursorRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OffsetMediaInputCursorAsync(ObsWebSocket.Core.Protocol.Requests.OffsetMediaInputCursorRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OffsetMediaInputCursor", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1432,7 +1405,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Triggers an action on a media input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.TriggerMediaInputActionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1444,15 +1416,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task TriggerMediaInputActionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.TriggerMediaInputActionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task TriggerMediaInputActionAsync(ObsWebSocket.Core.Protocol.Requests.TriggerMediaInputActionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("TriggerMediaInputAction", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>outputs</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct OutputsRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the status of the virtualcam output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetVirtualCamStatusResponseData"/> response data.</returns>
     /// <remarks>
@@ -1463,7 +1442,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetVirtualCamStatusResponseData> GetVirtualCamStatusAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetVirtualCamStatusResponseData> GetVirtualCamStatusAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetVirtualCamStatusResponseData>("GetVirtualCamStatus", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1471,7 +1450,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the state of the virtualcam output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleVirtualCamResponseData"/> response data.</returns>
     /// <remarks>
@@ -1482,7 +1460,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleVirtualCamResponseData> ToggleVirtualCamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleVirtualCamResponseData> ToggleVirtualCamAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleVirtualCamResponseData>("ToggleVirtualCam", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1490,7 +1468,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Starts the virtualcam output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1501,7 +1478,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StartVirtualCamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StartVirtualCamAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StartVirtualCam", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1509,7 +1486,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Stops the virtualcam output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1520,7 +1496,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StopVirtualCamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StopVirtualCamAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StopVirtualCam", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1528,7 +1504,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the status of the replay buffer output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetReplayBufferStatusResponseData"/> response data.</returns>
     /// <remarks>
@@ -1539,7 +1514,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetReplayBufferStatusResponseData> GetReplayBufferStatusAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetReplayBufferStatusResponseData> GetReplayBufferStatusAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetReplayBufferStatusResponseData>("GetReplayBufferStatus", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1547,7 +1522,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the state of the replay buffer output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleReplayBufferResponseData"/> response data.</returns>
     /// <remarks>
@@ -1558,7 +1532,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleReplayBufferResponseData> ToggleReplayBufferAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleReplayBufferResponseData> ToggleReplayBufferAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleReplayBufferResponseData>("ToggleReplayBuffer", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1566,7 +1540,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Starts the replay buffer output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1577,7 +1550,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StartReplayBufferAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StartReplayBufferAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StartReplayBuffer", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1585,7 +1558,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Stops the replay buffer output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1596,7 +1568,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StopReplayBufferAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StopReplayBufferAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StopReplayBuffer", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1604,7 +1576,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Saves the contents of the replay buffer output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1615,7 +1586,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SaveReplayBufferAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task SaveReplayBufferAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SaveReplayBuffer", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1623,7 +1594,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the filename of the last replay buffer save file.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetLastReplayBufferReplayResponseData"/> response data.</returns>
     /// <remarks>
@@ -1634,7 +1604,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetLastReplayBufferReplayResponseData> GetLastReplayBufferReplayAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetLastReplayBufferReplayResponseData> GetLastReplayBufferReplayAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetLastReplayBufferReplayResponseData>("GetLastReplayBufferReplay", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1642,7 +1612,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the list of available outputs.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetOutputListResponseData"/> response data.</returns>
     /// <remarks>
@@ -1653,7 +1622,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputListResponseData> GetOutputListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputListResponseData> GetOutputListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetOutputListResponseData>("GetOutputList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1661,7 +1630,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the status of an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetOutputStatusRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetOutputStatusResponseData"/> response data.</returns>
@@ -1673,7 +1641,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputStatusResponseData> GetOutputStatusAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetOutputStatusRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputStatusResponseData> GetOutputStatusAsync(ObsWebSocket.Core.Protocol.Requests.GetOutputStatusRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetOutputStatusResponseData>("GetOutputStatus", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1681,7 +1649,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the status of an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.ToggleOutputRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleOutputResponseData"/> response data.</returns>
@@ -1693,7 +1660,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleOutputResponseData> ToggleOutputAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.ToggleOutputRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleOutputResponseData> ToggleOutputAsync(ObsWebSocket.Core.Protocol.Requests.ToggleOutputRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleOutputResponseData>("ToggleOutput", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1701,7 +1668,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Starts an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.StartOutputRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1713,7 +1679,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StartOutputAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.StartOutputRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task StartOutputAsync(ObsWebSocket.Core.Protocol.Requests.StartOutputRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StartOutput", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1721,7 +1687,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Stops an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.StopOutputRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1733,7 +1698,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StopOutputAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.StopOutputRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task StopOutputAsync(ObsWebSocket.Core.Protocol.Requests.StopOutputRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StopOutput", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1741,7 +1706,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the settings of an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetOutputSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetOutputSettingsResponseData"/> response data.</returns>
@@ -1753,7 +1717,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputSettingsResponseData> GetOutputSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetOutputSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetOutputSettingsResponseData> GetOutputSettingsAsync(ObsWebSocket.Core.Protocol.Requests.GetOutputSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetOutputSettingsResponseData>("GetOutputSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1761,7 +1725,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the settings of an output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetOutputSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1773,15 +1736,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetOutputSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetOutputSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetOutputSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetOutputSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetOutputSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>record</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct RecordRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the status of the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetRecordStatusResponseData"/> response data.</returns>
     /// <remarks>
@@ -1792,7 +1762,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetRecordStatusResponseData> GetRecordStatusAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetRecordStatusResponseData> GetRecordStatusAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetRecordStatusResponseData>("GetRecordStatus", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1800,7 +1770,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the status of the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleRecordResponseData"/> response data.</returns>
     /// <remarks>
@@ -1811,7 +1780,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleRecordResponseData> ToggleRecordAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleRecordResponseData> ToggleRecordAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleRecordResponseData>("ToggleRecord", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1819,7 +1788,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Starts the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1830,7 +1798,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StartRecordAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StartRecordAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StartRecord", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1838,7 +1806,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Stops the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.StopRecordResponseData"/> response data.</returns>
     /// <remarks>
@@ -1849,7 +1816,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.StopRecordResponseData> StopRecordAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.StopRecordResponseData> StopRecordAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.StopRecordResponseData>("StopRecord", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1857,7 +1824,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles pause on the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1868,7 +1834,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task ToggleRecordPauseAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task ToggleRecordPauseAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("ToggleRecordPause", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1876,7 +1842,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Pauses the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1887,7 +1852,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task PauseRecordAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task PauseRecordAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("PauseRecord", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1895,7 +1860,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Resumes the record output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1906,7 +1870,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task ResumeRecordAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task ResumeRecordAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("ResumeRecord", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1914,7 +1878,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Splits the current file being recorded into a new file.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -1925,7 +1888,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SplitRecordFileAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task SplitRecordFileAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SplitRecordFile", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1935,7 +1898,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: As of OBS 30.2.0, the only file format supporting this feature is Hybrid MP4.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateRecordChapterRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -1947,17 +1909,24 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task CreateRecordChapterAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateRecordChapterRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task CreateRecordChapterAsync(ObsWebSocket.Core.Protocol.Requests.CreateRecordChapterRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("CreateRecordChapter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>scene items</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct SceneItemsRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets a list of all scene items in a scene.
     /// 
     /// Scenes only
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData"/> response data.</returns>
@@ -1969,7 +1938,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData> GetSceneItemListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData> GetSceneItemListAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData>("GetSceneItemList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -1981,7 +1950,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Groups only
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetGroupSceneItemListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData"/> response data.</returns>
@@ -1993,7 +1961,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData> GetGroupSceneItemListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetGroupSceneItemListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData> GetGroupSceneItemListAsync(ObsWebSocket.Core.Protocol.Requests.GetGroupSceneItemListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData>("GetGroupSceneItemList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2003,7 +1971,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemIdRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData"/> response data.</returns>
@@ -2015,7 +1982,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData> GetSceneItemIdAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemIdRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData> GetSceneItemIdAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemIdRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData>("GetSceneItemId", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2023,7 +1990,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets the source associated with a scene item.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemSourceRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData"/> response data.</returns>
@@ -2035,7 +2001,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData> GetSceneItemSourceAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemSourceRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData> GetSceneItemSourceAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemSourceRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData>("GetSceneItemSource", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2045,7 +2011,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes only
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateSceneItemRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData"/> response data.</returns>
@@ -2057,7 +2022,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData> CreateSceneItemAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateSceneItemRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData> CreateSceneItemAsync(ObsWebSocket.Core.Protocol.Requests.CreateSceneItemRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData>("CreateSceneItem", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2067,7 +2032,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes only
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.RemoveSceneItemRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2079,7 +2043,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task RemoveSceneItemAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.RemoveSceneItemRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task RemoveSceneItemAsync(ObsWebSocket.Core.Protocol.Requests.RemoveSceneItemRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("RemoveSceneItem", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2089,7 +2053,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes only
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.DuplicateSceneItemRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData"/> response data.</returns>
@@ -2101,7 +2064,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData> DuplicateSceneItemAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.DuplicateSceneItemRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData> DuplicateSceneItemAsync(ObsWebSocket.Core.Protocol.Requests.DuplicateSceneItemRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData>("DuplicateSceneItem", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2111,7 +2074,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemTransformRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData"/> response data.</returns>
@@ -2123,7 +2085,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData> GetSceneItemTransformAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemTransformRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData> GetSceneItemTransformAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemTransformRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData>("GetSceneItemTransform", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2131,7 +2093,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the transform and crop info of a scene item.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneItemTransformRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2143,7 +2104,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneItemTransformAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneItemTransformRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneItemTransformAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneItemTransformRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneItemTransform", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2153,7 +2114,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemEnabledRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData"/> response data.</returns>
@@ -2165,7 +2125,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData> GetSceneItemEnabledAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemEnabledRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData> GetSceneItemEnabledAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemEnabledRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData>("GetSceneItemEnabled", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2175,7 +2135,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneItemEnabledRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2187,7 +2146,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneItemEnabledAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneItemEnabledRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneItemEnabledAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneItemEnabledRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneItemEnabled", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2197,7 +2156,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemLockedRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData"/> response data.</returns>
@@ -2209,7 +2167,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData> GetSceneItemLockedAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemLockedRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData> GetSceneItemLockedAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemLockedRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData>("GetSceneItemLocked", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2219,7 +2177,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Group
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneItemLockedRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2231,7 +2188,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneItemLockedAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneItemLockedRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneItemLockedAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneItemLockedRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneItemLocked", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2243,7 +2200,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemIndexRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData"/> response data.</returns>
@@ -2255,7 +2211,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData> GetSceneItemIndexAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemIndexRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData> GetSceneItemIndexAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemIndexRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData>("GetSceneItemIndex", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2265,7 +2221,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneItemIndexRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2277,7 +2232,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneItemIndexAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneItemIndexRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneItemIndexAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneItemIndexRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneItemIndex", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2297,7 +2252,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneItemBlendModeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData"/> response data.</returns>
@@ -2309,7 +2263,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData> GetSceneItemBlendModeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneItemBlendModeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData> GetSceneItemBlendModeAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneItemBlendModeRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData>("GetSceneItemBlendMode", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2319,7 +2273,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Scenes and Groups
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneItemBlendModeRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2331,15 +2284,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneItemBlendModeAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneItemBlendModeRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneItemBlendModeAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneItemBlendModeRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneItemBlendMode", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>scenes</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct ScenesRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets an array of scenes in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData"/> response data.</returns>
@@ -2351,7 +2311,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData> GetSceneListAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData> GetSceneListAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData>("GetSceneList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2361,7 +2321,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Groups in OBS are actually scenes, but renamed and modified. In obs-websocket, we treat them as scenes where we can.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetGroupListResponseData"/> response data.</returns>
     /// <remarks>
@@ -2372,7 +2331,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetGroupListResponseData> GetGroupListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetGroupListResponseData> GetGroupListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetGroupListResponseData>("GetGroupList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2384,7 +2343,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note 2: Canvases do not have any concept of a program or preview scene, so this request does not support canvases.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCurrentProgramSceneResponseData"/> response data.</returns>
     /// <remarks>
@@ -2395,7 +2353,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentProgramSceneResponseData> GetCurrentProgramSceneAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentProgramSceneResponseData> GetCurrentProgramSceneAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetCurrentProgramSceneResponseData>("GetCurrentProgramScene", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2403,7 +2361,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the current program scene.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentProgramSceneRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2415,7 +2372,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentProgramSceneAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentProgramSceneRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentProgramSceneAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentProgramSceneRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentProgramScene", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2427,7 +2384,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: This request is slated to have the `currentPreview`-prefixed fields removed from in an upcoming RPC version.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCurrentPreviewSceneResponseData"/> response data.</returns>
     /// <remarks>
@@ -2438,7 +2394,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentPreviewSceneResponseData> GetCurrentPreviewSceneAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentPreviewSceneResponseData> GetCurrentPreviewSceneAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetCurrentPreviewSceneResponseData>("GetCurrentPreviewScene", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2448,7 +2404,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Only available when studio mode is enabled.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentPreviewSceneRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2460,7 +2415,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentPreviewSceneAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentPreviewSceneRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentPreviewSceneAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentPreviewSceneRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentPreviewScene", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2468,7 +2423,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Creates a new scene in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.CreateSceneRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.CreateSceneResponseData"/> response data.</returns>
@@ -2480,7 +2434,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneResponseData> CreateSceneAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.CreateSceneRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneResponseData> CreateSceneAsync(ObsWebSocket.Core.Protocol.Requests.CreateSceneRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.CreateSceneResponseData>("CreateScene", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2488,7 +2442,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Removes a scene from OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.RemoveSceneRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2500,7 +2453,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task RemoveSceneAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.RemoveSceneRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task RemoveSceneAsync(ObsWebSocket.Core.Protocol.Requests.RemoveSceneRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("RemoveScene", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2508,7 +2461,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the name of a scene (rename).
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneNameRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2520,7 +2472,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneNameAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneNameRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneNameAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneNameRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneName", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2530,7 +2482,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: A transition UUID response field is not currently able to be implemented as of 2024-1-18.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSceneSceneTransitionOverrideRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData"/> response data.</returns>
@@ -2542,7 +2493,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData> GetSceneSceneTransitionOverrideAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSceneSceneTransitionOverrideRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData> GetSceneSceneTransitionOverrideAsync(ObsWebSocket.Core.Protocol.Requests.GetSceneSceneTransitionOverrideRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData>("GetSceneSceneTransitionOverride", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2550,7 +2501,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the scene transition overridden for a scene.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetSceneSceneTransitionOverrideRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2562,17 +2512,24 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetSceneSceneTransitionOverrideAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetSceneSceneTransitionOverrideRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetSceneSceneTransitionOverrideAsync(ObsWebSocket.Core.Protocol.Requests.SetSceneSceneTransitionOverrideRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetSceneSceneTransitionOverride", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>sources</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct SourcesRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the active and show state of a source.
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSourceActiveRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData"/> response data.</returns>
@@ -2584,7 +2541,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData> GetSourceActiveAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSourceActiveRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData> GetSourceActiveAsync(ObsWebSocket.Core.Protocol.Requests.GetSourceActiveRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData>("GetSourceActive", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2597,7 +2554,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetSourceScreenshotRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData"/> response data.</returns>
@@ -2609,7 +2565,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData> GetSourceScreenshotAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.GetSourceScreenshotRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData> GetSourceScreenshotAsync(ObsWebSocket.Core.Protocol.Requests.GetSourceScreenshotRequestData requestData, CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData>("GetSourceScreenshot", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2622,7 +2578,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SaveSourceScreenshotRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2634,15 +2589,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SaveSourceScreenshotAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SaveSourceScreenshotRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SaveSourceScreenshotAsync(ObsWebSocket.Core.Protocol.Requests.SaveSourceScreenshotRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SaveSourceScreenshot", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>stream</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct StreamRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets the status of the stream output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetStreamStatusResponseData"/> response data.</returns>
     /// <remarks>
@@ -2653,7 +2615,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetStreamStatusResponseData> GetStreamStatusAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetStreamStatusResponseData> GetStreamStatusAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetStreamStatusResponseData>("GetStreamStatus", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2661,7 +2623,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Toggles the status of the stream output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.ToggleStreamResponseData"/> response data.</returns>
     /// <remarks>
@@ -2672,7 +2633,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.ToggleStreamResponseData> ToggleStreamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.ToggleStreamResponseData> ToggleStreamAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.ToggleStreamResponseData>("ToggleStream", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2680,7 +2641,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Starts the stream output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -2691,7 +2651,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StartStreamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StartStreamAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StartStream", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2699,7 +2659,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Stops the stream output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -2710,7 +2669,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task StopStreamAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task StopStreamAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("StopStream", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2718,7 +2677,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sends CEA-608 caption text over the stream output.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SendStreamCaptionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2730,17 +2688,24 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SendStreamCaptionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SendStreamCaptionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SendStreamCaptionAsync(ObsWebSocket.Core.Protocol.Requests.SendStreamCaptionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SendStreamCaption", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>transitions</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct TransitionsRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets an array of all available transition kinds.
     /// 
     /// Similar to `GetInputKindList`
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetTransitionKindListResponseData"/> response data.</returns>
     /// <remarks>
@@ -2751,7 +2716,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetTransitionKindListResponseData> GetTransitionKindListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetTransitionKindListResponseData> GetTransitionKindListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetTransitionKindListResponseData>("GetTransitionKindList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2759,7 +2724,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets an array of all scene transitions in OBS.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetSceneTransitionListResponseData"/> response data.</returns>
     /// <remarks>
@@ -2770,7 +2734,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneTransitionListResponseData> GetSceneTransitionListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetSceneTransitionListResponseData> GetSceneTransitionListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneTransitionListResponseData>("GetSceneTransitionList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2778,7 +2742,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets information about the current scene transition.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionResponseData"/> response data.</returns>
     /// <remarks>
@@ -2789,7 +2752,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionResponseData> GetCurrentSceneTransitionAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionResponseData> GetCurrentSceneTransitionAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionResponseData>("GetCurrentSceneTransition", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2799,7 +2762,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Small note: While the namespace of scene transitions is generally unique, that uniqueness is not a guarantee as it is with other resources like inputs.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2811,7 +2773,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentSceneTransitionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentSceneTransitionAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentSceneTransition", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2819,7 +2781,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the duration of the current scene transition, if it is not fixed.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionDurationRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2831,7 +2792,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentSceneTransitionDurationAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionDurationRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentSceneTransitionDurationAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionDurationRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentSceneTransitionDuration", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2839,7 +2800,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Sets the settings of the current scene transition.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionSettingsRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2851,7 +2811,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetCurrentSceneTransitionSettingsAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionSettingsRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetCurrentSceneTransitionSettingsAsync(ObsWebSocket.Core.Protocol.Requests.SetCurrentSceneTransitionSettingsRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetCurrentSceneTransitionSettings", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2861,7 +2821,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: `transitionCursor` will return 1.0 when the transition is inactive.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionCursorResponseData"/> response data.</returns>
     /// <remarks>
@@ -2872,7 +2831,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionCursorResponseData> GetCurrentSceneTransitionCursorAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionCursorResponseData> GetCurrentSceneTransitionCursorAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetCurrentSceneTransitionCursorResponseData>("GetCurrentSceneTransitionCursor", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2880,7 +2839,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Triggers the current scene transition. Same functionality as the `Transition` button in studio mode.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
     /// <remarks>
@@ -2891,7 +2849,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task TriggerStudioModeTransitionAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task TriggerStudioModeTransitionAsync(CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("TriggerStudioModeTransition", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2901,7 +2859,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// **Very important note**: This will be deprecated and replaced in a future version of obs-websocket.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetTBarPositionRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2913,15 +2870,22 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetTBarPositionAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetTBarPositionRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetTBarPositionAsync(ObsWebSocket.Core.Protocol.Requests.SetTBarPositionRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetTBarPosition", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+}
+
+/// <summary>
+/// Requests in the <c>ui</c> category.
+/// </summary>
+/// <param name="client">The client these requests are sent on.</param>
+public readonly partial struct UiRequestGroup(ObsWebSocketClient client)
+{
     /// <summary>
     /// Gets whether studio is enabled.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetStudioModeEnabledResponseData"/> response data.</returns>
     /// <remarks>
@@ -2932,7 +2896,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetStudioModeEnabledResponseData> GetStudioModeEnabledAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetStudioModeEnabledResponseData> GetStudioModeEnabledAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetStudioModeEnabledResponseData>("GetStudioModeEnabled", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2940,7 +2904,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Enables or disables studio mode
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SetStudioModeEnabledRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2952,7 +2915,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task SetStudioModeEnabledAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.SetStudioModeEnabledRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task SetStudioModeEnabledAsync(ObsWebSocket.Core.Protocol.Requests.SetStudioModeEnabledRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("SetStudioModeEnabled", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2960,7 +2923,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Opens the properties dialog of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OpenInputPropertiesDialogRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2972,7 +2934,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OpenInputPropertiesDialogAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OpenInputPropertiesDialogRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OpenInputPropertiesDialogAsync(ObsWebSocket.Core.Protocol.Requests.OpenInputPropertiesDialogRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OpenInputPropertiesDialog", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -2980,7 +2942,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Opens the filters dialog of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OpenInputFiltersDialogRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -2992,7 +2953,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OpenInputFiltersDialogAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OpenInputFiltersDialogRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OpenInputFiltersDialogAsync(ObsWebSocket.Core.Protocol.Requests.OpenInputFiltersDialogRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OpenInputFiltersDialog", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -3000,7 +2961,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Opens the interact dialog of an input.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OpenInputInteractDialogRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -3012,7 +2972,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OpenInputInteractDialogAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OpenInputInteractDialogRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OpenInputInteractDialogAsync(ObsWebSocket.Core.Protocol.Requests.OpenInputInteractDialogRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OpenInputInteractDialog", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -3020,7 +2980,6 @@ public static partial class ObsWebSocketClientExtensions
     /// <summary>
     /// Gets a list of connected monitors and information about them.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Yields the <see cref="ObsWebSocket.Core.Protocol.Responses.GetMonitorListResponseData"/> response data.</returns>
     /// <remarks>
@@ -3031,7 +2990,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task<ObsWebSocket.Core.Protocol.Responses.GetMonitorListResponseData> GetMonitorListAsync(this ObsWebSocketClient client, CancellationToken cancellationToken = default)
+    public async Task<ObsWebSocket.Core.Protocol.Responses.GetMonitorListResponseData> GetMonitorListAsync(CancellationToken cancellationToken = default)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetMonitorListResponseData>("GetMonitorList", null, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -3047,7 +3006,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: This request serves to provide feature parity with 4.x. It is very likely to be changed/deprecated in a future release.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OpenVideoMixProjectorRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -3059,7 +3017,7 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OpenVideoMixProjectorAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OpenVideoMixProjectorRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OpenVideoMixProjectorAsync(ObsWebSocket.Core.Protocol.Requests.OpenVideoMixProjectorRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OpenVideoMixProjector", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -3069,7 +3027,6 @@ public static partial class ObsWebSocketClientExtensions
     /// 
     /// Note: This request serves to provide feature parity with 4.x. It is very likely to be changed/deprecated in a future release.
     /// </summary>
-    /// <param name="client">The <see cref="ObsWebSocketClient"/> instance.</param>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.OpenSourceProjectorRequestData"/>).</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task representing the asynchronous operation. Completes when the request is processed successfully by the server.</returns>
@@ -3081,9 +3038,128 @@ public static partial class ObsWebSocketClientExtensions
     /// <exception cref="ObsWebSocketException">Thrown if the request fails on the OBS side.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if cancelled.</exception>
-    public static async Task OpenSourceProjectorAsync(this ObsWebSocketClient client, ObsWebSocket.Core.Protocol.Requests.OpenSourceProjectorRequestData requestData, CancellationToken cancellationToken = default)
+    public async Task OpenSourceProjectorAsync(ObsWebSocket.Core.Protocol.Requests.OpenSourceProjectorRequestData requestData, CancellationToken cancellationToken = default)
     {
         await client.CallAsync<object>("OpenSourceProjector", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+}
+
+/// <summary>
+/// Exposes the request categories defined by the OBS WebSocket protocol.
+/// </summary>
+public static class ObsWebSocketClientExtensions
+{
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>canvases</c> category.
+        /// </summary>
+        public CanvasesRequestGroup Canvases => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>config</c> category.
+        /// </summary>
+        public ConfigRequestGroup Config => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>filters</c> category.
+        /// </summary>
+        public FiltersRequestGroup Filters => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>general</c> category.
+        /// </summary>
+        public GeneralRequestGroup General => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>inputs</c> category.
+        /// </summary>
+        public InputsRequestGroup Inputs => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>media inputs</c> category.
+        /// </summary>
+        public MediaInputsRequestGroup MediaInputs => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>outputs</c> category.
+        /// </summary>
+        public OutputsRequestGroup Outputs => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>record</c> category.
+        /// </summary>
+        public RecordRequestGroup Record => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>scene items</c> category.
+        /// </summary>
+        public SceneItemsRequestGroup SceneItems => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>scenes</c> category.
+        /// </summary>
+        public ScenesRequestGroup Scenes => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>sources</c> category.
+        /// </summary>
+        public SourcesRequestGroup Sources => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>stream</c> category.
+        /// </summary>
+        public StreamRequestGroup Stream => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>transitions</c> category.
+        /// </summary>
+        public TransitionsRequestGroup Transitions => new(client);
+    }
+
+    extension(ObsWebSocketClient client)
+    {
+        /// <summary>
+        /// Requests in the <c>ui</c> category.
+        /// </summary>
+        public UiRequestGroup Ui => new(client);
     }
 
 }

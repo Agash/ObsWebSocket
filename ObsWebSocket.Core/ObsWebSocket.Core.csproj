@@ -1,16 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!--
-      LOGGEN036 asks for concrete parameter types on [LoggerMessage] methods so telemetry can
-      enrich them. The log parameters here are deliberately object?, because the same message
-      shapes carry strings, enums, numbers and nullable protocol types; every value formats
-      correctly through ToString. Raised by the Telemetry generator that arrives transitively
-      with Microsoft.Extensions.Resilience.
-    -->
-    <NoWarn>$(NoWarn);LOGGEN036</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <!-- Reproducibility is delegated to DotNet.ReproducibleBuilds rather than restated here.
          It sets DebugType to embedded (so the portable PDB with its Source Link map travels
          inside the assembly and no symbol package is needed), turns on
@@ -46,6 +35,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
     <PackageReference Include="MessagePack" Version="3.1.8" ExcludeAssets="build;buildTransitive;analyzers" />

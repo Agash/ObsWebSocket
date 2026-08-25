@@ -36,7 +36,7 @@ public sealed partial record GetCurrentSceneTransitionResponseData
     /// </summary>
     [JsonPropertyName("transitionDuration")]
     [Key("transitionDuration")]
-    public required double TransitionDuration { get; init; }
+    public double? TransitionDuration { get; init; }
 
     /// <summary>
     /// Whether the transition uses a fixed (unconfigurable) duration
@@ -82,7 +82,7 @@ public sealed partial record GetCurrentSceneTransitionResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetCurrentSceneTransitionResponseData(bool transitionFixed, double transitionDuration, bool transitionConfigurable, string? transitionName = null, string? transitionUuid = null, string? transitionKind = null, System.Text.Json.JsonElement? transitionSettings = null)
+    public GetCurrentSceneTransitionResponseData(bool transitionFixed, bool transitionConfigurable, string? transitionName = null, string? transitionUuid = null, string? transitionKind = null, double? transitionDuration = null, System.Text.Json.JsonElement? transitionSettings = null)
     {
         this.TransitionName = transitionName;
         this.TransitionUuid = transitionUuid;

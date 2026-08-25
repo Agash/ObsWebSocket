@@ -71,7 +71,7 @@ public sealed class Worker(ObsWebSocketClient client) : IHostedService
         client.CurrentProgramSceneChanged += OnSceneChanged;
         await client.ConnectAsync(ct);
 
-        var version = await client.GetVersionAsync(cancellationToken: ct);
+        var version = await client.General.GetVersionAsync(cancellationToken: ct);
         Console.WriteLine($"Connected to OBS {version?.ObsVersion}");
     }
 
@@ -130,11 +130,11 @@ var intro = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
 
 ```csharp
 // One-liner helper
-await client.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
+await client.Inputs.SetInputTextAsync("NewsTicker", "Breaking: Live now!", ct);
 
 // Or use a typed settings object to update multiple properties at once
 var settings = new TextGdiPlusInputSettings(Text: "Breaking: Live now!", WordWrap: true);
-await client.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
+await client.Inputs.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct);
 ```
 
 `TextGdiPlusInputSettings` is a built-in library type. The same pattern applies to `TextFreetype2InputSettings`, `BrowserSourceSettings`, and the filter settings types, which live in `ObsWebSocket.Core.Protocol.Common.InputSettings` and `ObsWebSocket.Core.Protocol.Common.FilterSettings`.
@@ -142,10 +142,10 @@ await client.SetInputSettingsAsync("NewsTicker", settings, cancellationToken: ct
 ### Check and save the replay buffer
 
 ```csharp
-var status = await client.GetReplayBufferStatusAsync(cancellationToken: ct);
+var status = await client.Outputs.GetReplayBufferStatusAsync(cancellationToken: ct);
 if (status?.OutputActive == true)
 {
-    await client.SaveReplayBufferAsync(cancellationToken: ct);
+    await client.Outputs.SaveReplayBufferAsync(cancellationToken: ct);
     Console.WriteLine("Replay saved.");
 }
 ```
@@ -156,10 +156,10 @@ Use a library type for common properties, or define your own type to target exac
 
 ```csharp
 // Library type, covers the standard browser source properties
-var current = await client.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
+var current = await client.Inputs.GetInputSettingsAsync<BrowserSourceSettings>("StreamOverlay", ct);
 Console.WriteLine($"Current URL: {current?.Url}");
 
-await client.SetInputSettingsAsync(
+await client.Inputs.SetInputSettingsAsync(
     "StreamOverlay",
     new BrowserSourceSettings(Url: "https://myoverlay.example.com", Width: 1920, Height: 1080),
     cancellationToken: ct
@@ -176,7 +176,7 @@ internal sealed record OverlaySettings(
     [property: JsonPropertyName("css")]  string? Css = null
 );
 
-await client.SetInputSettingsAsync(
+await client.Inputs.SetInputSettingsAsync(
     "StreamOverlay",
     new OverlaySettings(Url: "https://myoverlay.example.com"),
     MyContext.Default.OverlaySettings,
@@ -188,7 +188,23 @@ Both `Set` overloads take `overlay` before the cancellation token. It defaults t
 
 > Raw `JsonElement` access is also available. All settings helpers have counterparts in the generated types under `ObsWebSocket.Core.Protocol.Requests` if you need full control.
 
-## Helper API
+## Requests and helpers
+
+Everything the client can do is reached through the category the OBS protocol puts it in, so a
+generated request and a convenience that wraps several of them sit together and read the same way:
+
+```csharp
+await client.Scenes.GetSceneListAsync(new(), ct);            // generated request
+await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
+```
+
+The categories are OBS's own: `Canvases`, `Config`, `Filters`, `General`, `Inputs`, `MediaInputs`,
+`Outputs`, `Record`, `SceneItems`, `Scenes`, `Sources`, `Stream`, `Transitions`, `Ui`. They follow
+the protocol, so a refresh that recategorises a request moves it here too. The batch builder uses
+the same grouping.
+
+`WaitForEventAsync` and `CallBatchAsync` stay directly on the client, since neither belongs to one
+category.
 
 Every typed settings helper has two overloads: an implicit one for library-registered types, and an explicit one taking a `JsonTypeInfo<T>` for consumer-provided types. Use the explicit overload to stay AOT-safe.
 
@@ -264,8 +280,8 @@ client.StreamStateChanged += (_, e) =>
 Media transport works the same way, with shorthands for the common actions:
 
 ```csharp
-await client.PlayMediaAsync("Stinger", ct);
-await client.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+await client.MediaInputs.PlayMediaAsync("Stinger", ct);
+await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
 ```
 
 The wire constants remain available as `const` strings on `ObsOutputState` and
@@ -278,58 +294,36 @@ For direct low-level access, all generated request/response types are in:
 
 ### Batch API
 
-Send several requests in one round trip, with OBS executing them back to back. The builder ties
-each request type to its own payload record, so the two cannot drift apart:
+Send several requests in one round trip, with OBS executing them back to back. Requests are
+grouped by the protocol's own categories, and each one hands back a reference carrying its
+response type:
 
 ```csharp
-var results = await client.CallBatchAsync(
-    batch => batch
-        .GetVersion()
-        .SetCurrentProgramScene(new(sceneName: "Intro"))
-        .Sleep(new(sleepMillis: 100))
-        .SetInputMute(new() { InputName = "Mic", InputMuted = false }),
+ObsBatchBuilder batch = new();
+BatchRef<GetVersionResponseData> version = batch.General.GetVersion();
+BatchRef<GetSceneListResponseData> scenes = batch.Scenes.GetSceneList(new());
+_ = batch.General.Sleep(new(sleepMillis: 100));
+_ = batch.Inputs.SetInputMute(new() { InputName = "Mic", InputMuted = false });
+
+BatchResults results = await client.CallBatchAsync(
+    batch,
     executionType: RequestBatchExecutionType.SerialRealtime,
     haltOnFailure: false,
     cancellationToken: ct
 );
 
-foreach (var result in results)
-{
-    Console.WriteLine($"{result.RequestType}: {result.RequestStatus.Result}");
-}
+Console.WriteLine(results.Get(version).ObsVersion);
+Console.WriteLine(results.Get(scenes).Scenes?.Count);
 ```
+
+`results.Get(reference)` returns the response record for that request, so neither its position nor
+its type is restated. A request type may appear many times in one batch and each reference still
+resolves to its own result.
 
 `Sleep` is only valid inside a batch, and pairs with `SerialRealtime` to pace a sequence.
 
-Under the serial execution types, results come back in the order the requests were added, so a
-request type may appear more than once and each result still belongs to its own request. Read them
-by position:
-
-```csharp
-var results = await client.CallBatchAsync(
-    batch => batch
-        .GetSceneItemList(new(sceneName: "Intro"))
-        .GetVersion()
-        .GetSceneItemList(new(sceneName: "Outro")),
-    cancellationToken: ct
-);
-
-var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
-var version = results[1].GetRequiredData<GetVersionResponseData>();
-var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
-```
-
-`GetRequiredData<T>` throws `ObsWebSocketRequestException` if OBS rejected that request, carrying
-its status code. `GetData<T>` returns `null` instead, and `TryGetData<T>(out var data)` reports
-failure without throwing.
-
-With `haltOnFailure: true` OBS stops at the first failure, so fewer results come back than
-requests were sent. Check `Count` before indexing.
-
-`RequestBatchExecutionType.Parallel` runs the requests on the thread pool and does not preserve
-the pairing between a request and its position in the results, so use a serial execution type when
-you intend to read results by position. With `haltOnFailure: false` the requests
-either side of a failure still run, so check before reading:
+`TryGet` reports a failed or missing result instead of throwing, and `Get` throws
+`ObsWebSocketRequestException` carrying the OBS status code when that request was rejected:
 
 ```csharp
 if (!results.AllSucceeded())
@@ -341,7 +335,11 @@ if (!results.AllSucceeded())
 }
 ```
 
-`Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload:
+With `haltOnFailure: true` OBS stops at the first failure, so fewer results come back than
+requests were sent. Reading a reference past that point throws, and `Count` reports how many ran.
+
+`Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload,
+and an overload accepting a `JsonTypeInfo<T>` keeps a custom payload AOT-safe:
 
 ```csharp
 batch.Add("GetStats").Add("SetInputSettings", myJsonElement);
@@ -356,10 +354,37 @@ List<BatchRequestItem> items =
     new("SetCurrentProgramScene", new SetCurrentProgramSceneRequestData(sceneName: "Intro")),
 ];
 
-var results = await client.CallBatchAsync(items, cancellationToken: ct);
+var raw = await client.CallBatchAsync(items, cancellationToken: ct);
 ```
 
 Either way, an item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.
+
+## Host integration
+
+Connect with the host rather than writing a background service for it, and expose the connection
+as a health check:
+
+```csharp
+builder.AddObsWebSocketClient("obs");          // reads ConnectionStrings:obs
+builder.Services.WithAutoConnect();            // connects on start, disconnects on stop
+builder.Services.AddHealthChecks().AddObsWebSocket();
+```
+
+```json
+{
+  "ConnectionStrings": {
+    "obs": "ws://localhost:4455?password=secret"
+  }
+}
+```
+
+The password may travel in the connection string or be set on the options; either way it is kept
+off `ServerUri`. A connection that cannot be established at startup is logged rather than thrown,
+because OBS is often started after the application, and reconnect takes over from there.
+
+Options are read through `IOptionsMonitor`, so editing configuration takes effect without a
+restart. Timeouts and reconnect settings apply to the next call that uses them; changing the
+endpoint, password or transport reconnects, which `WithAutoConnect` performs.
 
 ## Multiple OBS instances
 
@@ -381,7 +406,7 @@ Failures are typed, so they can be caught by category rather than matched by mes
 ```csharp
 try
 {
-    await client.SetStudioModeEnabledAsync(new(true), ct);
+    await client.Ui.SetStudioModeEnabledAsync(new(true), ct);
 }
 catch (ObsWebSocketRequestException ex)
 {

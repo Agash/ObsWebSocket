@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using ObsWebSocket.Core.Protocol;
@@ -12,6 +13,7 @@ namespace ObsWebSocket.Core;
 /// The generated methods are conveniences over <see cref="BatchRequestItem"/>. Anything they do
 /// not cover can still be added with <see cref="Add(BatchRequestItem)"/>, and
 /// <see cref="ObsWebSocketClient.CallBatchAsync"/> still accepts a plain list.
+/// <para>Not thread safe. Build a batch on one thread, or give each thread its own builder.</para>
 /// </remarks>
 public sealed partial class ObsBatchBuilder
 {
@@ -29,11 +31,11 @@ public sealed partial class ObsBatchBuilder
     /// </summary>
     /// <param name="item">The item to append.</param>
     /// <returns>The same builder, for chaining.</returns>
-    public ObsBatchBuilder Add(BatchRequestItem item)
+    public BatchRef Add(BatchRequestItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         _items.Add(item);
-        return this;
+        return new BatchRef(_items.Count - 1);
     }
 
     /// <summary>
@@ -42,11 +44,12 @@ public sealed partial class ObsBatchBuilder
     /// <param name="requestType">The OBS request type string.</param>
     /// <param name="requestData">The request payload, or <see langword="null"/> when it takes none.</param>
     /// <returns>The same builder, for chaining.</returns>
-    public ObsBatchBuilder Add(string requestType, object? requestData = null)
+    [OverloadResolutionPriority(1)]
+    public BatchRef Add(string requestType, object? requestData = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(requestType);
         _items.Add(new BatchRequestItem(requestType, requestData));
-        return this;
+        return new BatchRef(_items.Count - 1);
     }
 
     /// <summary>
@@ -58,7 +61,7 @@ public sealed partial class ObsBatchBuilder
     /// <param name="requestData">The request payload.</param>
     /// <param name="typeInfo">Serialization metadata for <typeparamref name="T"/>.</param>
     /// <returns>The same builder, for chaining.</returns>
-    public ObsBatchBuilder Add<T>(string requestType, T requestData, JsonTypeInfo<T> typeInfo)
+    public BatchRef Add<T>(string requestType, T requestData, JsonTypeInfo<T> typeInfo)
         where T : class
     {
         ArgumentException.ThrowIfNullOrEmpty(requestType);
@@ -71,11 +74,26 @@ public sealed partial class ObsBatchBuilder
                 JsonSerializer.SerializeToElement(requestData, typeInfo)
             )
         );
-        return this;
+        return new BatchRef(_items.Count - 1);
+    }
+
+    /// <summary>
+    /// Appends a request and returns its position, which the generated group methods wrap in a
+    /// <see cref="BatchRef{TResponse}"/>.
+    /// </summary>
+    /// <param name="requestType">The OBS request type string.</param>
+    /// <param name="requestData">The request payload, or <see langword="null"/>.</param>
+    /// <returns>The position of the appended request.</returns>
+    internal int AddRequest(string requestType, object? requestData)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(requestType);
+        _items.Add(new BatchRequestItem(requestType, requestData));
+        return _items.Count - 1;
     }
 
     /// <summary>
     /// Returns the accumulated items as the list <see cref="ObsWebSocketClient.CallBatchAsync"/> takes.
     /// </summary>
     public List<BatchRequestItem> Build() => [.. _items];
+
 }

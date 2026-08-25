@@ -31,7 +31,7 @@ public sealed partial record GetSceneSceneTransitionOverrideResponseData
     /// </summary>
     [JsonPropertyName("transitionDuration")]
     [Key("transitionDuration")]
-    public required double TransitionDuration { get; init; }
+    public double? TransitionDuration { get; init; }
 
     /// <summary>
     /// Name of the overridden scene transition, else `null`
@@ -48,8 +48,7 @@ public sealed partial record GetSceneSceneTransitionOverrideResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetSceneSceneTransitionOverrideResponseData(double transitionDuration, string? transitionName = null)
+    public GetSceneSceneTransitionOverrideResponseData(string? transitionName = null, double? transitionDuration = null)
     {
         this.TransitionName = transitionName;
         this.TransitionDuration = transitionDuration;

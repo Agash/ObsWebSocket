@@ -61,6 +61,14 @@ public static class ObsWebSocketServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
 
+        // Resolve options through the monitor, so a configuration change is picked up rather
+        // than the values captured when the container was built.
+        _ = services.AddSingleton<IOptions<ObsWebSocketClientOptions>>(sp =>
+            new MonitorBackedOptions(sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>())
+        );
+        _ = services.AddMetrics();
+        services.TryAddSingleton<ObsWebSocketMetrics>();
+
         services.TryAddSingleton(sp =>
         {
             ILogger<ObsWebSocketClient> logger = sp.GetRequiredService<
@@ -77,7 +85,14 @@ public static class ObsWebSocketServiceCollectionExtensions
             TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
 
             // Pass dependencies to the constructor
-            return new ObsWebSocketClient(logger, serializer, options, factory, timeProvider);
+            return new ObsWebSocketClient(
+                logger,
+                serializer,
+                options,
+                factory,
+                timeProvider,
+                sp.GetRequiredService<ObsWebSocketMetrics>()
+            );
         });
 
         return services;
@@ -141,11 +156,23 @@ public static class ObsWebSocketServiceCollectionExtensions
                     serializer,
                     Options.Create(options),
                     sp.GetRequiredService<IWebSocketConnectionFactory>(),
-                    sp.GetRequiredService<TimeProvider>()
+                    sp.GetRequiredService<TimeProvider>(),
+                    sp.GetRequiredService<ObsWebSocketMetrics>()
                 );
             }
         );
 
         return services;
     }
+}
+
+/// <summary>
+/// Presents the current monitored value as <see cref="IOptions{T}"/>.
+/// </summary>
+/// <param name="monitor">The monitor to read from.</param>
+internal sealed class MonitorBackedOptions(IOptionsMonitor<ObsWebSocketClientOptions> monitor)
+    : IOptions<ObsWebSocketClientOptions>
+{
+    /// <inheritdoc/>
+    public ObsWebSocketClientOptions Value => monitor.CurrentValue;
 }

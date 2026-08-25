@@ -51,7 +51,8 @@ public sealed partial class ObsWebSocketClient(
     IWebSocketMessageSerializer serializer,
     IOptions<ObsWebSocketClientOptions> options,
     IWebSocketConnectionFactory? connectionFactory = null,
-    TimeProvider? timeProvider = null
+    TimeProvider? timeProvider = null,
+    ObsWebSocketMetrics? metrics = null
 ) : IAsyncDisposable
 {
     #region Fields
@@ -65,6 +66,8 @@ public sealed partial class ObsWebSocketClient(
 
     /// <summary>Source of time for all timeouts and reconnect delays.</summary>
     internal readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+
+    private readonly ObsWebSocketMetrics _metrics = metrics ?? ObsWebSocketMetrics.Shared;
 
     private ReconnectDelays _reconnectDelays = ReconnectDelays.Disabled;
 
@@ -399,7 +402,7 @@ public sealed partial class ObsWebSocketClient(
                 )
                 .ConfigureAwait(false);
 
-            ObsWebSocketDiagnostics.RequestsSent.Add(1, requestTags);
+            _metrics.RequestsSent.Add(1, requestTags);
 
             int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
 
@@ -419,7 +422,7 @@ public sealed partial class ObsWebSocketClient(
 
             ProcessResponseStatus(response.RequestStatus, requestType, requestId);
 
-            ObsWebSocketDiagnostics.RequestDuration.Record(
+            _metrics.RequestDuration.Record(
                 _timeProvider.GetElapsedTime(startedAt).TotalMilliseconds,
                 requestTags
             );
@@ -429,7 +432,7 @@ public sealed partial class ObsWebSocketClient(
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
-            ObsWebSocketDiagnostics.RequestsFailed.Add(1, requestTags);
+            _metrics.RequestsFailed.Add(1, requestTags);
             _ = activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
             _logger.LogCallasyncFailedFor(ex, requestType, requestId);
@@ -653,8 +656,8 @@ public sealed partial class ObsWebSocketClient(
             _logger.LogReceivedBatchResponseResults(batchRequestId, response.Results.Count);
 
             _ = activity?.SetTag("obsws.batch.size", requestPayloads.Count);
-            ObsWebSocketDiagnostics.RequestsSent.Add(1, batchTags);
-            ObsWebSocketDiagnostics.RequestDuration.Record(
+            _metrics.RequestsSent.Add(1, batchTags);
+            _metrics.RequestDuration.Record(
                 _timeProvider.GetElapsedTime(startedAt).TotalMilliseconds,
                 batchTags
             );
@@ -664,7 +667,7 @@ public sealed partial class ObsWebSocketClient(
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
-            ObsWebSocketDiagnostics.RequestsFailed.Add(1, batchTags);
+            _metrics.RequestsFailed.Add(1, batchTags);
             _ = activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
             _logger.LogCallbatchasyncFailedForBatch(ex, batchRequestId);
@@ -822,8 +825,8 @@ public sealed partial class ObsWebSocketClient(
                         TimeSpan backoff = await _reconnectDelays
                             .GetDelayAsync(attempt - 2, loopToken)
                             .ConfigureAwait(false);
-                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts, (int)backoff.TotalMilliseconds);
-                        ObsWebSocketDiagnostics.Reconnects.Add(1);
+                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts.ToString(), (int)backoff.TotalMilliseconds);
+                        _metrics.Reconnects.Add(1);
                         await Task.Delay(backoff, _timeProvider, loopToken).ConfigureAwait(false);
                     }
 
@@ -1241,13 +1244,16 @@ public sealed partial class ObsWebSocketClient(
                     continue;
                 }
 
-                bufferStream.Position = 0;
+                // Deserialize from a copy. The payload is parsed later, off this thread, and
+                // the assembly buffer is reused by the next message, so anything pointing into
+                // it would be reading the following message by then.
+                using MemoryStream messageStream = new(bufferStream.ToArray(), writable: false);
                 object? incomingMsgObj = await _serializer
-                    .DeserializeAsync(bufferStream, cancellationToken)
+                    .DeserializeAsync(messageStream, cancellationToken)
                     .ConfigureAwait(false);
                 if (incomingMsgObj is null)
                 {
-                    _logger.LogDeserializationReturnedNullLength(bufferStream.Length);
+                    _logger.LogDeserializationReturnedNullLength(messageStream.Length);
                     continue;
                 }
 
@@ -1526,7 +1532,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogExceptionDuringProcessingOfRequestresponsePayload(ex, payloadData);
+            _logger.LogExceptionDuringProcessingOfRequestresponsePayload(ex, payloadData?.ToString());
         }
     }
 
@@ -1566,7 +1572,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogExceptionDuringProcessingOfRequestbatchresponsePayload(ex, payloadData);
+            _logger.LogExceptionDuringProcessingOfRequestbatchresponsePayload(ex, payloadData?.ToString());
         }
     }
 
@@ -1614,7 +1620,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogCriticalExceptionDuringEventHandlingFor(ex, eventPayloadBase?.EventType ?? "Unknown Type", payloadData);
+            _logger.LogCriticalExceptionDuringEventHandlingFor(ex, eventPayloadBase?.EventType ?? "Unknown Type", payloadData?.ToString());
         }
     }
 
@@ -1663,7 +1669,7 @@ public sealed partial class ObsWebSocketClient(
             TPayload? payload = _serializer.DeserializePayload<TPayload>(rawData);
             if (payload is not null)
             {
-                ObsWebSocketDiagnostics.EventsReceived.Add(
+                _metrics.EventsReceived.Add(
                     1,
                     new TagList { { "obsws.event_type", eventType } }
                 );
