@@ -23,7 +23,6 @@ public readonly partial struct ScenesRequestGroup
     /// Switches the active Program or Preview scene, optionally setting a specific transition and duration beforehand.
     /// Does not restore the previously active transition.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene to switch to.</param>
     /// <param name="transitionName">Optional: The name of the transition to use.</param>
     /// <param name="transitionDurationMs">Optional: The duration for the transition (in milliseconds). Requires transitionName to be set.</param>
@@ -97,7 +96,6 @@ public readonly partial struct ScenesRequestGroup
     /// Switches the active Program or Preview scene using an optional transition,
     /// and waits for the corresponding scene change event before returning.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene to switch to.</param>
     /// <param name="transitionName">Optional: The name of the transition to use. Applicable only when switching the Program scene.</param>
     /// <param name="transitionDurationMs">Optional: The duration for the transition (in milliseconds). Requires transitionName to be set. Applicable only when switching the Program scene.</param>

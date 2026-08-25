@@ -22,7 +22,6 @@ public readonly partial struct GeneralRequestGroup
     /// <summary>
     /// Triggers an OBS hotkey by its canonical name (e.g., "OBSWebSocket.StartStream").
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="hotkeyName">The canonical name of the hotkey.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to trigger the hotkey (e.g., hotkey not found).</exception>

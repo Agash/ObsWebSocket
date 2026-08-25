@@ -1,5 +1,7 @@
 namespace ObsWebSocket.Core;
 
+/// <summary>Thrown when a scene item cannot be found by name within a scene.</summary>
+[Serializable]
 public class SceneItemNotFoundException : ObsWebSocketException
 {
     /// <summary>

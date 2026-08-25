@@ -238,6 +238,13 @@ internal static class ReadmeCompileCheck
         }
     }
 
+    internal static void HostIntegration(Microsoft.Extensions.Hosting.IHostApplicationBuilder builder)
+    {
+        _ = builder.AddObsWebSocketClient("obs");
+        _ = builder.Services.WithAutoConnect();
+        _ = builder.Services.AddHealthChecks().AddObsWebSocket();
+    }
+
     internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
     {
         _ = services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"));

@@ -23,7 +23,6 @@ public readonly partial struct OutputsRequestGroup
     /// Gets the settings for an output as a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize output settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="outputName">The name of the output.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -53,7 +52,6 @@ public readonly partial struct OutputsRequestGroup
     /// Gets the settings for an output as a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the output settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="outputName">The name of the output.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized output settings, or <see langword="null"/> if no settings are present.</returns>
@@ -72,7 +70,6 @@ public readonly partial struct OutputsRequestGroup
     /// Sets the settings for an output from a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type representing the output settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="outputName">The name of the output.</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
@@ -106,7 +103,6 @@ public readonly partial struct OutputsRequestGroup
     /// Sets the settings for an output from a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the output settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="outputName">The name of the output.</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -125,7 +121,6 @@ public readonly partial struct OutputsRequestGroup
     /// <summary>
     /// Returns <see langword="true"/> if the OBS virtual camera output is currently active.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     public async Task<bool> IsVirtualCamActiveAsync(CancellationToken cancellationToken = default)
@@ -142,7 +137,6 @@ public readonly partial struct OutputsRequestGroup
     /// <see cref="VirtualcamStateChangedEventArgs"/> confirms the desired state,
     /// or until <paramref name="timeout"/> elapses.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="activate"><see langword="true"/> to start the virtual camera; <see langword="false"/> to stop it.</param>
     /// <param name="timeout">
     /// Maximum time to wait for the state-change event.

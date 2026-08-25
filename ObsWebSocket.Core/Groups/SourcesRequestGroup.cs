@@ -22,7 +22,6 @@ public readonly partial struct SourcesRequestGroup
     /// <summary>
     /// Checks if an input or scene source with the given name exists in OBS.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the input or scene to check.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>True if a source (input or scene) with the specified name exists, false otherwise.</returns>
@@ -78,7 +77,6 @@ public readonly partial struct SourcesRequestGroup
     /// <summary>
     /// Gets a screenshot of a source and returns it as a byte array.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source (input or scene).</param>
     /// <param name="imageFormat">The desired image format (e.g., "png", "jpg", "bmp"). Use GetVersion for supported formats.</param>
     /// <param name="width">Optional width to scale the screenshot to.</param>
@@ -162,7 +160,6 @@ public readonly partial struct SourcesRequestGroup
     /// The <paramref name="sourceUuid"/> parameter can be used to identify the source
     /// unambiguously when multiple sources share the same display name.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source or scene to capture.</param>
     /// <param name="imageFormat">Image format: <c>"png"</c>, <c>"jpg"</c>, or <c>"bmp"</c>.</param>
     /// <param name="width">Optional output width. <see langword="null"/> uses the source width.</param>
@@ -217,7 +214,6 @@ public readonly partial struct SourcesRequestGroup
     /// The <paramref name="sourceUuid"/> parameter can be used to identify the source
     /// unambiguously when multiple sources share the same display name.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source or scene to capture.</param>
     /// <param name="filePath">Absolute path on the OBS host where the image will be saved.</param>
     /// <param name="imageFormat">Image format: <c>"png"</c>, <c>"jpg"</c>, or <c>"bmp"</c>.</param>

@@ -750,16 +750,13 @@ internal static partial class Emitter
         builder.AppendLine("{");
         foreach ((string category, string groupName) in groups)
         {
-            builder.AppendLine("    /// <summary>");
-            builder.AppendLine(
-                $"    /// Requests in the <c>{System.Security.SecurityElement.Escape(category)}</c> category."
-            );
-            builder.AppendLine("    /// </summary>");
-            builder.AppendLine("    /// <param name=\"client\">The client to send on.</param>");
-            builder.AppendLine(
-                $"    extension(ObsWebSocketClient client)"
-            );
+            builder.AppendLine("    extension(ObsWebSocketClient client)");
             builder.AppendLine("    {");
+            builder.AppendLine("        /// <summary>");
+            builder.AppendLine(
+                $"        /// Requests in the <c>{System.Security.SecurityElement.Escape(category)}</c> category."
+            );
+            builder.AppendLine("        /// </summary>");
             builder.AppendLine(
                 $"        public {groupName}RequestGroup {groupName} => new(client);"
             );

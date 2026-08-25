@@ -22,7 +22,6 @@ public readonly partial struct SceneItemsRequestGroup
     /// <summary>
     /// Sets or toggles the enabled (visibility) state of a scene item, identified by its numeric ID.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene containing the item.</param>
     /// <param name="sceneItemId">The numeric ID of the scene item.</param>
     /// <param name="isEnabled">The desired state (true=enabled, false=disabled). If null, the state will be toggled.</param>
@@ -76,7 +75,6 @@ public readonly partial struct SceneItemsRequestGroup
     /// <summary>
     /// Sets or toggles the enabled (visibility) state of a scene item, identified by its source name within a scene.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene containing the item.</param>
     /// <param name="sourceName">The name of the source corresponding to the scene item.</param>
     /// <param name="isEnabled">The desired state (true=enabled, false=disabled). If null, the state will be toggled.</param>
@@ -116,7 +114,6 @@ public readonly partial struct SceneItemsRequestGroup
     /// Attempts to get the numeric ID of a scene item within a specific scene.
     /// Returns null if the scene or source is not found.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene to search within.</param>
     /// <param name="sourceName">The name of the source corresponding to the scene item.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -133,7 +130,6 @@ public readonly partial struct SceneItemsRequestGroup
     /// Returns the scene item id for a source within a scene, or <see langword="null"/> when the
     /// scene does not contain it.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sceneName">The name of the scene to search.</param>
     /// <param name="sourceName">The name of the source to locate.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>

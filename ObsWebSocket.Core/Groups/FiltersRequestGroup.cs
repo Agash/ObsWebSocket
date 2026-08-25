@@ -24,7 +24,6 @@ public readonly partial struct FiltersRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize the filter settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
     /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
@@ -91,7 +90,6 @@ public readonly partial struct FiltersRequestGroup
     /// Retrieves the settings for a specific filter on a source. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize the filter settings into. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -113,7 +111,6 @@ public readonly partial struct FiltersRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type representing the filter settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
     /// <param name="settings">The settings object to apply.</param>
@@ -166,7 +163,6 @@ public readonly partial struct FiltersRequestGroup
     /// Sets the settings for a specific filter on a source using a strongly-typed settings object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the filter settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source.</param>
     /// <param name="filterName">The name of the filter.</param>
     /// <param name="settings">The settings object to apply.</param>
@@ -191,7 +187,6 @@ public readonly partial struct FiltersRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type representing the filter settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source to add the filter to.</param>
     /// <param name="filterName">The name for the new filter.</param>
     /// <param name="filterKind">The kind of filter to create (e.g., "gain_filter").</param>
@@ -245,7 +240,6 @@ public readonly partial struct FiltersRequestGroup
     /// Creates a new filter on a source with strongly-typed settings. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the filter settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="sourceName">The name of the source to add the filter to.</param>
     /// <param name="filterName">The name for the new filter.</param>
     /// <param name="filterKind">The kind of filter to create (e.g., "gain_filter").</param>
@@ -269,7 +263,6 @@ public readonly partial struct FiltersRequestGroup
     /// Gets the default settings for a source filter kind as a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize default filter settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="filterKind">The identifier of the filter kind (e.g., "gain_filter").</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -299,7 +292,6 @@ public readonly partial struct FiltersRequestGroup
     /// Gets the default settings for a source filter kind as a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the default filter settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="filterKind">The identifier of the filter kind (e.g., "gain_filter").</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>

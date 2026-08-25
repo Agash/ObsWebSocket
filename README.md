@@ -359,6 +359,29 @@ var raw = await client.CallBatchAsync(items, cancellationToken: ct);
 
 Either way, an item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.
 
+## Host integration
+
+Connect with the host rather than writing a background service for it, and expose the connection
+as a health check:
+
+```csharp
+builder.AddObsWebSocketClient("obs");          // reads ConnectionStrings:obs
+builder.Services.WithAutoConnect();            // connects on start, disconnects on stop
+builder.Services.AddHealthChecks().AddObsWebSocket();
+```
+
+```json
+{
+  "ConnectionStrings": {
+    "obs": "ws://localhost:4455?password=secret"
+  }
+}
+```
+
+The password may travel in the connection string or be set on the options; either way it is kept
+off `ServerUri`. A connection that cannot be established at startup is logged rather than thrown,
+because OBS is often started after the application, and reconnect takes over from there.
+
 ## Multiple OBS instances
 
 Register clients by name and resolve them with `[FromKeyedServices]`:

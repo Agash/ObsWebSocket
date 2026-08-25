@@ -22,7 +22,6 @@ public readonly partial struct InputsRequestGroup
     /// <summary>
     /// Sets the text content of a Text (GDI+, Freetype 2, Pango) source.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputName">The name of the Text source input.</param>
     /// <param name="text">The text content to set.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -50,7 +49,6 @@ public readonly partial struct InputsRequestGroup
     /// <summary>
     /// Sets the mute state for multiple audio inputs using a single batch request.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputMutes">An enumerable of tuples, where each tuple contains the input name (string) and desired mute state (bool: true=muted, false=unmuted).</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A Task representing the completion of the batch request submission. Inspect logs for individual item failures.</returns>
@@ -114,7 +112,6 @@ public readonly partial struct InputsRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize the input settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputName">The name of the input.</param>
     /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -176,7 +173,6 @@ public readonly partial struct InputsRequestGroup
     /// Retrieves and deserializes the settings for an input. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize the input settings into. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputName">The name of the input.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized settings, or null if the input is not found or deserialization fails.</returns>
@@ -196,7 +192,6 @@ public readonly partial struct InputsRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type representing the input settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputName">The name of the input.</param>
     /// <param name="settings">The settings object to apply.</param>
     /// <param name="typeInfo">The JSON type metadata for <typeparamref name="T"/>.</param>
@@ -245,7 +240,6 @@ public readonly partial struct InputsRequestGroup
     /// Sets the settings of an input using a strongly-typed settings object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the input settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputName">The name of the input.</param>
     /// <param name="settings">The settings object to apply.</param>
     /// <param name="overlay">True (default) to merge settings; false to reset to defaults and then apply.</param>
@@ -268,7 +262,6 @@ public readonly partial struct InputsRequestGroup
     /// Suitable for both library-defined and consumer-defined settings types.
     /// </summary>
     /// <typeparam name="T">The C# type representing the input settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputKind">The kind of input to create (e.g., "browser_source").</param>
     /// <param name="inputName">The name for the new input.</param>
     /// <param name="settings">The settings for the new input.</param>
@@ -328,7 +321,6 @@ public readonly partial struct InputsRequestGroup
     /// Creates a new input with strongly-typed settings. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the input settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputKind">The kind of input to create (e.g., "browser_source").</param>
     /// <param name="inputName">The name for the new input.</param>
     /// <param name="settings">The settings for the new input.</param>
@@ -357,7 +349,6 @@ public readonly partial struct InputsRequestGroup
     /// Gets the default settings for an input kind as a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize default input settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputKind">The identifier of the input kind (e.g., "browser_source").</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -387,7 +378,6 @@ public readonly partial struct InputsRequestGroup
     /// Gets the default settings for an input kind as a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the default input settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="inputKind">The identifier of the input kind (e.g., "browser_source").</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>

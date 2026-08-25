@@ -3050,129 +3050,115 @@ public readonly partial struct UiRequestGroup(ObsWebSocketClient client)
 /// </summary>
 public static class ObsWebSocketClientExtensions
 {
-    /// <summary>
-    /// Requests in the <c>canvases</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>canvases</c> category.
+        /// </summary>
         public CanvasesRequestGroup Canvases => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>config</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>config</c> category.
+        /// </summary>
         public ConfigRequestGroup Config => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>filters</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>filters</c> category.
+        /// </summary>
         public FiltersRequestGroup Filters => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>general</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>general</c> category.
+        /// </summary>
         public GeneralRequestGroup General => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>inputs</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>inputs</c> category.
+        /// </summary>
         public InputsRequestGroup Inputs => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>media inputs</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>media inputs</c> category.
+        /// </summary>
         public MediaInputsRequestGroup MediaInputs => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>outputs</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>outputs</c> category.
+        /// </summary>
         public OutputsRequestGroup Outputs => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>record</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>record</c> category.
+        /// </summary>
         public RecordRequestGroup Record => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>scene items</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>scene items</c> category.
+        /// </summary>
         public SceneItemsRequestGroup SceneItems => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>scenes</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>scenes</c> category.
+        /// </summary>
         public ScenesRequestGroup Scenes => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>sources</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>sources</c> category.
+        /// </summary>
         public SourcesRequestGroup Sources => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>stream</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>stream</c> category.
+        /// </summary>
         public StreamRequestGroup Stream => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>transitions</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>transitions</c> category.
+        /// </summary>
         public TransitionsRequestGroup Transitions => new(client);
     }
 
-    /// <summary>
-    /// Requests in the <c>ui</c> category.
-    /// </summary>
-    /// <param name="client">The client to send on.</param>
     extension(ObsWebSocketClient client)
     {
+        /// <summary>
+        /// Requests in the <c>ui</c> category.
+        /// </summary>
         public UiRequestGroup Ui => new(client);
     }
 

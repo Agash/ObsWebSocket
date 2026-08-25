@@ -23,7 +23,6 @@ public readonly partial struct TransitionsRequestGroup
     /// Gets the settings for the current scene transition as a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize transition settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized transition settings, or <see langword="null"/> if no settings are present.</returns>
@@ -48,7 +47,6 @@ public readonly partial struct TransitionsRequestGroup
     /// Gets the settings for the current scene transition as a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the transition settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized transition settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
@@ -65,7 +63,6 @@ public readonly partial struct TransitionsRequestGroup
     /// Sets the settings for the current scene transition from a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type representing the transition settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="overlay">If <see langword="true"/>, the provided settings are overlaid on top of the existing settings. Defaults to <see langword="true"/>.</param>
@@ -98,7 +95,6 @@ public readonly partial struct TransitionsRequestGroup
     /// Sets the settings for the current scene transition from a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the transition settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="overlay">If <see langword="true"/>, the provided settings are overlaid on top of the existing settings. Defaults to <see langword="true"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>

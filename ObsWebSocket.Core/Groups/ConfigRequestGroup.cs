@@ -23,7 +23,6 @@ public readonly partial struct ConfigRequestGroup
     /// Gets the current stream service settings as a strongly-typed object. The service type string is discarded.
     /// </summary>
     /// <typeparam name="T">The C# type to deserialize stream service settings into.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized stream service settings, or <see langword="null"/> if no settings are present.</returns>
@@ -48,7 +47,6 @@ public readonly partial struct ConfigRequestGroup
     /// Gets the current stream service settings as a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the stream service settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The deserialized stream service settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
@@ -65,7 +63,6 @@ public readonly partial struct ConfigRequestGroup
     /// Sets the current stream service settings from a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The C# type representing the stream service settings.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="streamServiceType">The stream service type identifier (e.g., "rtmp_custom", "rtmp_common").</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="typeInfo">The <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.</param>
@@ -99,7 +96,6 @@ public readonly partial struct ConfigRequestGroup
     /// Sets the current stream service settings from a strongly-typed object. The type must be registered in <c>ObsWebSocketJsonContext</c>.
     /// </summary>
     /// <typeparam name="T">The C# type representing the stream service settings. Must be a library-registered settings type.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="streamServiceType">The stream service type identifier (e.g., "rtmp_custom", "rtmp_common").</param>
     /// <param name="settings">The settings to apply.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -118,7 +114,6 @@ public readonly partial struct ConfigRequestGroup
     /// <summary>
     /// Ensures the specified Scene Collection is currently active. If not, attempts to switch to it.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="targetSceneCollectionName">The name of the desired scene collection.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>True if the target scene collection is active after the call; false if the switch failed (e.g., not found).</returns>
@@ -180,7 +175,6 @@ public readonly partial struct ConfigRequestGroup
     /// <summary>
     /// Ensures the specified Profile is currently active. If not, attempts to switch to it.
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="targetProfileName">The name of the desired profile.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>True if the target profile is active after the call; false if the switch failed (e.g., not found).</returns>
