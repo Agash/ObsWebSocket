@@ -53,6 +53,20 @@ internal static partial class Emitter
                         SourceText.From(source, Encoding.UTF8)
                     );
                 }
+
+                // String-valued protocol enums also get a real C# enum, so callers can switch
+                // on them and pass them to helpers instead of threading magic strings around.
+                if (valueKind == EnumValueKind.StringBased)
+                {
+                    string? typedSource = GenerateStringBasedEnumTypedSource(enumDef);
+                    if (typedSource != null)
+                    {
+                        context.AddSource(
+                            $"{StripObsPrefix(SanitizeIdentifier(enumDef.EnumType))}.TypedEnum.g.cs",
+                            SourceText.From(typedSource, Encoding.UTF8)
+                        );
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -199,11 +213,178 @@ internal static partial class Emitter
                 }
 
                 builder.AppendLine(
-                    $"    public static readonly string {fieldName} = \"{memberValueString}\";"
+                    $"    public const string {fieldName} = \"{memberValueString}\";"
                 );
                 builder.AppendLine();
             }
         }
+        builder.AppendLine("}");
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Drops the leading <c>Obs</c> from a protocol enum type name, so <c>ObsMediaInputAction</c>
+    /// yields <c>MediaInputAction</c> and does not collide with the string-constant class.
+    /// </summary>
+    private static string StripObsPrefix(string typeName) =>
+        typeName.StartsWith("Obs", StringComparison.Ordinal) && typeName.Length > 3
+            ? typeName.Substring(3)
+            : typeName + "Value";
+
+    /// <summary>
+    /// Finds the longest shared underscore-delimited prefix across the member identifiers, so
+    /// the emitted enum members can drop the repeated protocol scaffolding from their names.
+    /// </summary>
+    private static string FindCommonMemberPrefix(List<string> identifiers)
+    {
+        if (identifiers.Count < 2)
+        {
+            return string.Empty;
+        }
+
+        string[] first = identifiers[0].Split('_');
+        int shared = first.Length;
+        foreach (string identifier in identifiers)
+        {
+            string[] parts = identifier.Split('_');
+            int i = 0;
+            while (i < shared && i < parts.Length && string.Equals(parts[i], first[i], StringComparison.Ordinal))
+            {
+                i++;
+            }
+
+            shared = i;
+        }
+
+        // Never strip everything; each member needs at least one segment left to name it.
+        while (shared > 0 && identifiers.Any(id => id.Split('_').Length <= shared))
+        {
+            shared--;
+        }
+
+        return shared == 0 ? string.Empty : string.Join("_", first.Take(shared)) + "_";
+    }
+
+    /// <summary>
+    /// Converts an UPPER_SNAKE_CASE protocol identifier into a PascalCase C# member name.
+    /// </summary>
+    private static string SnakeToPascalCase(string upperSnake) =>
+        string.Concat(
+            upperSnake
+                .Split(['_'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(part =>
+                    part.Length == 0
+                        ? part
+                        : char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant()
+                )
+        );
+
+    /// <summary>
+    /// Generates a real C# enum for a string-valued protocol enum, mapping each member back to
+    /// its wire string. The string-constant class stays as-is for low-level and raw payload use.
+    /// </summary>
+    private static string? GenerateStringBasedEnumTypedSource(EnumDefinition enumDef)
+    {
+        if (enumDef.EnumIdentifiers is null || enumDef.EnumIdentifiers.Count == 0)
+        {
+            return null;
+        }
+
+        string constantsClass = SanitizeIdentifier(enumDef.EnumType);
+        string enumName = StripObsPrefix(constantsClass);
+
+        List<(string Member, string Wire)> members = [];
+        foreach (EnumIdentifier member in enumDef.EnumIdentifiers)
+        {
+            if (member.EnumValue.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            string wire = member.EnumValue.GetString() ?? string.Empty;
+            if (wire.Length == 0)
+            {
+                continue;
+            }
+
+            members.Add((SanitizeIdentifier(member.IdentifierName), wire));
+        }
+
+        if (members.Count == 0)
+        {
+            return null;
+        }
+
+        string prefix = FindCommonMemberPrefix([.. members.Select(m => m.Member)]);
+
+        StringBuilder builder = BuildSourceHeader("// Type: Typed Enum for a string-valued protocol enum");
+        builder.AppendLine("using System;");
+        builder.AppendLine("using System.Text.Json.Serialization;");
+        builder.AppendLine();
+        builder.AppendLine($"namespace {GeneratedEnumsNamespace};");
+        builder.AppendLine();
+        AppendXmlDocSummary(
+            builder,
+            $"Typed form of the {constantsClass} protocol enum. Use <see cref=\"{enumName}Extensions.ToWireValue\"/> to obtain the string OBS expects.",
+            0
+        );
+        builder.AppendLine("/// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>");
+        builder.AppendLine($"public enum {enumName}");
+        builder.AppendLine("{");
+        foreach ((string memberIdentifier, string wire) in members)
+        {
+            string shortName = memberIdentifier;
+            if (prefix.Length > 0 && shortName.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                shortName = shortName.Substring(prefix.Length);
+            }
+
+            string memberName = SnakeToPascalCase(shortName);
+            builder.AppendLine($"    /// <summary>Maps to <c>{System.Security.SecurityElement.Escape(wire)}</c>.</summary>");
+            builder.AppendLine($"    [JsonStringEnumMemberName(\"{wire}\")]");
+            builder.AppendLine($"    {memberName},");
+            builder.AppendLine();
+        }
+
+        builder.AppendLine("}");
+        builder.AppendLine();
+
+        AppendXmlDocSummary(builder, $"Wire-value conversions for <see cref=\"{enumName}\"/>.", 0);
+        builder.AppendLine($"public static class {enumName}Extensions");
+        builder.AppendLine("{");
+        builder.AppendLine($"    /// <summary>Returns the protocol string OBS expects for this value.</summary>");
+        builder.AppendLine($"    public static string ToWireValue(this {enumName} value) => value switch");
+        builder.AppendLine("    {");
+        foreach ((string memberIdentifier, string wire) in members)
+        {
+            string shortName = memberIdentifier;
+            if (prefix.Length > 0 && shortName.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                shortName = shortName.Substring(prefix.Length);
+            }
+
+            builder.AppendLine($"        {enumName}.{SnakeToPascalCase(shortName)} => {constantsClass}.{memberIdentifier},");
+        }
+
+        builder.AppendLine($"        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),");
+        builder.AppendLine("    };");
+        builder.AppendLine();
+        builder.AppendLine($"    /// <summary>Parses a protocol string into a <see cref=\"{enumName}\"/>, returning null when unrecognised.</summary>");
+        builder.AppendLine($"    public static {enumName}? FromWireValue(string? value) => value switch");
+        builder.AppendLine("    {");
+        foreach ((string memberIdentifier, string wire) in members)
+        {
+            string shortName = memberIdentifier;
+            if (prefix.Length > 0 && shortName.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                shortName = shortName.Substring(prefix.Length);
+            }
+
+            builder.AppendLine($"        {constantsClass}.{memberIdentifier} => {enumName}.{SnakeToPascalCase(shortName)},");
+        }
+
+        builder.AppendLine("        _ => null,");
+        builder.AppendLine("    };");
         builder.AppendLine("}");
         return builder.ToString();
     }

@@ -21,7 +21,8 @@ dotnet add package ObsWebSocket.Core
 ## Features
 
 - Strongly typed request/response DTOs generated from the obs-websocket protocol
-- Strongly typed event args
+- Strongly typed event args, observable as `IAsyncEnumerable<T>` or as classic events
+- Typed batch builder that pairs each request type with its own payload
 - Async-first API with cancellation support
 - DI helpers via `AddObsWebSocketClient()`
 - JSON and MessagePack transports (configurable per environment)
@@ -83,6 +84,44 @@ public sealed class Worker(ObsWebSocketClient client) : IHostedService
     private static void OnSceneChanged(object? _, CurrentProgramSceneChangedEventArgs e) =>
         Console.WriteLine($"Scene changed: {e.EventData.SceneName}");
 }
+```
+
+## Observing Events
+
+Every OBS event is exposed as an async sequence. The stream subscribes for the lifetime of the
+loop and unsubscribes when it ends, so there is no handler bookkeeping and cancellation is the
+only thing that stops it:
+
+```csharp
+await foreach (var e in client.CurrentProgramSceneChangedStream(cancellationToken: ct))
+{
+    Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
+}
+```
+
+Streams buffer a bounded number of events and drop the oldest when a consumer falls behind, so a
+slow loop cannot stall the receive loop. Pass `capacity` to change that.
+
+The classic events are unchanged and still work, including alongside a stream over the same event:
+
+```csharp
+client.CurrentProgramSceneChanged += (_, e) =>
+    Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
+```
+
+To wait for a single occurrence rather than a sequence, use `WaitForEventAsync`. It subscribes
+before returning, so you can start the wait and then trigger the action without racing it:
+
+```csharp
+// Next occurrence, no timeout
+var changed = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(ct);
+
+// Next matching occurrence, giving up after 5 seconds
+var intro = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+    e => e.EventData.SceneName == "Intro",
+    TimeSpan.FromSeconds(5),
+    ct
+);
 ```
 
 ## Common Use Cases
@@ -172,12 +211,13 @@ Most of these take optional parameters ahead of the cancellation token, so pass 
 - `SwitchSceneAsync(scene, cancellationToken: ct)` switches the Program scene, or Preview with `switchToProgram: false`. Optional `transitionName` and `transitionDurationMs` apply to that switch only.
 - `SwitchSceneAndWaitAsync(scene, cancellationToken: ct)` does the same and waits for the event confirming it.
 - `SetSceneItemEnabledAsync(scene, sourceName, isEnabled, ct)` returns the resulting state. Leave `isEnabled` null to toggle. There is an overload taking a numeric `sceneItemId`.
-- `TryGetSceneItemIdAsync(scene, sourceName, ct)` returns null instead of throwing when the item is not in the scene.
-- `SourceExistsAsync(name, ct)` checks whether a source exists.
+- `FindSceneItemIdAsync(scene, sourceName, ct)` returns null instead of throwing when the item is not in the scene.
+- `SourceExistsAsync(name, ct)` and `SceneExistsAsync(name, ct)` check for existence.
 
 **Inputs and filters:**
 
 - `SetInputTextAsync(name, text, ct)` is shorthand for updating text source content.
+- `SetInputVolumeDbAsync(name, db, ct)` and `SetInputVolumeMulAsync(name, mul, ct)` each pick one unit. The underlying request accepts either and fails when given neither.
 - `SetInputMutesAsync(inputMutes, ct)` sets many mute states in one batch, taking `IEnumerable<(string InputName, bool IsMuted)>`.
 - `CreateInputAsync<T>(kind, name, settings, ...)` creates an input with typed settings, optionally placing it in a scene.
 - `CreateSourceFilterAsync<T>(source, filterName, kind, settings, ct)` adds a typed filter.
@@ -188,12 +228,48 @@ Most of these take optional parameters ahead of the cancellation token, so pass 
 - `GetSourceScreenshotOnCanvasBytesAsync(source, ...)` does the same at full canvas dimensions.
 - `SaveSourceScreenshotToFileAsync(source, filePath, ...)` writes straight to disk.
 
+**Outputs:**
+
+- `SetRecordActiveAndWaitAsync(activate, timeout, ct)` and `SetStreamActiveAndWaitAsync(...)` start or stop the output and wait for OBS to confirm, returning the resulting `OutputState`.
+- `IsRecordActiveAsync(ct)`, `IsStreamActiveAsync(ct)`, and `IsVirtualCamActiveAsync(ct)` read current state.
+- `SetVirtualCamActiveAndWaitAsync(activate, timeout, ct)` does the same for the virtual camera.
+
 **Application state:**
 
 - `EnsureProfileActiveAsync(name, ct)` and `EnsureSceneCollectionActiveAsync(name, ct)` switch only if needed, returning whether the target is active afterwards rather than throwing when it does not exist.
-- `IsVirtualCamActiveAsync(ct)` and `SetVirtualCamActiveAndWaitAsync(activate, timeout, ct)` read and drive the virtual camera.
 - `TriggerHotkeyAsync(hotkeyName, ct)` fires a hotkey by name.
-- `WaitForEventAsync<TEventArgs>(predicate, timeout, ct)` awaits the next matching occurrence of a typed OBS event.
+- `WaitForEventAsync<TEventArgs>(...)` awaits a single event. See [Observing Events](#observing-events).
+
+### Typed protocol enums
+
+Protocol enums that travel as strings have a real C# enum, so states can be matched rather than
+compared against constants:
+
+```csharp
+client.StreamStateChanged += (_, e) =>
+{
+    string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+    {
+        OutputState.Started => "live",
+        OutputState.Starting or OutputState.Reconnecting => "coming up",
+        OutputState.Stopped or OutputState.Stopping => "going down",
+        null => $"unrecognised ({e.EventData.OutputState})",
+        _ => "in between",
+    };
+
+    Console.WriteLine($"Stream is {what}");
+};
+```
+
+Media transport works the same way, with shorthands for the common actions:
+
+```csharp
+await client.PlayMediaAsync("Stinger", ct);
+await client.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+```
+
+The wire constants remain available as `const` strings on `ObsOutputState` and
+`ObsMediaInputAction`, and `ToWireValue()` converts an enum back when you need the raw form.
 
 For direct low-level access, all generated request/response types are in:
 - `ObsWebSocket.Core.Protocol.Requests`
@@ -202,19 +278,16 @@ For direct low-level access, all generated request/response types are in:
 
 ### Batch API
 
-Send several requests in one round trip, with OBS executing them back to back:
+Send several requests in one round trip, with OBS executing them back to back. The builder ties
+each request type to its own payload record, so the two cannot drift apart:
 
 ```csharp
-List<BatchRequestItem> items =
-[
-    new("GetVersion", null),
-    new("SetCurrentProgramScene", new SetCurrentProgramSceneRequestData(sceneName: "Intro")),
-    new("Sleep", new SleepRequestData(sleepMillis: 100)),
-    new("SetInputMute", new SetInputMuteRequestData { InputName = "Mic", InputMuted = false }),
-];
-
 var results = await client.CallBatchAsync(
-    items,
+    batch => batch
+        .GetVersion()
+        .SetCurrentProgramScene(new(sceneName: "Intro"))
+        .Sleep(new(sleepMillis: 100))
+        .SetInputMute(new() { InputName = "Mic", InputMuted = false }),
     executionType: RequestBatchExecutionType.SerialRealtime,
     haltOnFailure: false,
     cancellationToken: ct
@@ -228,7 +301,25 @@ foreach (var result in results)
 
 `Sleep` is only valid inside a batch, and pairs with `SerialRealtime` to pace a sequence.
 
-Each item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.
+`Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload:
+
+```csharp
+batch.Add("GetStats").Add("SetInputSettings", myJsonElement);
+```
+
+The lower-level form still works, and remains the way to build a batch ahead of time:
+
+```csharp
+List<BatchRequestItem> items =
+[
+    new("GetVersion", null),
+    new("SetCurrentProgramScene", new SetCurrentProgramSceneRequestData(sceneName: "Intro")),
+];
+
+var results = await client.CallBatchAsync(items, cancellationToken: ct);
+```
+
+Either way, an item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.
 
 ## Example App
 

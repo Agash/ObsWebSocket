@@ -18,7 +18,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_UNKNOWN"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_UNKNOWN = "OBS_WEBSOCKET_OUTPUT_UNKNOWN";
+    public const string OBS_WEBSOCKET_OUTPUT_UNKNOWN = "OBS_WEBSOCKET_OUTPUT_UNKNOWN";
 
     /// <summary>
     /// The output is starting.
@@ -28,7 +28,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_STARTING"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_STARTING = "OBS_WEBSOCKET_OUTPUT_STARTING";
+    public const string OBS_WEBSOCKET_OUTPUT_STARTING = "OBS_WEBSOCKET_OUTPUT_STARTING";
 
     /// <summary>
     /// The input has started.
@@ -38,7 +38,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_STARTED"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_STARTED = "OBS_WEBSOCKET_OUTPUT_STARTED";
+    public const string OBS_WEBSOCKET_OUTPUT_STARTED = "OBS_WEBSOCKET_OUTPUT_STARTED";
 
     /// <summary>
     /// The output is stopping.
@@ -48,7 +48,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_STOPPING"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_STOPPING = "OBS_WEBSOCKET_OUTPUT_STOPPING";
+    public const string OBS_WEBSOCKET_OUTPUT_STOPPING = "OBS_WEBSOCKET_OUTPUT_STOPPING";
 
     /// <summary>
     /// The output has stopped.
@@ -58,7 +58,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_STOPPED"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_STOPPED = "OBS_WEBSOCKET_OUTPUT_STOPPED";
+    public const string OBS_WEBSOCKET_OUTPUT_STOPPED = "OBS_WEBSOCKET_OUTPUT_STOPPED";
 
     /// <summary>
     /// The output has disconnected and is reconnecting.
@@ -68,7 +68,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_RECONNECTING"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_RECONNECTING = "OBS_WEBSOCKET_OUTPUT_RECONNECTING";
+    public const string OBS_WEBSOCKET_OUTPUT_RECONNECTING = "OBS_WEBSOCKET_OUTPUT_RECONNECTING";
 
     /// <summary>
     /// The output has reconnected successfully.
@@ -78,7 +78,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_RECONNECTED"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_RECONNECTED = "OBS_WEBSOCKET_OUTPUT_RECONNECTED";
+    public const string OBS_WEBSOCKET_OUTPUT_RECONNECTED = "OBS_WEBSOCKET_OUTPUT_RECONNECTED";
 
     /// <summary>
     /// The output is now paused.
@@ -88,7 +88,7 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_PAUSED"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_PAUSED = "OBS_WEBSOCKET_OUTPUT_PAUSED";
+    public const string OBS_WEBSOCKET_OUTPUT_PAUSED = "OBS_WEBSOCKET_OUTPUT_PAUSED";
 
     /// <summary>
     /// The output has been resumed (unpaused).
@@ -98,6 +98,6 @@ public static class ObsOutputState
     /// RPC Version: 1
     /// Value: "OBS_WEBSOCKET_OUTPUT_RESUMED"
     /// </remarks>
-    public static readonly string OBS_WEBSOCKET_OUTPUT_RESUMED = "OBS_WEBSOCKET_OUTPUT_RESUMED";
+    public const string OBS_WEBSOCKET_OUTPUT_RESUMED = "OBS_WEBSOCKET_OUTPUT_RESUMED";
 
 }

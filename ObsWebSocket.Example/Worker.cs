@@ -517,6 +517,39 @@ internal sealed partial class Worker(
                 );
                 return false;
 
+            case "watch":
+            {
+                // Streams are the ergonomic way to observe events: subscribe for the lifetime
+                // of the loop, no handler bookkeeping, and cancellation ends it cleanly. The
+                // classic events on the client are untouched and still work alongside this.
+                int seconds = args.Length > 0 && int.TryParse(args[0], out int parsed) ? parsed : 15;
+                UiInfo($"Watching scene changes for {seconds}s. Switch scenes in OBS.");
+
+                using CancellationTokenSource watchCts = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken
+                );
+                watchCts.CancelAfter(TimeSpan.FromSeconds(seconds));
+
+                try
+                {
+                    await foreach (
+                        CurrentProgramSceneChangedEventArgs sceneEvent in _obsClient.CurrentProgramSceneChangedStream(
+                            cancellationToken: watchCts.Token
+                        )
+                    )
+                    {
+                        UiSuccess($"Program scene is now '{sceneEvent.EventData.SceneName}'");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected: the watch window elapsed or the user cancelled.
+                }
+
+                UiInfo("Watch finished.");
+                return false;
+            }
+
             case "batch-example":
             {
                 _logger.LogInformation("Running batch example...");
@@ -534,24 +567,25 @@ internal sealed partial class Worker(
                 );
                 JsonElement batchSettingsPayload = batchSettingsDocument.RootElement.Clone();
 
-                List<BatchRequestItem> batchItems =
-                [
-                    new("GetVersion", null),
-                    new("GetCurrentProgramScene", null),
-                    new("GetInputList", new GetInputListRequestData("text_gdiplus_v3")),
-                    new("Sleep", new SleepRequestData(sleepMillis: 100)),
-                    new(
-                        "SetInputSettings", // Example: Set specific text source's text (requires knowing name)
-                        new SetInputSettingsRequestData(
-                            batchSettingsPayload,
-                            inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
-                            overlay: true
-                        )
-                    ),
-                ];
-
+                // The typed builder pairs each request type with its own data record, so a
+                // request name can never be sent with the wrong payload. Add() remains for
+                // raw items and hand-built JsonElement payloads.
                 List<RequestResponsePayload<object>> batchResults = await _obsClient.CallBatchAsync(
-                    batchItems,
+                    batch =>
+                        batch
+                            .GetVersion()
+                            .GetCurrentProgramScene()
+                            .GetInputList(new GetInputListRequestData("text_gdiplus_v3"))
+                            .Sleep(new SleepRequestData(sleepMillis: 100))
+                            .SetInputSettings(
+                                new SetInputSettingsRequestData(
+                                    batchSettingsPayload,
+                                    inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
+                                    overlay: true
+                                )
+                            )
+                            // Still available for anything the generated methods do not cover.
+                            .Add("GetStats"),
                     executionType: RequestBatchExecutionType.SerialRealtime,
                     haltOnFailure: false, // Continue even if one fails
                     cancellationToken: cancellationToken
@@ -1802,8 +1836,12 @@ internal sealed partial class Worker(
             Markup.Escape("Toggle filter enabled state")
         );
         _ = commandTable.AddRow(
+            Markup.Escape("watch [seconds]"),
+            Markup.Escape("Stream scene changes with await foreach (default 15s)")
+        );
+        _ = commandTable.AddRow(
             Markup.Escape("batch-example"),
-            Markup.Escape("Run sample batch request sequence")
+            Markup.Escape("Run sample batch request sequence via the typed builder")
         );
         _ = commandTable.AddRow(
             Markup.Escape("run-transport-tests"),
@@ -1927,12 +1965,30 @@ internal sealed partial class Worker(
             e.EventData.InputUuid
         );
 
-    private void OnStreamStateChanged(object? sender, StreamStateChangedEventArgs e) =>
+    private void OnStreamStateChanged(object? sender, StreamStateChangedEventArgs e)
+    {
+        // The wire value is a string; OutputStateExtensions.FromWireValue turns it into the
+        // typed enum so it can be matched instead of compared against protocol constants.
+        string description = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+        {
+            OutputState.Starting => "starting up",
+            OutputState.Started => "live",
+            OutputState.Stopping => "shutting down",
+            OutputState.Stopped => "offline",
+            OutputState.Reconnecting => "reconnecting",
+            OutputState.Reconnected => "reconnected",
+            OutputState.Paused => "paused",
+            OutputState.Unknown => "in an unknown state",
+            null => $"reporting an unrecognised state ({e.EventData.OutputState})",
+            _ => "in an unhandled state",
+        };
+
         _logger.LogInformation(
-            "[OBS Event] Stream State Changed: Active={OutputActive}, State={OutputState}",
+            "[OBS Event] Stream State Changed: Active={OutputActive}, State={State}",
             e.EventData.OutputActive,
-            e.EventData.OutputState
+            description
         );
+    }
 
     private void OnSceneCreated(object? sender, SceneCreatedEventArgs e) =>
         _logger.LogInformation(

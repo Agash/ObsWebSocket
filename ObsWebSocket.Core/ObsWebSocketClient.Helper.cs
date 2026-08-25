@@ -506,7 +506,7 @@ public static partial class ObsWebSocketClientHelpers
         client.EnsureConnected();
 
         double? sceneItemId = await client
-            .TryGetSceneItemIdAsync(sceneName, sourceName, cancellationToken)
+            .FindSceneItemIdAsync(sceneName, sourceName, cancellationToken)
             .ConfigureAwait(false);
 
         return sceneItemId.HasValue
@@ -534,7 +534,25 @@ public static partial class ObsWebSocketClientHelpers
     /// <returns>A Task resulting in the nullable scene item ID (double?). Returns null if the item or scene is not found.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<double?> TryGetSceneItemIdAsync(
+    [Obsolete("Renamed to FindSceneItemIdAsync. Async methods cannot use the out-parameter Try pattern, so the Try prefix was misleading. This forwarder will be removed in a future release.")]
+    public static Task<double?> TryGetSceneItemIdAsync(
+        this ObsWebSocketClient client,
+        string sceneName,
+        string sourceName,
+        CancellationToken cancellationToken = default
+    ) => client.FindSceneItemIdAsync(sceneName, sourceName, cancellationToken);
+
+    /// <summary>
+    /// Returns the scene item id for a source within a scene, or <see langword="null"/> when the
+    /// scene does not contain it.
+    /// </summary>
+    /// <param name="client">The ObsWebSocketClient instance.</param>
+    /// <param name="sceneName">The name of the scene to search.</param>
+    /// <param name="sourceName">The name of the source to locate.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The scene item id, or <see langword="null"/> if the source is not in the scene.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public static async Task<double?> FindSceneItemIdAsync(
         this ObsWebSocketClient client,
         string sceneName,
         string sourceName,
