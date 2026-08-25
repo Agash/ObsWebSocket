@@ -1250,8 +1250,25 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("Media transport (typed enum)", async () =>
             {
-                await client.TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken).ConfigureAwait(false);
-                return (true, "sent " + MediaInputAction.Stop.ToWireValue());
+                await client
+                    .TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken)
+                    .ConfigureAwait(false);
+
+                // Read the state back, so this proves the action landed rather than only that
+                // the request was accepted.
+                GetMediaInputStatusResponseData? status = await client
+                    .GetMediaInputStatusAsync(
+                        new GetMediaInputStatusRequestData(inputName: inputName),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                string? state = status?.MediaState;
+                bool stopped =
+                    state is not null
+                    && state.Contains("STOPPED", StringComparison.Ordinal)
+                        || state is not null && state.Contains("NONE", StringComparison.Ordinal);
+
+                return (stopped, $"sent {MediaInputAction.Stop.ToWireValue()}, state={state}");
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("Event stream (await foreach)", async () =>
@@ -1582,7 +1599,27 @@ internal sealed partial class Worker(
                 bool recording = await client.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
                 bool streaming = await client.IsStreamActiveAsync(cancellationToken).ConfigureAwait(false);
                 bool virtualCam = await client.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
-                return (true, $"record={recording}, stream={streaming}, virtualCam={virtualCam}");
+
+                // Each helper has to agree with the request it wraps.
+                GetRecordStatusResponseData? recordStatus = await client
+                    .GetRecordStatusAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                GetStreamStatusResponseData? streamStatus = await client
+                    .GetStreamStatusAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                GetVirtualCamStatusResponseData? camStatus = await client
+                    .GetVirtualCamStatusAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                bool agrees =
+                    recording == recordStatus?.OutputActive
+                    && streaming == streamStatus?.OutputActive
+                    && virtualCam == camStatus?.OutputActive;
+
+                return (
+                    agrees,
+                    $"record={recording}, stream={streaming}, virtualCam={virtualCam}, agrees={agrees}"
+                );
             }).ConfigureAwait(false));
         }
         finally

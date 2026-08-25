@@ -490,6 +490,19 @@ internal static partial class Emitter
                 else // Response, Event, Nested
                 {
                     isConsideredRequired = !typeIsInherentlyNullable && !csharpType.EndsWith("?");
+
+                    // Some fields are only ever null in a particular state, which the protocol
+                    // records in the description rather than in valueOptional. Deserializing
+                    // those into a non-nullable value type fails outright when it happens.
+                    if (
+                        isConsideredRequired
+                        && isValueType
+                        && DescriptionAllowsNull(associatedFieldDef.ValueDescription)
+                    )
+                    {
+                        isConsideredRequired = false;
+                    }
+
                     if (csharpType.StartsWith("List<") || csharpType.StartsWith("Dictionary<"))
                     {
                         isConsideredRequired = false;
@@ -716,4 +729,12 @@ internal static partial class Emitter
             || f.ValueName.EndsWith("." + objectNode.Name)
         );
     }
+    /// <summary>
+    /// Reports whether a field's description says it can be null, which the protocol states in
+    /// prose for fields it does not otherwise mark optional.
+    /// </summary>
+    private static bool DescriptionAllowsNull(string? description) =>
+        !string.IsNullOrEmpty(description)
+        && description.IndexOf("null", StringComparison.OrdinalIgnoreCase) >= 0;
+
 }

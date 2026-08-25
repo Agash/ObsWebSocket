@@ -40,14 +40,14 @@ public sealed partial record GetMediaInputStatusResponseData
     /// </summary>
     [JsonPropertyName("mediaCursor")]
     [Key("mediaCursor")]
-    public required double MediaCursor { get; init; }
+    public double? MediaCursor { get; init; }
 
     /// <summary>
     /// Total duration of the playing media in milliseconds. `null` if not playing
     /// </summary>
     [JsonPropertyName("mediaDuration")]
     [Key("mediaDuration")]
-    public required double MediaDuration { get; init; }
+    public double? MediaDuration { get; init; }
 
     /// <summary>
     /// State of the media input
@@ -64,8 +64,7 @@ public sealed partial record GetMediaInputStatusResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetMediaInputStatusResponseData(double mediaDuration, double mediaCursor, string? mediaState = null)
+    public GetMediaInputStatusResponseData(string? mediaState = null, double? mediaDuration = null, double? mediaCursor = null)
     {
         this.MediaState = mediaState;
         this.MediaDuration = mediaDuration;
