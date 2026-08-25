@@ -162,8 +162,8 @@ public static partial class ObsWebSocketClientHelpers
 
         // --- Corrected Event Waiting Setup ---
         // We need separate task variables because Task<T> is not covariant.
-        Task<CurrentProgramSceneChangedEventArgs?>? programWaitTask = null;
-        Task<CurrentPreviewSceneChangedEventArgs?>? previewWaitTask = null;
+        Task<CurrentProgramSceneChangedEventArgs>? programWaitTask = null;
+        Task<CurrentPreviewSceneChangedEventArgs>? previewWaitTask = null;
         string eventDescription;
 
         if (switchToProgram)
@@ -208,50 +208,23 @@ public static partial class ObsWebSocketClientHelpers
                 eventDescription
             );
 
-            ObsEventArgs? eventArgs = null; // Use base type for the result variable
-
-            if (programWaitTask != null)
+            if (programWaitTask is not null)
             {
-                // Await the specific task type
-                eventArgs = await programWaitTask.ConfigureAwait(false);
+                _ = await programWaitTask.ConfigureAwait(false);
             }
-            else if (previewWaitTask != null)
+            else if (previewWaitTask is not null)
             {
-                // Await the specific task type
-                eventArgs = await previewWaitTask.ConfigureAwait(false);
+                _ = await previewWaitTask.ConfigureAwait(false);
             }
             else
             {
-                // Should not happen if logic is correct
                 throw new InvalidOperationException("Internal error: No wait task was assigned.");
             }
 
-            // Check the result (which is now correctly typed as ObsEventArgs?)
-            if (eventArgs == null) // WaitForEventAsync returns null on timeout or cancellation
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    client._logger.LogInformation(
-                        "SwitchSceneAndWaitAsync canceled while waiting for {EventDescription}.",
-                        eventDescription
-                    );
-                    cancellationToken.ThrowIfCancellationRequested(); // Ensure exception propagates
-                }
-                else
-                {
-                    throw new TimeoutException(
-                        $"Timed out ({effectiveTimeout.TotalSeconds}s) waiting for {eventDescription}."
-                    );
-                }
-            }
-            else
-            {
-                client._logger.LogInformation(
-                    "Successfully switched and confirmed {EventDescription}.",
-                    eventDescription
-                );
-            }
-            // ------------------------------------------
+            client._logger.LogInformation(
+                "Successfully switched and confirmed {EventDescription}.",
+                eventDescription
+            );
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -1852,7 +1825,7 @@ public static partial class ObsWebSocketClientHelpers
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromSeconds(10);
 
         // Set up the wait before issuing the command to avoid missing the event.
-        Task<VirtualcamStateChangedEventArgs?> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
+        Task<VirtualcamStateChangedEventArgs> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
             predicate: _ => true,
             timeout: effectiveTimeout,
             cancellationToken: cancellationToken);
@@ -1866,8 +1839,15 @@ public static partial class ObsWebSocketClientHelpers
             await client.StopVirtualCamAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        VirtualcamStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
-        return ev?.EventData.OutputActive;
+        try
+        {
+            VirtualcamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
+            return ev.EventData.OutputActive;
+        }
+        catch (TimeoutException)
+        {
+            return null;
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────

@@ -8,384 +8,406 @@ using ObsWebSocket.Core.Protocol.Responses;
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Convenience helpers that round out the surface established by the original helper set:
-/// output control that waits for confirmation, existence checks, unambiguous volume setters,
-/// and media transport shorthands.
+/// Output control, existence checks, volume, media transport, and event-wait conveniences.
 /// </summary>
 public static class ObsWebSocketClientConvenienceExtensions
 {
     private static readonly TimeSpan s_defaultOutputTimeout = TimeSpan.FromSeconds(10);
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Output control, mirroring SetVirtualCamActiveAndWaitAsync
-    // ────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Starts or stops recording and waits for OBS to confirm the state change.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="activate"><see langword="true"/> to start recording; <see langword="false"/> to stop it.</param>
-    /// <param name="timeout">Maximum time to wait for the state-change event. Defaults to 10 seconds.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// The state reported by the event, or <see langword="null"/> if the timeout elapsed first.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<OutputState?> SetRecordActiveAndWaitAsync(
-        this ObsWebSocketClient client,
-        bool activate,
-        TimeSpan? timeout = null,
-        CancellationToken cancellationToken = default
-    )
+    extension(ObsWebSocketClient client)
     {
-        ArgumentNullException.ThrowIfNull(client);
-        client.EnsureConnected();
 
-        // Set up the wait before issuing the command to avoid missing the event.
-        Task<RecordStateChangedEventArgs?> waitTask = client.WaitForEventAsync<RecordStateChangedEventArgs>(
-            predicate: _ => true,
-            timeout: timeout ?? s_defaultOutputTimeout,
-            cancellationToken: cancellationToken
-        );
+        // ────────────────────────────────────────────────────────────────────────
+        // Output control
+        // ────────────────────────────────────────────────────────────────────────
 
-        if (activate)
+        /// <summary>
+        /// Starts or stops recording and waits for OBS to confirm the state change.
+        /// </summary>
+        /// <param name="activate"><see langword="true"/> to start recording; <see langword="false"/> to stop it.</param>
+        /// <param name="timeout">Maximum time to wait for the state-change event. Defaults to 10 seconds.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>
+        /// The state reported by the event, or <see langword="null"/> if the timeout elapsed first.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task<OutputState?> SetRecordActiveAndWaitAsync(
+            bool activate,
+            TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default
+        )
         {
-            await client.StartRecordAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            _ = await client.StopRecordAsync(cancellationToken).ConfigureAwait(false);
-        }
+            client.EnsureConnected();
 
-        RecordStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
-        return ev is null ? null : OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
-    }
+            // Set up the wait before issuing the command to avoid missing the event.
+            Task<RecordStateChangedEventArgs> waitTask = client.WaitForEventAsync<RecordStateChangedEventArgs>(
+                predicate: _ => true,
+                timeout: timeout ?? s_defaultOutputTimeout,
+                cancellationToken: cancellationToken
+            );
 
-    /// <summary>
-    /// Starts or stops streaming and waits for OBS to confirm the state change.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="activate"><see langword="true"/> to start streaming; <see langword="false"/> to stop it.</param>
-    /// <param name="timeout">Maximum time to wait for the state-change event. Defaults to 10 seconds.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>
-    /// The state reported by the event, or <see langword="null"/> if the timeout elapsed first.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<OutputState?> SetStreamActiveAndWaitAsync(
-        this ObsWebSocketClient client,
-        bool activate,
-        TimeSpan? timeout = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        client.EnsureConnected();
+            if (activate)
+            {
+                await client.StartRecordAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                _ = await client.StopRecordAsync(cancellationToken).ConfigureAwait(false);
+            }
 
-        Task<StreamStateChangedEventArgs?> waitTask = client.WaitForEventAsync<StreamStateChangedEventArgs>(
-            predicate: _ => true,
-            timeout: timeout ?? s_defaultOutputTimeout,
-            cancellationToken: cancellationToken
-        );
-
-        if (activate)
-        {
-            await client.StartStreamAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            await client.StopStreamAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                RecordStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
+                return OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
+            }
+            catch (TimeoutException)
+            {
+                return null;
+            }
         }
 
-        StreamStateChangedEventArgs? ev = await waitTask.ConfigureAwait(false);
-        return ev is null ? null : OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
-    }
+        /// <summary>
+        /// Starts or stops streaming and waits for OBS to confirm the state change.
+        /// </summary>
+        /// <param name="activate"><see langword="true"/> to start streaming; <see langword="false"/> to stop it.</param>
+        /// <param name="timeout">Maximum time to wait for the state-change event. Defaults to 10 seconds.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>
+        /// The state reported by the event, or <see langword="null"/> if the timeout elapsed first.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task<OutputState?> SetStreamActiveAndWaitAsync(
+            bool activate,
+            TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            client.EnsureConnected();
 
-    /// <summary>
-    /// Returns whether recording is currently active.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<bool> IsRecordActiveAsync(
-        this ObsWebSocketClient client,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        client.EnsureConnected();
-        GetRecordStatusResponseData? status = await client
-            .GetRecordStatusAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return status?.OutputActive ?? false;
-    }
+            Task<StreamStateChangedEventArgs> waitTask = client.WaitForEventAsync<StreamStateChangedEventArgs>(
+                predicate: _ => true,
+                timeout: timeout ?? s_defaultOutputTimeout,
+                cancellationToken: cancellationToken
+            );
 
-    /// <summary>
-    /// Returns whether streaming is currently active.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<bool> IsStreamActiveAsync(
-        this ObsWebSocketClient client,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        client.EnsureConnected();
-        GetStreamStatusResponseData? status = await client
-            .GetStreamStatusAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return status?.OutputActive ?? false;
-    }
+            if (activate)
+            {
+                await client.StartStreamAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await client.StopStreamAsync(cancellationToken).ConfigureAwait(false);
+            }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Existence checks, mirroring SourceExistsAsync
-    // ────────────────────────────────────────────────────────────────────────
+            try
+            {
+                StreamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
+                return OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
+            }
+            catch (TimeoutException)
+            {
+                return null;
+            }
+        }
 
-    /// <summary>
-    /// Checks whether a scene with the given name exists.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="sceneName">The scene name to look for.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task<bool> SceneExistsAsync(
-        this ObsWebSocketClient client,
-        string sceneName,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentException.ThrowIfNullOrEmpty(sceneName);
-        client.EnsureConnected();
+        /// <summary>
+        /// Returns whether recording is currently active.
+        /// </summary>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task<bool> IsRecordActiveAsync(
+            CancellationToken cancellationToken = default
+        )
+        {
+            client.EnsureConnected();
+            GetRecordStatusResponseData? status = await client
+                .GetRecordStatusAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return status?.OutputActive ?? false;
+        }
 
-        GetSceneListResponseData? scenes = await client
-            .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
-            .ConfigureAwait(false);
+        /// <summary>
+        /// Returns whether streaming is currently active.
+        /// </summary>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task<bool> IsStreamActiveAsync(
+            CancellationToken cancellationToken = default
+        )
+        {
+            client.EnsureConnected();
+            GetStreamStatusResponseData? status = await client
+                .GetStreamStatusAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return status?.OutputActive ?? false;
+        }
 
-        return scenes?.Scenes?.Any(s =>
-            string.Equals(s.SceneName, sceneName, StringComparison.Ordinal)
-        ) ?? false;
-    }
+        // ────────────────────────────────────────────────────────────────────────
+        // Existence checks
+        // ────────────────────────────────────────────────────────────────────────
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Volume, where the request record accepts either unit and neither is required
-    // ────────────────────────────────────────────────────────────────────────
+        /// <summary>
+        /// Checks whether a scene with the given name exists.
+        /// </summary>
+        /// <param name="sceneName">The scene name to look for.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task<bool> SceneExistsAsync(
+            string sceneName,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentException.ThrowIfNullOrEmpty(sceneName);
+            client.EnsureConnected();
 
-    /// <summary>
-    /// Sets an input's volume in decibels. OBS accepts either decibels or a multiplier on the
-    /// same request and rejects it when neither is present, so these helpers pick one for you.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="inputName">The name of the input.</param>
-    /// <param name="volumeDb">The desired volume in dB. OBS accepts -100 through 26.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task SetInputVolumeDbAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        double volumeDb,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentException.ThrowIfNullOrEmpty(inputName);
-        client.EnsureConnected();
+            GetSceneListResponseData? scenes = await client
+                .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+                .ConfigureAwait(false);
 
-        await client
-            .SetInputVolumeAsync(
-                new SetInputVolumeRequestData { InputName = inputName, InputVolumeDb = volumeDb },
+            return scenes?.Scenes?.Any(s =>
+                string.Equals(s.SceneName, sceneName, StringComparison.Ordinal)
+            ) ?? false;
+        }
+
+        // ────────────────────────────────────────────────────────────────────────
+        // Volume
+        // ────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Sets an input's volume in decibels. The underlying request accepts either decibels or
+        /// a multiplier and fails when given neither.
+        /// </summary>
+        /// <param name="inputName">The name of the input.</param>
+        /// <param name="volumeDb">The desired volume in dB. OBS accepts -100 through 26.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task SetInputVolumeDbAsync(
+            string inputName,
+            double volumeDb,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentException.ThrowIfNullOrEmpty(inputName);
+            client.EnsureConnected();
+
+            await client
+                .SetInputVolumeAsync(
+                    new SetInputVolumeRequestData { InputName = inputName, InputVolumeDb = volumeDb },
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sets an input's volume as a linear multiplier, where <c>1.0</c> is unity gain.
+        /// </summary>
+        /// <param name="inputName">The name of the input.</param>
+        /// <param name="volumeMul">The desired volume multiplier. OBS accepts 0 through 20.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task SetInputVolumeMulAsync(
+            string inputName,
+            double volumeMul,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentException.ThrowIfNullOrEmpty(inputName);
+            client.EnsureConnected();
+
+            await client
+                .SetInputVolumeAsync(
+                    new SetInputVolumeRequestData { InputName = inputName, InputVolumeMul = volumeMul },
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        // ────────────────────────────────────────────────────────────────────────
+        // Media transport
+        // ────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Triggers a media action on an input using the typed <see cref="MediaInputAction"/> enum
+        /// rather than a protocol string constant.
+        /// </summary>
+        /// <param name="inputName">The name of the media input.</param>
+        /// <param name="action">The transport action to perform.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public async Task TriggerMediaActionAsync(
+            string inputName,
+            MediaInputAction action,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentException.ThrowIfNullOrEmpty(inputName);
+            client.EnsureConnected();
+
+            await client
+                .TriggerMediaInputActionAsync(
+                    new TriggerMediaInputActionRequestData
+                    {
+                        InputName = inputName,
+                        MediaAction = action.ToWireValue(),
+                    },
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>Plays a media input.</summary>
+        public Task PlayMediaAsync(
+            string inputName,
+            CancellationToken cancellationToken = default
+        ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Play, cancellationToken);
+
+        /// <summary>Pauses a media input.</summary>
+        public Task PauseMediaAsync(
+            string inputName,
+            CancellationToken cancellationToken = default
+        ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Pause, cancellationToken);
+
+        /// <summary>Stops a media input.</summary>
+        public Task StopMediaAsync(
+            string inputName,
+            CancellationToken cancellationToken = default
+        ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken);
+
+        /// <summary>Restarts a media input from the beginning.</summary>
+        public Task RestartMediaAsync(
+            string inputName,
+            CancellationToken cancellationToken = default
+        ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Restart, cancellationToken);
+
+        // ────────────────────────────────────────────────────────────────────────
+        // WaitForEventAsync overloads
+        // ────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Waits for the next occurrence of a typed OBS event, with no timeout. The wait ends only
+        /// when the event arrives or <paramref name="cancellationToken"/> fires.
+        /// </summary>
+        /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
+        /// <param name="cancellationToken">A token to cancel the wait.</param>
+        /// <returns>The event args.</returns>
+        public Task<TEventArgs> WaitForEventAsync<TEventArgs>(
+            CancellationToken cancellationToken = default
+        )
+            where TEventArgs : ObsEventArgs =>
+            client.WaitForEventAsync<TEventArgs>(
+                static _ => true,
+                Timeout.InfiniteTimeSpan,
                 cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
+            );
 
-    /// <summary>
-    /// Sets an input's volume as a linear multiplier, where <c>1.0</c> is unity gain.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="inputName">The name of the input.</param>
-    /// <param name="volumeMul">The desired volume multiplier. OBS accepts 0 through 20.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task SetInputVolumeMulAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        double volumeMul,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentException.ThrowIfNullOrEmpty(inputName);
-        client.EnsureConnected();
+        /// <summary>
+        /// Waits for the next occurrence of a typed OBS event, giving up after <paramref name="timeout"/>.
+        /// </summary>
+        /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
+        /// <param name="timeout">How long to wait before giving up.</param>
+        /// <param name="cancellationToken">A token to cancel the wait.</param>
+        /// <returns>The event args.</returns>
+        /// <exception cref="TimeoutException">Thrown if the timeout elapses first.</exception>
+        public Task<TEventArgs> WaitForEventAsync<TEventArgs>(
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default
+        )
+            where TEventArgs : ObsEventArgs =>
+            client.WaitForEventAsync<TEventArgs>(static _ => true, timeout, cancellationToken);
 
-        await client
-            .SetInputVolumeAsync(
-                new SetInputVolumeRequestData { InputName = inputName, InputVolumeMul = volumeMul },
+        /// <summary>
+        /// Waits for the next matching occurrence of a typed OBS event, with no timeout.
+        /// </summary>
+        /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
+        /// <param name="predicate">Returns <see langword="true"/> for the event to stop on.</param>
+        /// <param name="cancellationToken">A token to cancel the wait.</param>
+        /// <returns>The matching event args.</returns>
+        public Task<TEventArgs> WaitForEventAsync<TEventArgs>(
+            Func<TEventArgs, bool> predicate,
+            CancellationToken cancellationToken = default
+        )
+            where TEventArgs : ObsEventArgs =>
+            client.WaitForEventAsync(predicate, Timeout.InfiniteTimeSpan, cancellationToken);
+
+        // ────────────────────────────────────────────────────────────────────────
+        // Typed batch execution
+        // ────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Builds and sends a batch using the typed builder, so each request type is paired with
+        /// its own data record instead of a loose string and object.
+        /// </summary>
+        /// <param name="build">Adds the requests to send.</param>
+        /// <param name="executionType">How OBS should schedule the requests.</param>
+        /// <param name="haltOnFailure">Whether OBS should stop at the first failing request.</param>
+        /// <param name="timeoutMs">Optional override for the request timeout.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>One result per request, in order.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+        public Task<List<RequestResponsePayload<object>>> CallBatchAsync(
+            Action<ObsBatchBuilder> build,
+            RequestBatchExecutionType? executionType = null,
+            bool? haltOnFailure = null,
+            int? timeoutMs = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            ObsBatchBuilder builder = new();
+            build(builder);
+            return client.CallBatchAsync(
+                builder.Build(),
+                executionType,
+                haltOnFailure,
+                timeoutMs,
                 cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
+            );
+        }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Media transport
-    // ────────────────────────────────────────────────────────────────────────
+        // Scene item ids are Number on the wire, so the generated surface uses double.
 
-    /// <summary>
-    /// Triggers a media action on an input using the typed <see cref="MediaInputAction"/> enum
-    /// rather than a protocol string constant.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="inputName">The name of the media input.</param>
-    /// <param name="action">The transport action to perform.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static async Task TriggerMediaActionAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        MediaInputAction action,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentException.ThrowIfNullOrEmpty(inputName);
-        client.EnsureConnected();
-
-        await client
-            .TriggerMediaInputActionAsync(
-                new TriggerMediaInputActionRequestData
-                {
-                    InputName = inputName,
-                    MediaAction = action.ToWireValue(),
-                },
+        /// <summary>
+        /// Sets or toggles a scene item's enabled state using an integer item id.
+        /// </summary>
+        /// <param name="sceneName">The name of the scene containing the item.</param>
+        /// <param name="sceneItemId">The numeric id of the scene item.</param>
+        /// <param name="isEnabled">The desired state, or <see langword="null"/> to toggle.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>The resulting enabled state.</returns>
+        public Task<bool> SetSceneItemEnabledAsync(
+            string sceneName,
+            int sceneItemId,
+            bool? isEnabled = null,
+            CancellationToken cancellationToken = default
+        ) =>
+            client.SetSceneItemEnabledAsync(
+                sceneName,
+                (double)sceneItemId,
+                isEnabled,
                 cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
+            );
 
-    /// <summary>Plays a media input.</summary>
-    public static Task PlayMediaAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        CancellationToken cancellationToken = default
-    ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Play, cancellationToken);
-
-    /// <summary>Pauses a media input.</summary>
-    public static Task PauseMediaAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        CancellationToken cancellationToken = default
-    ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Pause, cancellationToken);
-
-    /// <summary>Stops a media input.</summary>
-    public static Task StopMediaAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        CancellationToken cancellationToken = default
-    ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken);
-
-    /// <summary>Restarts a media input from the beginning.</summary>
-    public static Task RestartMediaAsync(
-        this ObsWebSocketClient client,
-        string inputName,
-        CancellationToken cancellationToken = default
-    ) => client.TriggerMediaActionAsync(inputName, MediaInputAction.Restart, cancellationToken);
-
-    // ────────────────────────────────────────────────────────────────────────
-    // WaitForEventAsync overloads for the common cases
-    // ────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Waits for the next occurrence of a typed OBS event, with no timeout. The wait ends only
-    /// when the event arrives or <paramref name="cancellationToken"/> fires.
-    /// </summary>
-    /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="cancellationToken">A token to cancel the wait.</param>
-    /// <returns>The event args, or <see langword="null"/> if the wait was canceled.</returns>
-    public static Task<TEventArgs?> WaitForEventAsync<TEventArgs>(
-        this ObsWebSocketClient client,
-        CancellationToken cancellationToken = default
-    )
-        where TEventArgs : ObsEventArgs =>
-        client.WaitForEventAsync<TEventArgs>(
-            static _ => true,
-            Timeout.InfiniteTimeSpan,
-            cancellationToken
-        );
-
-    /// <summary>
-    /// Waits for the next occurrence of a typed OBS event, giving up after <paramref name="timeout"/>.
-    /// </summary>
-    /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="timeout">How long to wait before giving up.</param>
-    /// <param name="cancellationToken">A token to cancel the wait.</param>
-    /// <returns>The event args, or <see langword="null"/> on timeout or cancellation.</returns>
-    public static Task<TEventArgs?> WaitForEventAsync<TEventArgs>(
-        this ObsWebSocketClient client,
-        TimeSpan timeout,
-        CancellationToken cancellationToken = default
-    )
-        where TEventArgs : ObsEventArgs =>
-        client.WaitForEventAsync<TEventArgs>(static _ => true, timeout, cancellationToken);
-
-    /// <summary>
-    /// Waits for the next matching occurrence of a typed OBS event, with no timeout.
-    /// </summary>
-    /// <typeparam name="TEventArgs">The event args type to wait for.</typeparam>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="predicate">Returns <see langword="true"/> for the event to stop on.</param>
-    /// <param name="cancellationToken">A token to cancel the wait.</param>
-    /// <returns>The matching event args, or <see langword="null"/> if the wait was canceled.</returns>
-    public static Task<TEventArgs?> WaitForEventAsync<TEventArgs>(
-        this ObsWebSocketClient client,
-        Func<TEventArgs, bool> predicate,
-        CancellationToken cancellationToken = default
-    )
-        where TEventArgs : ObsEventArgs =>
-        client.WaitForEventAsync(predicate, Timeout.InfiniteTimeSpan, cancellationToken);
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Typed batch execution
-    // ────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Builds and sends a batch using the typed builder, so each request type is paired with
-    /// its own data record instead of a loose string and object.
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="build">Adds the requests to send.</param>
-    /// <param name="executionType">How OBS should schedule the requests.</param>
-    /// <param name="haltOnFailure">Whether OBS should stop at the first failing request.</param>
-    /// <param name="timeoutMs">Optional override for the request timeout.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>One result per request, in order.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public static Task<List<RequestResponsePayload<object>>> CallBatchAsync(
-        this ObsWebSocketClient client,
-        Action<ObsBatchBuilder> build,
-        RequestBatchExecutionType? executionType = null,
-        bool? haltOnFailure = null,
-        int? timeoutMs = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(build);
-
-        ObsBatchBuilder builder = new();
-        build(builder);
-        return client.CallBatchAsync(
-            builder.Build(),
-            executionType,
-            haltOnFailure,
-            timeoutMs,
-            cancellationToken
-        );
+        /// <summary>
+        /// Returns the scene item id for a source within a scene as an <see cref="int"/>, or
+        /// <see langword="null"/> when the scene does not contain it.
+        /// </summary>
+        /// <param name="sceneName">The name of the scene to search.</param>
+        /// <param name="sourceName">The name of the source to locate.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        public async Task<int?> FindSceneItemIdInt32Async(
+            string sceneName,
+            string sourceName,
+            CancellationToken cancellationToken = default
+        )
+        {
+            double? id = await client
+                .FindSceneItemIdAsync(sceneName, sourceName, cancellationToken)
+                .ConfigureAwait(false);
+            return id is null ? null : checked((int)id.Value);
+        }
     }
 }

@@ -866,7 +866,7 @@ internal sealed partial class Worker(
                 )
                 .RootElement.Clone();
 
-            Task<CustomEventEventArgs?> waitForCustomEvent = cycleClient.WaitForEventAsync<
+            Task<CustomEventEventArgs> waitForCustomEvent = cycleClient.WaitForEventAsync<
                 CustomEventEventArgs
             >(
                 predicate: _ => true,
@@ -881,7 +881,15 @@ internal sealed partial class Worker(
                 )
                 .ConfigureAwait(false);
 
-            CustomEventEventArgs? customEvent = await waitForCustomEvent.ConfigureAwait(false);
+            CustomEventEventArgs? customEvent = null;
+            try
+            {
+                customEvent = await waitForCustomEvent.ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                // Reported below as unverified.
+            }
             bool customEventVerified = false;
             if (
                 customEvent?.EventData.EventData is JsonElement receivedCustomData
@@ -1255,11 +1263,18 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("WaitForEventAsync (timeout overload)", async () =>
             {
-                Task<SceneItemEnableStateChangedEventArgs?> wait = client
+                Task<SceneItemEnableStateChangedEventArgs> wait = client
                     .WaitForEventAsync<SceneItemEnableStateChangedEventArgs>(TimeSpan.FromSeconds(5), cancellationToken);
                 _ = await client.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
-                SceneItemEnableStateChangedEventArgs? observed = await wait.ConfigureAwait(false);
-                return (observed is not null, observed is null ? "timed out" : $"enabled={observed.EventData.SceneItemEnabled}");
+                try
+                {
+                    SceneItemEnableStateChangedEventArgs observed = await wait.ConfigureAwait(false);
+                    return (true, $"enabled={observed.EventData.SceneItemEnabled}");
+                }
+                catch (TimeoutException)
+                {
+                    return (false, "timed out");
+                }
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("Typed batch builder", async () =>

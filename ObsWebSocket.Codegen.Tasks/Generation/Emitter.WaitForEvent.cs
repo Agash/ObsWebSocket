@@ -102,7 +102,7 @@ internal static partial class Emitter
             "    /// <exception cref=\"NotSupportedException\">Thrown if waiting for the specified <typeparamref name=\"TEventArgs\"/> type is not supported (e.g., no corresponding event found in the protocol).</exception>"
         );
         builder.AppendLine(
-            "    public static async Task<TEventArgs?> WaitForEventAsync<TEventArgs>("
+            "    public static async Task<TEventArgs> WaitForEventAsync<TEventArgs>("
         );
         builder.AppendLine("        this ObsWebSocketClient client,");
         builder.AppendLine("        Func<TEventArgs, bool> predicate,");
@@ -122,13 +122,13 @@ internal static partial class Emitter
             "        // Use RunContinuationsAsynchronously to avoid potential deadlocks if predicate runs synchronously"
         );
         builder.AppendLine(
-            "        TaskCompletionSource<TEventArgs?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);"
+            "        TaskCompletionSource<TEventArgs> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);"
         );
         builder.AppendLine("        // Link the external token with our internal timeout token");
         builder.AppendLine(
             "        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);"
         );
-        builder.AppendLine("        linkedCts.CancelAfter(timeout); // Apply timeout");
+        builder.AppendLine("        linkedCts.CancelAfterUsing(client._timeProvider, timeout);");
         builder.AppendLine();
         builder.AppendLine(
             "        Action? unsubscribeAction = null; // Delegate to hold the unsubscribe logic"
@@ -172,7 +172,7 @@ internal static partial class Emitter
                 builder.AppendLine("                            {");
                 // ----- FIX: Add explicit cast to TEventArgs? via object? -----
                 builder.AppendLine(
-                    "                                tcs.TrySetResult((TEventArgs?)(object?)e);"
+                    "                                tcs.TrySetResult((TEventArgs)(object)e);"
                 );
                 builder.AppendLine("                            }");
                 builder.AppendLine("                        }");
@@ -238,24 +238,22 @@ internal static partial class Emitter
 
         builder.AppendLine("        }"); // End try
         builder.AppendLine(
+            "        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)"
+        );
+        builder.AppendLine("        {");
+        builder.AppendLine("            tcs.TrySetCanceled(cancellationToken);");
+        builder.AppendLine("            throw;");
+        builder.AppendLine("        }");
+        builder.AppendLine(
             "        catch (OperationCanceledException) when (linkedCts.IsCancellationRequested)"
         );
         builder.AppendLine("        {");
         builder.AppendLine(
-            "            // Timeout occurred or external cancellation token was triggered"
-        );
-        builder.AppendLine(
-            "            // Log level Debug is appropriate as timeout/cancellation can be expected conditions"
-        );
-        builder.AppendLine(
-            "            client._logger.LogDebug(\"WaitForEventAsync<{EventType}> timed out or was canceled.\", typeof(TEventArgs).Name);"
-        );
-        builder.AppendLine(
-            "            // Ensure the TaskCompletionSource reflects the cancellation"
+            "            client._logger.LogDebug(\"WaitForEventAsync<{EventType}> timed out after {Timeout}.\", typeof(TEventArgs).Name, timeout);"
         );
         builder.AppendLine("            tcs.TrySetCanceled(linkedCts.Token);");
         builder.AppendLine(
-            "            return null; // Return null as per method contract for timeout/cancellation"
+            "            throw new TimeoutException($\"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.\");"
         );
         builder.AppendLine("        }");
         builder.AppendLine("        catch (Exception ex)");

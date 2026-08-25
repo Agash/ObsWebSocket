@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -354,6 +355,16 @@ public sealed partial class ObsWebSocketClient(
             _clientLifetimeCts.Token
         );
 
+        using Activity? activity = ObsWebSocketDiagnostics.ActivitySource.StartActivity(
+            $"obsws {requestType}",
+            ActivityKind.Client
+        );
+        _ = activity?.SetTag("obsws.request_type", requestType);
+        _ = activity?.SetTag("obsws.request_id", requestId);
+
+        long startedAt = _timeProvider.GetTimestamp();
+        TagList requestTags = new() { { "obsws.request_type", requestType } };
+
         try
         {
             await SendMessageAsync(
@@ -366,6 +377,8 @@ public sealed partial class ObsWebSocketClient(
                     linkedCts.Token
                 )
                 .ConfigureAwait(false);
+
+            ObsWebSocketDiagnostics.RequestsSent.Add(1, requestTags);
 
             int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
 
@@ -390,11 +403,19 @@ public sealed partial class ObsWebSocketClient(
 
             ProcessResponseStatus(response.RequestStatus, requestType, requestId);
 
+            ObsWebSocketDiagnostics.RequestDuration.Record(
+                _timeProvider.GetElapsedTime(startedAt).TotalMilliseconds,
+                requestTags
+            );
+
             return _serializer.DeserializePayload<TResponse>(response.ResponseData);
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
+            ObsWebSocketDiagnostics.RequestsFailed.Add(1, requestTags);
+            _ = activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
             _logger.LogError(
                 ex,
                 "CallAsync failed for {RequestType} ({RequestId})",
@@ -811,6 +832,7 @@ public sealed partial class ObsWebSocketClient(
                             maxAttempts < 0 ? "Infinite" : maxAttempts,
                             currentDelayMs
                         );
+                        ObsWebSocketDiagnostics.Reconnects.Add(1);
                         await Task.Delay(TimeSpan.FromMilliseconds(currentDelayMs), _timeProvider, loopToken)
                             .ConfigureAwait(false);
                         if (options.ReconnectBackoffMultiplier > 1.0)
@@ -1786,6 +1808,10 @@ public sealed partial class ObsWebSocketClient(
             TPayload? payload = _serializer.DeserializePayload<TPayload>(rawData);
             if (payload is not null)
             {
+                ObsWebSocketDiagnostics.EventsReceived.Add(
+                    1,
+                    new TagList { { "obsws.event_type", eventType } }
+                );
                 invoker(argsFactory(payload));
             }
             else
