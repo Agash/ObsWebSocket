@@ -33,7 +33,7 @@ public readonly record struct BatchRef<TResponse>(int Index)
 /// and to that request's response type, so neither the position nor the type has to be restated
 /// at the call site.
 /// </remarks>
-public sealed class BatchResults
+public sealed class BatchResults : IReadOnlyList<RequestResponsePayload<object>>
 {
     private readonly IReadOnlyList<RequestResponsePayload<object>> _results;
 
@@ -88,6 +88,12 @@ public sealed class BatchResults
 
         return _results[reference.Index].TryGetData(out data);
     }
+
+    /// <inheritdoc/>
+    public IEnumerator<RequestResponsePayload<object>> GetEnumerator() => _results.GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() =>
+        GetEnumerator();
 
     /// <summary>Returns whether every request in the batch succeeded.</summary>
     public bool AllSucceeded() => _results.All(r => r.RequestStatus.Result);

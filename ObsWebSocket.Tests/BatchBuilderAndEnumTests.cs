@@ -80,7 +80,8 @@ public sealed class ObsBatchBuilderTests
         using JsonDocument doc = JsonDocument.Parse("""{"inputName":"Mic"}""");
 
         ObsBatchBuilder builder = new();
-        _ = builder.Add("GetStats").Add("SetInputSettings", doc.RootElement.Clone());
+        _ = builder.Add("GetStats");
+        _ = builder.Add("SetInputSettings", doc.RootElement.Clone());
 
         List<BatchRequestItem> items = builder.Build();
         Assert.AreEqual("GetStats", items[0].RequestType);

@@ -584,7 +584,7 @@ internal sealed partial class Worker(
                 );
 
                 // Add remains for anything the generated methods do not cover.
-                _ = exampleBatch.AddRequest("GetStats", null);
+                _ = exampleBatch.Add("GetStats");
 
                 List<RequestResponsePayload<object>> batchResults = (await _obsClient.CallBatchAsync(
                     exampleBatch,
@@ -1444,6 +1444,40 @@ internal sealed partial class Worker(
                     neighboursOk && caught.StartsWith("code ", StringComparison.Ordinal),
                     $"1 failed ({caught}), neighbours ran"
                 );
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Event stream buffering", async () =>
+            {
+                // A stream keeps the newest events when a consumer falls behind rather than
+                // stalling the receive loop, so a small capacity drops the oldest.
+                using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken
+                );
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                IAsyncEnumerator<SceneItemEnableStateChangedEventArgs> enumerator = client
+                    .SceneItemEnableStateChangedStream(capacity: 2, cancellationToken: cts.Token)
+                    .GetAsyncEnumerator(cts.Token);
+
+                try
+                {
+                    ValueTask<bool> pending = enumerator.MoveNextAsync();
+
+                    // Toggle more times than the buffer holds.
+                    for (int i = 0; i < 4; i++)
+                    {
+                        _ = await client
+                            .SetSceneItemEnabledAsync(sceneName, inputName, i % 2 == 0, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+
+                    bool first = await pending.ConfigureAwait(false);
+                    return (first, first ? "buffered and delivered under capacity pressure" : "no event");
+                }
+                finally
+                {
+                    await enumerator.DisposeAsync().ConfigureAwait(false);
+                }
             }).ConfigureAwait(false));
 
             results.Add(await TrySettingsCheckAsync("Single-request values (non-batch)", async () =>

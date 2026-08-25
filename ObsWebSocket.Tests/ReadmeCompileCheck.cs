@@ -175,7 +175,8 @@ internal static class ReadmeCompileCheck
         }
 
         ObsBatchBuilder raw = new();
-        _ = raw.Add("GetStats").Add("SetInputSettings", System.Text.Json.JsonDocument.Parse("{}").RootElement);
+        _ = raw.Add("GetStats");
+        _ = raw.Add("SetInputSettings", System.Text.Json.JsonDocument.Parse("{}").RootElement);
     }
 
     internal static void TypedEnums(ObsWebSocketClient client)

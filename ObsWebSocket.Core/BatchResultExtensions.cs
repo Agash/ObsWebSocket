@@ -73,10 +73,16 @@ public static class BatchResultExtensions
 
         try
         {
+#if NET11_0_OR_GREATER
+            return element.Deserialize(
+                ObsWebSocketJsonContext.Default.Options.GetTypeInfo<TResponse>()
+            );
+#else
             return element.Deserialize(
                 (System.Text.Json.Serialization.Metadata.JsonTypeInfo<TResponse>)
                     ObsWebSocketJsonContext.Default.Options.GetTypeInfo(typeof(TResponse))
             );
+#endif
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
         {
