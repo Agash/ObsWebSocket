@@ -1446,16 +1446,34 @@ internal sealed partial class Worker(
                 );
             }).ConfigureAwait(false));
 
+            results.Add(await TrySettingsCheckAsync("Single-request values (non-batch)", async () =>
+            {
+                // The same response types that come back empty inside a batch, fetched singly.
+                GetSceneItemListResponseData? items = await client
+                    .GetSceneItemListAsync(new GetSceneItemListRequestData(sceneName: sceneName), cancellationToken)
+                    .ConfigureAwait(false);
+                GetStatsResponseData? st = await client.GetStatsAsync(cancellationToken).ConfigureAwait(false);
+                GetVersionResponseData? ver = await client.GetVersionAsync(cancellationToken).ConfigureAwait(false);
+
+                int itemCount = items?.SceneItems?.Count ?? -1;
+                double fps = st?.ActiveFps ?? 0;
+
+                return (
+                    itemCount >= 0 && fps > 0 && ver?.ObsVersion is not null,
+                    $"items={itemCount}, {fps:0} fps, v={ver?.ObsVersion}"
+                );
+            }).ConfigureAwait(false));
+
             results.Add(await TrySettingsCheckAsync("Batch parallel execution", async () =>
             {
-                // OBS returns parallel results in completion order and renumbers their ids to
-                // match, so references cannot resolve. Reading one must say so rather than
-                // hand back another request's result.
+                // OBS runs these on the thread pool and may answer out of order, so this proves
+                // the references still resolve to the right requests.
                 ObsBatchBuilder par = new();
                 BatchRef<GetVersionResponseData> v = par.General.GetVersion();
-                _ = par.SceneItems.GetSceneItemList(
+                BatchRef<GetSceneItemListResponseData> items = par.SceneItems.GetSceneItemList(
                     new GetSceneItemListRequestData(sceneName: sceneName)
                 );
+                BatchRef<GetStatsResponseData> stats = par.General.GetStats();
 
                 BatchResults r = await client
                     .CallBatchAsync(
@@ -1465,26 +1483,18 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                bool rawUsable = r.Count == 2 && r.AllSucceeded();
-
-                string guarded;
-                try
+                if (r.Count != 3 || !r.AllSucceeded())
                 {
-                    _ = r.Get(v);
-                    guarded = "resolved a reference";
-                }
-                catch (ObsWebSocketException ex)
-                {
-                    guarded = ex.Message.Contains("Parallel", StringComparison.Ordinal)
-                        ? "explained"
-                        : "threw: " + ex.Message;
+                    return (false, $"{r.Count} result(s), {r.GetFailures().Count()} failure(s)");
                 }
 
-                bool tryGetDeclined = !r.TryGet(v, out GetVersionResponseData? _);
+                string? version = r.Get(v).ObsVersion;
+                int itemCount = r.Get(items).SceneItems?.Count ?? -1;
+                double fps = r.Get(stats).ActiveFps;
 
                 return (
-                    rawUsable && guarded == "explained" && tryGetDeclined,
-                    $"{r.Count} raw result(s), references {guarded}"
+                    version is not null && itemCount >= 0 && fps > 0,
+                    $"v={version}, items={itemCount}, {fps:0} fps"
                 );
             }).ConfigureAwait(false));
 

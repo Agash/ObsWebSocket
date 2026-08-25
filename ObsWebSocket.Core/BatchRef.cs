@@ -37,23 +37,12 @@ public sealed class BatchResults
 {
     private readonly IReadOnlyList<RequestResponsePayload<object>> _results;
 
-    private readonly bool _referencesUsable;
-
     /// <summary>Initializes results from the payloads OBS returned.</summary>
     /// <param name="results">The results, in submission order.</param>
-    /// <param name="referencesUsable">
-    /// Whether a result can be matched to the request that produced it. False for parallel
-    /// execution, where OBS returns results in completion order and renumbers their ids to
-    /// match, leaving nothing to correlate on.
-    /// </param>
-    public BatchResults(
-        IReadOnlyList<RequestResponsePayload<object>> results,
-        bool referencesUsable = true
-    )
+    public BatchResults(IReadOnlyList<RequestResponsePayload<object>> results)
     {
         ArgumentNullException.ThrowIfNull(results);
         _results = results;
-        _referencesUsable = referencesUsable;
     }
 
     /// <summary>Number of results returned.</summary>
@@ -91,7 +80,7 @@ public sealed class BatchResults
     public bool TryGet<TResponse>(BatchRef<TResponse> reference, out TResponse? data)
         where TResponse : class
     {
-        if (!_referencesUsable || reference.Index >= _results.Count)
+        if (reference.Index >= _results.Count)
         {
             data = null;
             return false;
@@ -107,19 +96,7 @@ public sealed class BatchResults
     public IEnumerable<RequestResponsePayload<object>> GetFailures() =>
         _results.Where(r => !r.RequestStatus.Result);
 
-    private RequestResponsePayload<object> Require(int index)
-    {
-        if (!_referencesUsable)
-        {
-            throw new ObsWebSocketException(
-                "This batch ran with RequestBatchExecutionType.Parallel, where OBS returns results in completion order and renumbers their ids to match, so a result cannot be traced back to the request that produced it. Read the results with Raw, or use a serial execution type to address them by reference."
-            );
-        }
-
-        return RequireCore(index);
-    }
-
-    private RequestResponsePayload<object> RequireCore(int index) =>
+    private RequestResponsePayload<object> Require(int index) =>
         index < _results.Count
             ? _results[index]
             : throw new ObsWebSocketException(

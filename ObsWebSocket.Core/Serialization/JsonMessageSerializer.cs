@@ -70,10 +70,17 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
             {
                 _logger.LogJsonDeserializationResultedInNull();
             }
-            else if (_logger.IsEnabled(LogLevel.Trace))
+            else
             {
-                _logger.LogDeserializedJsonMessageOp(message.Op);
-            } // Avoid logging potentially large payload
+                // The payload is read after the document it was parsed from is gone, so it has
+                // to own its data rather than point into that document.
+                message = new IncomingMessage<JsonElement>(message.Op, message.D.Clone());
+
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogDeserializedJsonMessageOp(message.Op);
+                } // Avoid logging potentially large payload
+            }
 
             return message;
         }
@@ -155,30 +162,54 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
 
             if (typeof(TPayload) == typeof(RequestBatchResponsePayload<object>))
             {
-                JsonTypeInfo<RequestBatchResponsePayload<JsonElement>> batchTypeInfo =
-                    (JsonTypeInfo<RequestBatchResponsePayload<JsonElement>>)s_options.GetTypeInfo(
-                        typeof(RequestBatchResponsePayload<JsonElement>)
+                // Each result is deserialized on its own, because deserializing the batch in
+                // one pass paired every responseData with the following request.
+                JsonTypeInfo<RequestResponsePayload<JsonElement>> itemTypeInfo =
+                    (JsonTypeInfo<RequestResponsePayload<JsonElement>>)s_options.GetTypeInfo(
+                        typeof(RequestResponsePayload<JsonElement>)
                     );
-                RequestBatchResponsePayload<JsonElement>? batchPayload =
-                    jsonElement.Deserialize(batchTypeInfo);
-                if (batchPayload is null)
-                {
-                    return default;
-                }
 
-                List<RequestResponsePayload<object>> mappedResults =
-                [
-                    .. batchPayload.Results.Select(result => new RequestResponsePayload<object>(
-                        result.RequestType,
-                        result.RequestId,
-                        result.RequestStatus,
-                        result.ResponseData
-                    )),
-                ];
+                string batchRequestId =
+                    jsonElement.TryGetProperty("requestId", out JsonElement idElement)
+                    && idElement.ValueKind == JsonValueKind.String
+                        ? idElement.GetString() ?? string.Empty
+                        : string.Empty;
+
+                List<RequestResponsePayload<object>> mappedResults = [];
+                if (
+                    jsonElement.TryGetProperty("results", out JsonElement resultsElement)
+                    && resultsElement.ValueKind == JsonValueKind.Array
+                )
+                {
+                    foreach (JsonElement itemElement in resultsElement.EnumerateArray())
+                    {
+                        RequestResponsePayload<JsonElement>? item = itemElement.Deserialize(
+                            itemTypeInfo
+                        );
+                        if (item is null)
+                        {
+                            continue;
+                        }
+
+                        JsonElement data =
+                            itemElement.TryGetProperty("responseData", out JsonElement dataElement)
+                                ? dataElement.Clone()
+                                : default;
+
+                        mappedResults.Add(
+                            new RequestResponsePayload<object>(
+                                item.RequestType,
+                                item.RequestId,
+                                item.RequestStatus,
+                                data
+                            )
+                        );
+                    }
+                }
 
                 return (TPayload)
                     (object)new RequestBatchResponsePayload<object>(
-                        batchPayload.RequestId,
+                        batchRequestId,
                         mappedResults
                     );
             }

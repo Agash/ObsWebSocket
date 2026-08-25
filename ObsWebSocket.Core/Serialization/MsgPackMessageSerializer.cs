@@ -280,7 +280,12 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
                     int resultCount = reader.ReadArrayHeader();
                     for (int r = 0; r < resultCount; r++)
                     {
-                        results.Add(DeserializeRequestResponsePayload(ref reader));
+                        // Each result is sliced out and parsed on its own reader. Reading them
+                        // from the shared reader let one result's payload slice run on into the
+                        // next, which paired every response with the following request.
+                        ReadOnlyMemory<byte> resultRaw = ReadRawValue(ref reader);
+                        MessagePackReader resultReader = new(resultRaw);
+                        results.Add(DeserializeRequestResponsePayload(ref resultReader));
                     }
 
                     break;
