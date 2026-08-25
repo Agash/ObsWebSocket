@@ -1733,6 +1733,37 @@ public sealed partial class ObsWebSocketClient(
         }
     }
 
+    /// <summary>
+    /// Handles <c>CustomEvent</c>, whose payload does not follow the shape the protocol
+    /// definition implies.
+    /// </summary>
+    /// <remarks>
+    /// Every other event's data fields are properties inside the event data object, so the
+    /// generated payload record maps them directly. CustomEvent declares a single field named
+    /// <c>eventData</c>, but OBS relays the broadcast object as the event data itself rather
+    /// than nesting it under that name. Deserializing into the generated record therefore looks
+    /// one level too deep and always yields null, so the raw element is taken as the payload.
+    /// </remarks>
+    /// <param name="rawData">The raw event data payload, as produced by the active serializer.</param>
+    private void HandleCustomEvent(object? rawData)
+    {
+        try
+        {
+            JsonElement? broadcastData = _serializer.DeserializeValuePayload<JsonElement>(rawData);
+            if (broadcastData is null)
+            {
+                LogEventDataDeserializationError("CustomEvent payload", rawData);
+                return;
+            }
+
+            OnCustomEvent(new CustomEventEventArgs(new CustomEventPayload(broadcastData)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while trying to handle event {EventType}.", "CustomEvent");
+        }
+    }
+
     private void TryHandleEvent<TPayload, TEventArgs>(
         string eventType,
         object? rawData,
@@ -1864,13 +1895,7 @@ public sealed partial class ObsWebSocketClient(
                     p => new(p),
                     c.OnVendorEvent
                 ),
-            ["CustomEvent"] = (c, d) =>
-                c.TryHandleEvent<CustomEventPayload, CustomEventEventArgs>(
-                    "CustomEvent",
-                    d,
-                    p => new(p),
-                    c.OnCustomEvent
-                ),
+            ["CustomEvent"] = (c, d) => c.HandleCustomEvent(d),
             // Inputs
             ["InputCreated"] = (c, d) =>
                 c.TryHandleEvent<InputCreatedPayload, InputCreatedEventArgs>(

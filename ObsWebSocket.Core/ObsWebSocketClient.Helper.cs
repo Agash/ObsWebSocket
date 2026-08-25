@@ -78,7 +78,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentSceneTransitionAsync(
-                    new SetCurrentSceneTransitionRequestData(transitionName),
+                    new SetCurrentSceneTransitionRequestData(transitionName: transitionName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -109,7 +109,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentProgramSceneAsync(
-                    new SetCurrentProgramSceneRequestData(sceneName),
+                    new SetCurrentProgramSceneRequestData(sceneName: sceneName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -118,7 +118,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentPreviewSceneAsync(
-                    new SetCurrentPreviewSceneRequestData(sceneName),
+                    new SetCurrentPreviewSceneRequestData(sceneName: sceneName),
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -461,7 +461,7 @@ public static partial class ObsWebSocketClientHelpers
             GetSceneItemEnabledResponseData currentStateResponse =
                 await client
                     .GetSceneItemEnabledAsync(
-                        new GetSceneItemEnabledRequestData(sceneItemId, sceneName),
+                        new GetSceneItemEnabledRequestData(sceneItemId: sceneItemId, sceneName: sceneName),
                         cancellationToken: cancellationToken
                     )
                     .ConfigureAwait(false)
@@ -473,7 +473,11 @@ public static partial class ObsWebSocketClientHelpers
 
         await client
             .SetSceneItemEnabledAsync(
-                new SetSceneItemEnabledRequestData(sceneItemId, targetState, sceneName),
+                new SetSceneItemEnabledRequestData(
+                    sceneItemId: sceneItemId,
+                    sceneItemEnabled: targetState,
+                    sceneName: sceneName
+                ),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
@@ -1707,7 +1711,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentSceneCollectionAsync(
-                    new SetCurrentSceneCollectionRequestData(targetSceneCollectionName),
+                    new SetCurrentSceneCollectionRequestData(sceneCollectionName: targetSceneCollectionName),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -1771,7 +1775,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             await client
                 .SetCurrentProfileAsync(
-                    new SetCurrentProfileRequestData(targetProfileName),
+                    new SetCurrentProfileRequestData(profileName: targetProfileName),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);

@@ -35,18 +35,31 @@ public static class EventStream
     /// The subscription is attached before the first item is awaited, so a caller can start
     /// enumerating and then trigger the action that produces the event without racing it.
     /// </remarks>
-    public static async IAsyncEnumerable<TEventArgs> Create<TEventArgs>(
+    public static IAsyncEnumerable<TEventArgs> Create<TEventArgs>(
         Action<EventHandler<TEventArgs>> subscribe,
         Action<EventHandler<TEventArgs>> unsubscribe,
         int capacity = DefaultCapacity,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default
     )
         where TEventArgs : ObsEventArgs
     {
+        // Validate here rather than in the iterator, so bad arguments throw at the call site
+        // instead of being deferred until the caller starts enumerating.
         ArgumentNullException.ThrowIfNull(subscribe);
         ArgumentNullException.ThrowIfNull(unsubscribe);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
 
+        return Iterate(subscribe, unsubscribe, capacity, cancellationToken);
+    }
+
+    private static async IAsyncEnumerable<TEventArgs> Iterate<TEventArgs>(
+        Action<EventHandler<TEventArgs>> subscribe,
+        Action<EventHandler<TEventArgs>> unsubscribe,
+        int capacity,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+        where TEventArgs : ObsEventArgs
+    {
         Channel<TEventArgs> channel = Channel.CreateBounded<TEventArgs>(
             new BoundedChannelOptions(capacity)
             {

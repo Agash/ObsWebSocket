@@ -932,6 +932,9 @@ internal sealed partial class Worker(
                 await ValidateSettingsModesAsync(cycleClient, inputs, cancellationToken)
                     .ConfigureAwait(false);
 
+            List<(string Label, bool Pass, string Detail)> modernResults =
+                await ValidateModernApisAsync(cycleClient, cancellationToken).ConfigureAwait(false);
+
             Table summary = new() { Title = new TableTitle($"{format} Validation Summary") };
             _ = summary.AddColumn("Check");
             _ = summary.AddColumn("Result");
@@ -956,6 +959,15 @@ internal sealed partial class Worker(
                     pass
                         ? $"[green]Pass[/] — {Markup.Escape(detail)}"
                         : $"[red]Fail[/] — {Markup.Escape(detail)}"
+                );
+            }
+            foreach ((string label, bool pass, string detail) in modernResults)
+            {
+                _ = summary.AddRow(
+                    Markup.Escape(label),
+                    pass
+                        ? $"[green]Pass[/] - {Markup.Escape(detail)}"
+                        : $"[red]Fail[/] - {Markup.Escape(detail)}"
                 );
             }
             AnsiConsole.Write(summary);
@@ -1119,6 +1131,191 @@ internal sealed partial class Worker(
                 await client.SetSourceFilterSettingsAsync(filterSourceName, gainFilterName, s, typeInfo, overlay: true, cancellationToken: cancellationToken);
                 return (true, $"'{filterSourceName}/{gainFilterName}' db={s.Db?.ToString("F1") ?? "(null)"}");
             }));
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Exercises the modern conveniences against a scene and input this method creates itself,
+    /// so the run does not depend on any particular OBS layout. Everything it makes is removed
+    /// again, whether the checks pass or not.
+    /// </summary>
+    private static async Task<List<(string Label, bool Pass, string Detail)>> ValidateModernApisAsync(
+        ObsWebSocketClient client,
+        CancellationToken cancellationToken)
+    {
+        List<(string Label, bool Pass, string Detail)> results = [];
+
+        string suffix = Guid.NewGuid().ToString("N")[..8];
+        string sceneName = $"__obsws_validation_{suffix}";
+        string inputName = $"__obsws_input_{suffix}";
+
+        GetSceneListResponseData? sceneList = await client
+            .GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .ConfigureAwait(false);
+        string originalScene = sceneList?.CurrentProgramSceneName ?? string.Empty;
+
+        bool sceneCreated = false;
+        bool inputCreated = false;
+
+        try
+        {
+            await client
+                .CreateSceneAsync(new CreateSceneRequestData(sceneName), cancellationToken)
+                .ConfigureAwait(false);
+            sceneCreated = true;
+
+            results.Add(await TrySettingsCheckAsync("SceneExistsAsync", async () =>
+            {
+                bool present = await client.SceneExistsAsync(sceneName, cancellationToken).ConfigureAwait(false);
+                bool absent = await client.SceneExistsAsync(sceneName + "__nope", cancellationToken).ConfigureAwait(false);
+                return (present && !absent, $"present={present}, absent={!absent}");
+            }).ConfigureAwait(false));
+
+            // A media source carries audio, so the volume and media transport helpers apply.
+            _ = await client
+                .CreateInputAsync(
+                    "ffmpeg_source",
+                    inputName,
+                    new MediaSourceSettings(IsLocalFile: true),
+                    sceneName: sceneName,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            inputCreated = true;
+
+            results.Add(await TrySettingsCheckAsync("FindSceneItemIdAsync", async () =>
+            {
+                double? hit = await client.FindSceneItemIdAsync(sceneName, inputName, cancellationToken).ConfigureAwait(false);
+                double? miss = await client.FindSceneItemIdAsync(sceneName, "__not_here__", cancellationToken).ConfigureAwait(false);
+                return (hit is not null && miss is null, $"hit={hit}, miss={(miss is null ? "null" : "unexpected")}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("SetSceneItemEnabledAsync (toggle)", async () =>
+            {
+                bool off = await client.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
+                bool toggled = await client.SetSceneItemEnabledAsync(sceneName, inputName, null, cancellationToken).ConfigureAwait(false);
+                return (!off && toggled, $"set false -> {off}, toggled -> {toggled}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("SetInputVolumeDbAsync", async () =>
+            {
+                await client.SetInputVolumeDbAsync(inputName, -6, cancellationToken).ConfigureAwait(false);
+                GetInputVolumeResponseData? volume = await client
+                    .GetInputVolumeAsync(new GetInputVolumeRequestData(inputName: inputName), cancellationToken)
+                    .ConfigureAwait(false);
+                double db = volume?.InputVolumeDb ?? double.NaN;
+                return (Math.Abs(db + 6) < 0.5, $"db={db:0.##}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Media transport (typed enum)", async () =>
+            {
+                await client.TriggerMediaActionAsync(inputName, MediaInputAction.Stop, cancellationToken).ConfigureAwait(false);
+                return (true, "sent " + MediaInputAction.Stop.ToWireValue());
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Event stream (await foreach)", async () =>
+            {
+                using CancellationTokenSource streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                streamCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                List<string> observed = [];
+                Task consume = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await foreach (CurrentProgramSceneChangedEventArgs sceneEvent
+                            in client.CurrentProgramSceneChangedStream(cancellationToken: streamCts.Token)
+                            .ConfigureAwait(false))
+                        {
+                            observed.Add(sceneEvent.EventData.SceneName ?? string.Empty);
+                            if (observed.Count >= 2)
+                            {
+                                await streamCts.CancelAsync().ConfigureAwait(false);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected once both switches are seen or the window elapses.
+                    }
+                }, CancellationToken.None);
+
+                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+                await client.SwitchSceneAsync(sceneName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await Task.Delay(400, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(originalScene))
+                {
+                    await client.SwitchSceneAsync(originalScene, cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+
+                await consume.ConfigureAwait(false);
+                return (observed.Count >= 2, $"observed {observed.Count}: {string.Join(" -> ", observed)}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("WaitForEventAsync (timeout overload)", async () =>
+            {
+                Task<SceneItemEnableStateChangedEventArgs?> wait = client
+                    .WaitForEventAsync<SceneItemEnableStateChangedEventArgs>(TimeSpan.FromSeconds(5), cancellationToken);
+                _ = await client.SetSceneItemEnabledAsync(sceneName, inputName, false, cancellationToken).ConfigureAwait(false);
+                SceneItemEnableStateChangedEventArgs? observed = await wait.ConfigureAwait(false);
+                return (observed is not null, observed is null ? "timed out" : $"enabled={observed.EventData.SceneItemEnabled}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Typed batch builder", async () =>
+            {
+                List<RequestResponsePayload<object>> typedBatch = await client
+                    .CallBatchAsync(
+                        batchBuilder => batchBuilder
+                            .GetVersion()
+                            .Sleep(new SleepRequestData(sleepMillis: 25))
+                            .GetSceneList(new GetSceneListRequestData())
+                            .Add("GetStats"),
+                        executionType: RequestBatchExecutionType.SerialRealtime,
+                        haltOnFailure: false,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                bool allOk = typedBatch.Count == 4 && typedBatch.All(r => r.RequestStatus.Result);
+                return (allOk, $"{typedBatch.Count} result(s), all ok = {allOk}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
+            {
+                bool recording = await client.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
+                bool streaming = await client.IsStreamActiveAsync(cancellationToken).ConfigureAwait(false);
+                bool virtualCam = await client.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
+                return (true, $"record={recording}, stream={streaming}, virtualCam={virtualCam}");
+            }).ConfigureAwait(false));
+        }
+        finally
+        {
+            // Always put OBS back the way it was found.
+            try
+            {
+                if (!string.IsNullOrEmpty(originalScene))
+                {
+                    await client.SwitchSceneAsync(originalScene, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                }
+
+                if (inputCreated)
+                {
+                    await client
+                        .RemoveInputAsync(new RemoveInputRequestData(inputName: inputName), CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+
+                if (sceneCreated)
+                {
+                    await client
+                        .RemoveSceneAsync(new RemoveSceneRequestData(sceneName: sceneName), CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (ObsWebSocketException ex)
+            {
+                results.Add(("Cleanup", false, ex.Message));
+            }
         }
 
         return results;
