@@ -278,58 +278,36 @@ For direct low-level access, all generated request/response types are in:
 
 ### Batch API
 
-Send several requests in one round trip, with OBS executing them back to back. The builder ties
-each request type to its own payload record, so the two cannot drift apart:
+Send several requests in one round trip, with OBS executing them back to back. Requests are
+grouped by the protocol's own categories, and each one hands back a reference carrying its
+response type:
 
 ```csharp
-var results = await client.CallBatchAsync(
-    batch => batch
-        .GetVersion()
-        .SetCurrentProgramScene(new(sceneName: "Intro"))
-        .Sleep(new(sleepMillis: 100))
-        .SetInputMute(new() { InputName = "Mic", InputMuted = false }),
+ObsBatchBuilder batch = new();
+BatchRef<GetVersionResponseData> version = batch.General.GetVersion();
+BatchRef<GetSceneListResponseData> scenes = batch.Scenes.GetSceneList(new());
+_ = batch.General.Sleep(new(sleepMillis: 100));
+_ = batch.Inputs.SetInputMute(new() { InputName = "Mic", InputMuted = false });
+
+BatchResults results = await client.CallBatchAsync(
+    batch,
     executionType: RequestBatchExecutionType.SerialRealtime,
     haltOnFailure: false,
     cancellationToken: ct
 );
 
-foreach (var result in results)
-{
-    Console.WriteLine($"{result.RequestType}: {result.RequestStatus.Result}");
-}
+Console.WriteLine(results.Get(version).ObsVersion);
+Console.WriteLine(results.Get(scenes).Scenes?.Count);
 ```
+
+`results.Get(reference)` returns the response record for that request, so neither its position nor
+its type is restated. A request type may appear many times in one batch and each reference still
+resolves to its own result.
 
 `Sleep` is only valid inside a batch, and pairs with `SerialRealtime` to pace a sequence.
 
-Under the serial execution types, results come back in the order the requests were added, so a
-request type may appear more than once and each result still belongs to its own request. Read them
-by position:
-
-```csharp
-var results = await client.CallBatchAsync(
-    batch => batch
-        .GetSceneItemList(new(sceneName: "Intro"))
-        .GetVersion()
-        .GetSceneItemList(new(sceneName: "Outro")),
-    cancellationToken: ct
-);
-
-var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
-var version = results[1].GetRequiredData<GetVersionResponseData>();
-var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
-```
-
-`GetRequiredData<T>` throws `ObsWebSocketRequestException` if OBS rejected that request, carrying
-its status code. `GetData<T>` returns `null` instead, and `TryGetData<T>(out var data)` reports
-failure without throwing.
-
-With `haltOnFailure: true` OBS stops at the first failure, so fewer results come back than
-requests were sent. Check `Count` before indexing.
-
-`RequestBatchExecutionType.Parallel` runs the requests on the thread pool and does not preserve
-the pairing between a request and its position in the results, so use a serial execution type when
-you intend to read results by position. With `haltOnFailure: false` the requests
-either side of a failure still run, so check before reading:
+`TryGet` reports a failed or missing result instead of throwing, and `Get` throws
+`ObsWebSocketRequestException` carrying the OBS status code when that request was rejected:
 
 ```csharp
 if (!results.AllSucceeded())
@@ -341,7 +319,11 @@ if (!results.AllSucceeded())
 }
 ```
 
-`Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload:
+With `haltOnFailure: true` OBS stops at the first failure, so fewer results come back than
+requests were sent. Reading a reference past that point throws, and `Count` reports how many ran.
+
+`Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload,
+and an overload accepting a `JsonTypeInfo<T>` keeps a custom payload AOT-safe:
 
 ```csharp
 batch.Add("GetStats").Add("SetInputSettings", myJsonElement);
@@ -356,7 +338,7 @@ List<BatchRequestItem> items =
     new("SetCurrentProgramScene", new SetCurrentProgramSceneRequestData(sceneName: "Intro")),
 ];
 
-var results = await client.CallBatchAsync(items, cancellationToken: ct);
+var raw = await client.CallBatchAsync(items, cancellationToken: ct);
 ```
 
 Either way, an item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.

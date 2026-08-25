@@ -570,26 +570,28 @@ internal sealed partial class Worker(
                 // The typed builder pairs each request type with its own data record, so a
                 // request name can never be sent with the wrong payload. Add() remains for
                 // raw items and hand-built JsonElement payloads.
-                List<RequestResponsePayload<object>> batchResults = await _obsClient.CallBatchAsync(
-                    batch =>
-                        batch
-                            .GetVersion()
-                            .GetCurrentProgramScene()
-                            .GetInputList(new GetInputListRequestData("text_gdiplus_v3"))
-                            .Sleep(new SleepRequestData(sleepMillis: 100))
-                            .SetInputSettings(
-                                new SetInputSettingsRequestData(
-                                    batchSettingsPayload,
-                                    inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
-                                    overlay: true
-                                )
-                            )
-                            // Still available for anything the generated methods do not cover.
-                            .Add("GetStats"),
+                ObsBatchBuilder exampleBatch = new();
+                _ = exampleBatch.General.GetVersion();
+                _ = exampleBatch.Scenes.GetCurrentProgramScene();
+                _ = exampleBatch.Inputs.GetInputList(new GetInputListRequestData("text_gdiplus_v3"));
+                _ = exampleBatch.General.Sleep(new SleepRequestData(sleepMillis: 100));
+                _ = exampleBatch.Inputs.SetInputSettings(
+                    new SetInputSettingsRequestData(
+                        batchSettingsPayload,
+                        inputName: "MyTextSource", // REPLACE WITH YOUR ACTUAL TEXT SOURCE NAME
+                        overlay: true
+                    )
+                );
+
+                // Add remains for anything the generated methods do not cover.
+                _ = exampleBatch.AddRequest("GetStats", null);
+
+                List<RequestResponsePayload<object>> batchResults = (await _obsClient.CallBatchAsync(
+                    exampleBatch,
                     executionType: RequestBatchExecutionType.SerialRealtime,
                     haltOnFailure: false, // Continue even if one fails
                     cancellationToken: cancellationToken
-                );
+                )).Raw.ToList();
 
                 Table batchTable = new() { Title = new TableTitle($"Batch Results ({batchResults.Count} items)") };
                 _ = batchTable.AddColumn("Request");
@@ -1309,24 +1311,34 @@ internal sealed partial class Worker(
 
             results.Add(await TrySettingsCheckAsync("Typed batch builder", async () =>
             {
-                List<RequestResponsePayload<object>> typedBatch = await client
+                ObsBatchBuilder batch = new();
+                BatchRef<GetVersionResponseData> versionRef = batch.General.GetVersion();
+                _ = batch.General.Sleep(new SleepRequestData(sleepMillis: 25));
+                BatchRef<GetSceneListResponseData> scenesRef = batch.Scenes.GetSceneList(
+                    new GetSceneListRequestData()
+                );
+                BatchRef<GetStatsResponseData> statsRef = batch.General.GetStats();
+
+                BatchResults typedBatch = await client
                     .CallBatchAsync(
-                        batchBuilder => batchBuilder
-                            .GetVersion()
-                            .Sleep(new SleepRequestData(sleepMillis: 25))
-                            .GetSceneList(new GetSceneListRequestData())
-                            .Add("GetStats"),
+                        batch,
                         executionType: RequestBatchExecutionType.SerialRealtime,
                         haltOnFailure: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                bool allOk = typedBatch.Count == 4 && typedBatch.AllSucceeded();
-                GetVersionResponseData version = typedBatch[0].GetRequiredData<GetVersionResponseData>();
-                GetSceneListResponseData scenes = typedBatch[2].GetRequiredData<GetSceneListResponseData>();
+                // Each result is read through the reference its request handed back, so neither
+                // the position nor the response type is restated here.
+                GetVersionResponseData version = typedBatch.Get(versionRef);
+                GetSceneListResponseData scenes = typedBatch.Get(scenesRef);
+                GetStatsResponseData stats = typedBatch.Get(statsRef);
+
                 return (
-                    allOk && version.ObsVersion is not null && scenes.Scenes is not null,
-                    $"{typedBatch.Count} result(s), OBS {version.ObsVersion}, {scenes.Scenes?.Count} scene(s)"
+                    typedBatch.Count == 4
+                        && typedBatch.AllSucceeded()
+                        && version.ObsVersion is not null
+                        && scenes.Scenes is not null,
+                    $"{typedBatch.Count} result(s), OBS {version.ObsVersion}, {scenes.Scenes?.Count} scene(s), {stats.ActiveFps:0} fps"
                 );
             }).ConfigureAwait(false));
 
@@ -1341,14 +1353,24 @@ internal sealed partial class Worker(
                     .Scenes!.Select(scene => scene.SceneName!)
                     .First(name => !string.Equals(name, sceneName, StringComparison.Ordinal));
 
-                List<RequestResponsePayload<object>> mixed = await client
+                // The same request type appears three times with two different payloads, so a
+                // result can only be matched to its request through the reference it returned.
+                ObsBatchBuilder mixedBatch = new();
+                BatchRef<GetSceneItemListResponseData> firstRef = mixedBatch.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: sceneName)
+                );
+                BatchRef<GetVersionResponseData> versionRef = mixedBatch.General.GetVersion();
+                BatchRef<GetSceneItemListResponseData> secondRef = mixedBatch.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: otherScene)
+                );
+                BatchRef<GetSceneItemListResponseData> thirdRef = mixedBatch.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: sceneName)
+                );
+                _ = mixedBatch.General.GetStats();
+
+                BatchResults mixed = await client
                     .CallBatchAsync(
-                        batch => batch
-                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: sceneName))
-                            .GetVersion()
-                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: otherScene))
-                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: sceneName))
-                            .GetStats(),
+                        mixedBatch,
                         executionType: RequestBatchExecutionType.SerialRealtime,
                         haltOnFailure: false,
                         cancellationToken: cancellationToken)
@@ -1359,24 +1381,10 @@ internal sealed partial class Worker(
                     return (false, $"expected 5 successes, got {mixed.Count} with {mixed.GetFailures().Count()} failure(s)");
                 }
 
-                // Results must line up with the requests by position, including the repeats.
-                string[] expectedOrder =
-                [
-                    "GetSceneItemList",
-                    "GetVersion",
-                    "GetSceneItemList",
-                    "GetSceneItemList",
-                    "GetStats",
-                ];
-                if (!mixed.Select(r => r.RequestType).SequenceEqual(expectedOrder, StringComparer.Ordinal))
-                {
-                    return (false, "order: " + string.Join(", ", mixed.Select(r => r.RequestType)));
-                }
-
-                GetSceneItemListResponseData first = mixed[0].GetRequiredData<GetSceneItemListResponseData>();
-                GetVersionResponseData version = mixed[1].GetRequiredData<GetVersionResponseData>();
-                GetSceneItemListResponseData second = mixed[2].GetRequiredData<GetSceneItemListResponseData>();
-                GetSceneItemListResponseData third = mixed[3].GetRequiredData<GetSceneItemListResponseData>();
+                GetSceneItemListResponseData first = mixed.Get(firstRef);
+                GetVersionResponseData version = mixed.Get(versionRef);
+                GetSceneItemListResponseData second = mixed.Get(secondRef);
+                GetSceneItemListResponseData third = mixed.Get(thirdRef);
 
                 // The two lookups of the same scene must agree, and differ from the other scene.
                 int firstCount = first.SceneItems?.Count ?? -1;
@@ -1394,12 +1402,16 @@ internal sealed partial class Worker(
             results.Add(await TrySettingsCheckAsync("Batch partial failure", async () =>
             {
                 // haltOnFailure false, so the good requests either side of a bad one still run.
-                List<RequestResponsePayload<object>> partial = await client
+                ObsBatchBuilder partialBatch = new();
+                BatchRef<GetVersionResponseData> goodRef = partialBatch.General.GetVersion();
+                BatchRef<GetSceneItemListResponseData> badRef = partialBatch.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: "__no_such_scene__")
+                );
+                _ = partialBatch.General.GetStats();
+
+                BatchResults partial = await client
                     .CallBatchAsync(
-                        batch => batch
-                            .GetVersion()
-                            .GetSceneItemList(new GetSceneItemListRequestData(sceneName: "__no_such_scene__"))
-                            .GetStats(),
+                        partialBatch,
                         executionType: RequestBatchExecutionType.SerialRealtime,
                         haltOnFailure: false,
                         cancellationToken: cancellationToken)
@@ -1415,7 +1427,7 @@ internal sealed partial class Worker(
                 string caught;
                 try
                 {
-                    _ = failures[0].GetRequiredData<GetSceneItemListResponseData>();
+                    _ = partial.Get(badRef);
                     caught = "no exception";
                 }
                 catch (ObsWebSocketRequestException ex)
@@ -1423,8 +1435,10 @@ internal sealed partial class Worker(
                     caught = $"code {ex.Status?.Code}";
                 }
 
+                // TryGet reports the failure without throwing.
+                bool tryGetReportedFailure = !partial.TryGet(badRef, out _);
                 bool neighboursOk =
-                    partial[0].GetRequiredData<GetVersionResponseData>().ObsVersion is not null;
+                    tryGetReportedFailure && partial.Get(goodRef).ObsVersion is not null;
 
                 return (
                     neighboursOk && caught.StartsWith("code ", StringComparison.Ordinal),

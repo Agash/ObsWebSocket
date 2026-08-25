@@ -822,7 +822,7 @@ public sealed partial class ObsWebSocketClient(
                         TimeSpan backoff = await _reconnectDelays
                             .GetDelayAsync(attempt - 2, loopToken)
                             .ConfigureAwait(false);
-                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts, (int)backoff.TotalMilliseconds);
+                        _logger.LogReconnectingAttemptAfterMs(attempt, maxAttempts < 0 ? "Infinite" : maxAttempts.ToString(), (int)backoff.TotalMilliseconds);
                         ObsWebSocketDiagnostics.Reconnects.Add(1);
                         await Task.Delay(backoff, _timeProvider, loopToken).ConfigureAwait(false);
                     }
@@ -1526,7 +1526,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogExceptionDuringProcessingOfRequestresponsePayload(ex, payloadData);
+            _logger.LogExceptionDuringProcessingOfRequestresponsePayload(ex, payloadData?.ToString());
         }
     }
 
@@ -1566,7 +1566,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogExceptionDuringProcessingOfRequestbatchresponsePayload(ex, payloadData);
+            _logger.LogExceptionDuringProcessingOfRequestbatchresponsePayload(ex, payloadData?.ToString());
         }
     }
 
@@ -1614,7 +1614,7 @@ public sealed partial class ObsWebSocketClient(
         }
         catch (Exception ex)
         {
-            _logger.LogCriticalExceptionDuringEventHandlingFor(ex, eventPayloadBase?.EventType ?? "Unknown Type", payloadData);
+            _logger.LogCriticalExceptionDuringEventHandlingFor(ex, eventPayloadBase?.EventType ?? "Unknown Type", payloadData?.ToString());
         }
     }
 

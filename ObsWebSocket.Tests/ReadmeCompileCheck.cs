@@ -149,24 +149,33 @@ internal static class ReadmeCompileCheck
 
     internal static async Task TypedBatchAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        var results = await client.CallBatchAsync(
-            batch => batch
-                .GetVersion()
-                .SetCurrentProgramScene(new(sceneName: "Intro"))
-                .Sleep(new(sleepMillis: 100))
-                .SetInputMute(new() { InputName = "Mic", InputMuted = false }),
+        ObsBatchBuilder batch = new();
+        BatchRef<GetVersionResponseData> version = batch.General.GetVersion();
+        _ = batch.Scenes.SetCurrentProgramScene(new(sceneName: "Intro"));
+        _ = batch.General.Sleep(new(sleepMillis: 100));
+        _ = batch.Inputs.SetInputMute(new() { InputName = "Mic", InputMuted = false });
+
+        BatchResults results = await client.CallBatchAsync(
+            batch,
             executionType: RequestBatchExecutionType.SerialRealtime,
             haltOnFailure: false,
             cancellationToken: ct
         );
 
-        foreach (var result in results)
+        _ = results.Get(version).ObsVersion;
+        _ = results.TryGet(version, out GetVersionResponseData? maybe);
+        _ = maybe;
+
+        if (!results.AllSucceeded())
         {
-            _ = $"{result.RequestType}: {result.RequestStatus.Result}";
+            foreach (var failed in results.GetFailures())
+            {
+                _ = $"{failed.RequestType}: {failed.RequestStatus.Comment}";
+            }
         }
 
-        ObsBatchBuilder batch2 = new();
-        _ = batch2.Add("GetStats").Add("SetInputSettings", System.Text.Json.JsonDocument.Parse("{}").RootElement);
+        ObsBatchBuilder raw = new();
+        _ = raw.Add("GetStats").Add("SetInputSettings", System.Text.Json.JsonDocument.Parse("{}").RootElement);
     }
 
     internal static void TypedEnums(ObsWebSocketClient client)
@@ -204,28 +213,16 @@ internal static class ReadmeCompileCheck
 
     internal static async Task TypedBatchResultsAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        var results = await client.CallBatchAsync(
-            batch => batch
-                .GetSceneItemList(new(sceneName: "Intro"))
-                .GetVersion()
-                .GetSceneItemList(new(sceneName: "Outro")),
-            cancellationToken: ct
-        );
+        ObsBatchBuilder batch = new();
+        BatchRef<GetSceneItemListResponseData> intro = batch.SceneItems.GetSceneItemList(new(sceneName: "Intro"));
+        BatchRef<GetVersionResponseData> version = batch.General.GetVersion();
+        BatchRef<GetSceneItemListResponseData> outro = batch.SceneItems.GetSceneItemList(new(sceneName: "Outro"));
 
-        var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
-        var version = results[1].GetRequiredData<GetVersionResponseData>();
-        var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
-        _ = (intro, version, outro);
+        BatchResults results = await client.CallBatchAsync(batch, cancellationToken: ct);
 
-        if (!results.AllSucceeded())
-        {
-            foreach (var failed in results.GetFailures())
-            {
-                _ = $"{failed.RequestType}: {failed.RequestStatus.Comment}";
-            }
-        }
-
-        _ = results[0].GetData<GetSceneItemListResponseData>();
+        _ = results.Get(intro);
+        _ = results.Get(version);
+        _ = results.Get(outro);
     }
 
     internal static async Task TypedErrorsAsync(ObsWebSocketClient client, CancellationToken ct)

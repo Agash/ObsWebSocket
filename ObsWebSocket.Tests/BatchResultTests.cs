@@ -146,10 +146,10 @@ public sealed class BatchResultTests
     public void Items_IsSnapshot_NotLiveView()
     {
         ObsBatchBuilder builder = new();
-        _ = builder.GetVersion();
+        _ = builder.General.GetVersion();
 
         IReadOnlyList<BatchRequestItem> snapshot = builder.Items;
-        _ = builder.GetStats();
+        _ = builder.General.GetStats();
 
         Assert.AreEqual(1, snapshot.Count, "a taken snapshot must not grow with the builder");
         Assert.AreEqual(2, builder.Items.Count);

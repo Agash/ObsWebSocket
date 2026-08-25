@@ -337,6 +337,39 @@ public static class ObsWebSocketClientConvenienceExtensions
         // ────────────────────────────────────────────────────────────────────────
 
         /// <summary>
+        /// Sends a batch built with <see cref="ObsBatchBuilder"/>, returning results addressable
+        /// by the references the builder handed out.
+        /// </summary>
+        /// <param name="batch">The batch to send.</param>
+        /// <param name="executionType">How OBS should schedule the requests.</param>
+        /// <param name="haltOnFailure">Whether OBS should stop at the first failing request.</param>
+        /// <param name="timeoutMs">Optional override for the request timeout.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>The results, addressable by reference or by position.</returns>
+        public async Task<BatchResults> CallBatchAsync(
+            ObsBatchBuilder batch,
+            RequestBatchExecutionType? executionType = null,
+            bool? haltOnFailure = null,
+            int? timeoutMs = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            ArgumentNullException.ThrowIfNull(batch);
+
+            List<RequestResponsePayload<object>> results = await client
+                .CallBatchAsync(
+                    batch.Build(),
+                    executionType,
+                    haltOnFailure,
+                    timeoutMs,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            return new BatchResults(results);
+        }
+
+        /// <summary>
         /// Builds and sends a batch using the typed builder, so each request type is paired with
         /// its own data record instead of a loose string and object.
         /// </summary>
