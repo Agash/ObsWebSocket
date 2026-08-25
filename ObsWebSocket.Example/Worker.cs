@@ -1356,7 +1356,7 @@ internal sealed partial class Worker(
 
                 if (mixed.Count != 5 || !mixed.AllSucceeded())
                 {
-                    return (false, $"expected 5 successes, got {mixed.Count} with {mixed.Failures().Count()} failure(s)");
+                    return (false, $"expected 5 successes, got {mixed.Count} with {mixed.GetFailures().Count()} failure(s)");
                 }
 
                 // Results must line up with the requests by position, including the repeats.
@@ -1405,7 +1405,7 @@ internal sealed partial class Worker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                RequestResponsePayload<object>[] failures = [.. partial.Failures()];
+                RequestResponsePayload<object>[] failures = [.. partial.GetFailures()];
                 if (partial.Count != 3 || failures.Length != 1)
                 {
                     return (false, $"{partial.Count} result(s), {failures.Length} failure(s)");

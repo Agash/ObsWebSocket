@@ -118,6 +118,39 @@ public static class BatchResultExtensions
     }
 
     /// <summary>
+    /// Reads a batch result, reporting whether it carried readable data rather than throwing.
+    /// </summary>
+    /// <typeparam name="TResponse">The response record for the request that produced this result.</typeparam>
+    /// <param name="result">The result to read.</param>
+    /// <param name="data">The response data, or <see langword="null"/> when there was none.</param>
+    /// <returns><see langword="true"/> if the request succeeded and carried readable data.</returns>
+    public static bool TryGetData<TResponse>(
+        this RequestResponsePayload<object> result,
+        out TResponse? data
+    )
+        where TResponse : class
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (!result.RequestStatus.Result)
+        {
+            data = null;
+            return false;
+        }
+
+        try
+        {
+            data = result.GetData<TResponse>();
+            return data is not null;
+        }
+        catch (ObsWebSocketSerializationException)
+        {
+            data = null;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Returns whether every request in the batch succeeded.
     /// </summary>
     /// <param name="results">The batch results.</param>
@@ -131,7 +164,7 @@ public static class BatchResultExtensions
     /// Returns the results that OBS reported as failed.
     /// </summary>
     /// <param name="results">The batch results.</param>
-    public static IEnumerable<RequestResponsePayload<object>> Failures(
+    public static IEnumerable<RequestResponsePayload<object>> GetFailures(
         this IEnumerable<RequestResponsePayload<object>> results
     )
     {

@@ -219,7 +219,7 @@ internal static class ReadmeCompileCheck
 
         if (!results.AllSucceeded())
         {
-            foreach (var failed in results.Failures())
+            foreach (var failed in results.GetFailures())
             {
                 _ = $"{failed.RequestType}: {failed.RequestStatus.Comment}";
             }

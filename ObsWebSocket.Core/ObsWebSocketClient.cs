@@ -659,7 +659,7 @@ public sealed partial class ObsWebSocketClient(
                 batchTags
             );
 
-            return response.Results;
+            return OrderBatchResults(response.Results, requestPayloads);
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
@@ -2242,6 +2242,64 @@ public sealed partial class ObsWebSocketClient(
             );
         }
         // If cancelled by attemptCancellationToken, OperationCanceledException is rethrown implicitly
+    }
+
+    /// <summary>
+    /// Restores submission order to a batch response.
+    /// </summary>
+    /// <remarks>
+    /// Parallel execution returns results in completion order rather than the order the requests
+    /// were sent, so callers could not rely on position to identify a result. Each request is
+    /// sent with an id of the form <c>{batchId}_{index}</c> which OBS echoes back, so that index
+    /// is used to restore the original order. Results whose id does not carry a usable index are
+    /// appended in the order OBS returned them.
+    /// </remarks>
+    /// <param name="results">The results as returned by OBS.</param>
+    /// <param name="requestPayloads">The requests as sent, in submission order.</param>
+    private static List<RequestResponsePayload<object>> OrderBatchResults(
+        List<RequestResponsePayload<object>> results,
+        List<RequestPayload> requestPayloads
+    )
+    {
+        if (results.Count <= 1)
+        {
+            return results;
+        }
+
+        Dictionary<string, int> orderById = new(requestPayloads.Count, StringComparer.Ordinal);
+        for (int i = 0; i < requestPayloads.Count; i++)
+        {
+            orderById[requestPayloads[i].RequestId] = i;
+        }
+
+        List<RequestResponsePayload<object>> ordered = new(results.Count);
+        List<RequestResponsePayload<object>> unmatched = [];
+        RequestResponsePayload<object>?[] slots = new RequestResponsePayload<object>?[
+            requestPayloads.Count
+        ];
+
+        foreach (RequestResponsePayload<object> result in results)
+        {
+            if (orderById.TryGetValue(result.RequestId, out int index) && slots[index] is null)
+            {
+                slots[index] = result;
+            }
+            else
+            {
+                unmatched.Add(result);
+            }
+        }
+
+        foreach (RequestResponsePayload<object>? slot in slots)
+        {
+            if (slot is not null)
+            {
+                ordered.Add(slot);
+            }
+        }
+
+        ordered.AddRange(unmatched);
+        return ordered;
     }
 
     private async Task<object> WaitForResponseAsync(

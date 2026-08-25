@@ -301,8 +301,9 @@ foreach (var result in results)
 
 `Sleep` is only valid inside a batch, and pairs with `SerialRealtime` to pace a sequence.
 
-Results come back in the order the requests were added, so a request type may appear more than
-once and each result still belongs to its own request. Read them by position:
+Under the serial execution types, results come back in the order the requests were added, so a
+request type may appear more than once and each result still belongs to its own request. Read them
+by position:
 
 ```csharp
 var results = await client.CallBatchAsync(
@@ -319,13 +320,21 @@ var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
 ```
 
 `GetRequiredData<T>` throws `ObsWebSocketRequestException` if OBS rejected that request, carrying
-its status code. `GetData<T>` returns `null` instead. With `haltOnFailure: false` the requests
+its status code. `GetData<T>` returns `null` instead, and `TryGetData<T>(out var data)` reports
+failure without throwing.
+
+With `haltOnFailure: true` OBS stops at the first failure, so fewer results come back than
+requests were sent. Check `Count` before indexing.
+
+`RequestBatchExecutionType.Parallel` runs the requests on the thread pool and does not preserve
+the pairing between a request and its position in the results, so use a serial execution type when
+you intend to read results by position. With `haltOnFailure: false` the requests
 either side of a failure still run, so check before reading:
 
 ```csharp
 if (!results.AllSucceeded())
 {
-    foreach (var failed in results.Failures())
+    foreach (var failed in results.GetFailures())
     {
         Console.WriteLine($"{failed.RequestType}: {failed.RequestStatus.Comment}");
     }

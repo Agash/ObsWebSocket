@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using ObsWebSocket.Core.Protocol;
 
 namespace ObsWebSocket.Core;
@@ -18,7 +20,8 @@ public sealed partial class ObsBatchBuilder
     /// <summary>
     /// The items accumulated so far, in the order they will be sent.
     /// </summary>
-    public IReadOnlyList<BatchRequestItem> Items => _items;
+    /// <remarks>A snapshot; later additions to the builder are not reflected.</remarks>
+    public IReadOnlyList<BatchRequestItem> Items => [.. _items];
 
     /// <summary>
     /// Appends a raw batch item. Use this for request types the generated methods do not cover,
@@ -43,6 +46,31 @@ public sealed partial class ObsBatchBuilder
     {
         ArgumentException.ThrowIfNullOrEmpty(requestType);
         _items.Add(new BatchRequestItem(requestType, requestData));
+        return this;
+    }
+
+    /// <summary>
+    /// Appends a request whose payload is serialized with an explicit <see cref="JsonTypeInfo{T}"/>,
+    /// so the call stays trim and Native AOT safe.
+    /// </summary>
+    /// <typeparam name="T">The payload type.</typeparam>
+    /// <param name="requestType">The OBS request type string.</param>
+    /// <param name="requestData">The request payload.</param>
+    /// <param name="typeInfo">Serialization metadata for <typeparamref name="T"/>.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public ObsBatchBuilder Add<T>(string requestType, T requestData, JsonTypeInfo<T> typeInfo)
+        where T : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(requestType);
+        ArgumentNullException.ThrowIfNull(requestData);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+
+        _items.Add(
+            new BatchRequestItem(
+                requestType,
+                JsonSerializer.SerializeToElement(requestData, typeInfo)
+            )
+        );
         return this;
     }
 
