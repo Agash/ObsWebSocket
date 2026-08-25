@@ -24,7 +24,18 @@ internal static class TimeProviderCancellationExtensions
         ArgumentNullException.ThrowIfNull(timeProvider);
 
         ITimer timer = timeProvider.CreateTimer(
-            static state => ((CancellationTokenSource)state!).Cancel(),
+            static state =>
+            {
+                try
+                {
+                    ((CancellationTokenSource)state!).Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The operation finished and disposed its source before this timer fired.
+                    // Nothing to cancel, and throwing here would reach the thread pool unhandled.
+                }
+            },
             source,
             delay,
             Timeout.InfiniteTimeSpan

@@ -38,11 +38,37 @@ public static class BatchResultExtensions
             return already;
         }
 
+        // The MessagePack transport hands back the raw payload bytes, the JSON transport a
+        // JsonElement, so a batch result has to be read according to which produced it.
+        if (result.ResponseData is ReadOnlyMemory<byte> packed)
+        {
+            try
+            {
+                return MessagePack.MessagePackSerializer.Deserialize<TResponse>(
+                    packed,
+                    MsgPackMessageSerializer.s_msgPackOptions
+                );
+            }
+            catch (MessagePack.MessagePackSerializationException ex)
+            {
+                throw new ObsWebSocketSerializationException(
+                    $"Failed to read batch result for '{result.RequestType}' as {typeof(TResponse).Name}.",
+                    ex
+                );
+            }
+        }
+
         if (result.ResponseData is not JsonElement element)
         {
             throw new ObsWebSocketSerializationException(
                 $"Batch result for '{result.RequestType}' carried {result.ResponseData.GetType().Name}, which cannot be read as {typeof(TResponse).Name}."
             );
+        }
+
+        // An absent payload arrives as default(JsonElement), which is Undefined rather than null.
+        if (element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return null;
         }
 
         try
