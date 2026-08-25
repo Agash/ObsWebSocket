@@ -36,8 +36,11 @@ builder.Services.AddSingleton(
     }
 );
 
-// Add the ObsWebSocketClient and its dependencies
+// Add the ObsWebSocketClient and its dependencies. The Worker drives the connection itself so
+// that it can demonstrate connect and disconnect, which is why WithAutoConnect is not used here;
+// an ordinary application would call it and skip the ceremony.
 builder.Services.AddObsWebSocketClient();
+builder.Services.AddHealthChecks().AddObsWebSocket();
 
 // Add our background service
 builder.Services.AddHostedService<Worker>();

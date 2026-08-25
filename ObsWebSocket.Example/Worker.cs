@@ -16,6 +16,7 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ObsWebSocket.Core.Serialization;
 using Spectre.Console;
 
@@ -29,6 +30,7 @@ internal sealed partial class Worker(
     ExampleStartupCommandOptions startupCommandOptions,
     ILoggerFactory loggerFactory,
     IWebSocketConnectionFactory connectionFactory,
+    HealthCheckService healthChecks,
     IHostApplicationLifetime lifetime
 ) : BackgroundService
 {
@@ -972,7 +974,7 @@ internal sealed partial class Worker(
                     .ConfigureAwait(false);
 
             List<(string Label, bool Pass, string Detail)> modernResults =
-                await ValidateModernApisAsync(cycleClient, cancellationToken).ConfigureAwait(false);
+                await ValidateModernApisAsync(cycleClient, healthChecks, cancellationToken).ConfigureAwait(false);
 
             Table summary = new() { Title = new TableTitle($"{format} Validation Summary") };
             _ = summary.AddColumn("Check");
@@ -1178,6 +1180,7 @@ internal sealed partial class Worker(
     /// </summary>
     private static async Task<List<(string Label, bool Pass, string Detail)>> ValidateModernApisAsync(
         ObsWebSocketClient client,
+        HealthCheckService healthChecks,
         CancellationToken cancellationToken)
     {
         List<(string Label, bool Pass, string Detail)> results = [];
