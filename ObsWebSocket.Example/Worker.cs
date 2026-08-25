@@ -658,6 +658,36 @@ internal sealed partial class Worker(
                 );
                 return false;
 
+            case "media":
+            {
+                // Typed enum rather than a protocol string constant.
+                if (args.Length < 2 || MediaInputActionExtensions.FromWireValue(args[1]) is null
+                    && !Enum.TryParse(args[1], ignoreCase: true, out MediaInputAction _))
+                {
+                    UiWarn("Usage: media <inputName> <play|pause|stop|restart|next|previous>");
+                    return false;
+                }
+
+                if (!Enum.TryParse(args[1], ignoreCase: true, out MediaInputAction action))
+                {
+                    UiWarn($"Unknown media action '{args[1]}'.");
+                    return false;
+                }
+
+                try
+                {
+                    await _obsClient.TriggerMediaActionAsync(args[0], action, cancellationToken);
+                    UiSuccess($"Sent {action} ({action.ToWireValue()}) to '{args[0]}'.");
+                }
+                catch (ObsWebSocketRequestException ex)
+                {
+                    // Typed failure carries the protocol status, so no message matching.
+                    UiWarn($"OBS rejected {ex.RequestType} with code {ex.Status?.Code}: {ex.Comment}");
+                }
+
+                return false;
+            }
+
             case "set-subs":
                 if (args.Length == 0 || !uint.TryParse(args[0], out uint newFlags))
                 {
@@ -2153,6 +2183,10 @@ internal sealed partial class Worker(
         _ = commandTable.AddRow(
             Markup.Escape("toggle-filter [source] [filter]"),
             Markup.Escape("Toggle filter enabled state")
+        );
+        _ = commandTable.AddRow(
+            Markup.Escape("media [input] [action]"),
+            Markup.Escape("Media transport via the typed MediaInputAction enum")
         );
         _ = commandTable.AddRow(
             Markup.Escape("watch [seconds]"),

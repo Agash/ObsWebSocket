@@ -301,6 +301,37 @@ foreach (var result in results)
 
 `Sleep` is only valid inside a batch, and pairs with `SerialRealtime` to pace a sequence.
 
+Results come back in the order the requests were added, so a request type may appear more than
+once and each result still belongs to its own request. Read them by position:
+
+```csharp
+var results = await client.CallBatchAsync(
+    batch => batch
+        .GetSceneItemList(new(sceneName: "Intro"))
+        .GetVersion()
+        .GetSceneItemList(new(sceneName: "Outro")),
+    cancellationToken: ct
+);
+
+var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
+var version = results[1].GetRequiredData<GetVersionResponseData>();
+var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
+```
+
+`GetRequiredData<T>` throws `ObsWebSocketRequestException` if OBS rejected that request, carrying
+its status code. `GetData<T>` returns `null` instead. With `haltOnFailure: false` the requests
+either side of a failure still run, so check before reading:
+
+```csharp
+if (!results.AllSucceeded())
+{
+    foreach (var failed in results.Failures())
+    {
+        Console.WriteLine($"{failed.RequestType}: {failed.RequestStatus.Comment}");
+    }
+}
+```
+
 `Add` takes anything the generated methods do not cover, including a raw `JsonElement` payload:
 
 ```csharp
@@ -321,13 +352,83 @@ var results = await client.CallBatchAsync(items, cancellationToken: ct);
 
 Either way, an item's `RequestData` should be `null`, a generated `*RequestData` DTO, or a `JsonElement` built with `Utf8JsonWriter`. Anonymous types and reflection-based serialization are not AOT-safe here.
 
+## Multiple OBS instances
+
+Register clients by name and resolve them with `[FromKeyedServices]`:
+
+```csharp
+builder.Services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"));
+builder.Services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"));
+
+public sealed class Worker(
+    [FromKeyedServices("main")] ObsWebSocketClient main,
+    [FromKeyedServices("booth")] ObsWebSocketClient booth);
+```
+
+## Errors
+
+Failures are typed, so they can be caught by category rather than matched by message:
+
+```csharp
+try
+{
+    await client.SetStudioModeEnabledAsync(new(true), ct);
+}
+catch (ObsWebSocketRequestException ex)
+{
+    // OBS rejected the request. ex.Status carries the protocol code and comment.
+    Console.WriteLine($"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}");
+}
+catch (ObsWebSocketTimeoutException)
+{
+    // No response within the request timeout.
+}
+```
+
+`ObsWebSocketSerializationException` covers payloads that cannot be written or read, and all three
+derive from `ObsWebSocketException` if you would rather catch the lot.
+
+Options are validated when the client is resolved, so a missing or malformed `ServerUri` fails at
+startup with the offending option named, rather than on the first connection attempt.
+
+## Reconnect
+
+Reconnect delays grow by `ReconnectBackoffMultiplier`, are capped at `MaxReconnectDelayMs`, and
+carry jitter so that several clients recovering from one outage do not retry in lockstep.
+Authentication failures are never retried, since they cannot succeed on a second attempt.
+
+To replace the policy outright rather than tune those options, register your own pipeline under
+`ObsWebSocketResilience.ReconnectPipelineKey` after adding the client.
+
+## Telemetry
+
+The client emits traces and metrics under the name `ObsWebSocket.Core`, inert until something
+subscribes:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(t => t.AddSource(ObsWebSocketDiagnostics.ActivitySourceName))
+    .WithMetrics(m => m.AddMeter(ObsWebSocketDiagnostics.MeterName));
+```
+
+One activity per request, and one per batch rather than per item. Counters cover requests sent,
+requests failed, events received and reconnect attempts, plus a request-duration histogram.
+
+Timeouts and reconnect delays run on an injectable `TimeProvider`, so tests can drive them with
+`FakeTimeProvider` instead of waiting.
+
 ## Example App
 
 `ObsWebSocket.Example` is a host-based sample with configuration and DI.
 
-- **Interactive mode**: command loop (`help`, `version`, `scene`, `batch-example`, `get-all-settings-types`, etc.)
-- **Transport validation mode**: exercises JSON and MsgPack across scene/input/filter/settings APIs, then enters the interactive loop
+- **Interactive mode**: command loop (`help`, `version`, `scene`, `watch`, `batch-example`, `get-all-settings-types`, etc.)
+- **Transport validation mode**: exercises JSON and MsgPack across the whole surface, then enters the interactive loop
 - **One-shot mode**: pass a command as a process argument for CI/automation, `ObsWebSocket.Example run-transport-tests`
+
+`run-transport-tests` creates its own scene and input, so it does not depend on a particular OBS
+layout, and removes them afterwards. On each transport it covers the settings modes, event streams,
+`WaitForEventAsync`, the typed batch builder including duplicate request types and partial failure,
+typed protocol enums, and the scene, input, volume and output helpers.
 
 It reads the same `Obs` section as above, plus:
 

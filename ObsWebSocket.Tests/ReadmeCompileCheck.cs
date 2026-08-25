@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
@@ -199,5 +200,56 @@ internal static class ReadmeCompileCheck
         _ = await client.FindSceneItemIdAsync("Scene", "Source", ct);
         await client.SetInputVolumeDbAsync("Mic", -6, ct);
         await client.SetInputVolumeMulAsync("Mic", 0.5, ct);
+    }
+
+    internal static async Task TypedBatchResultsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        var results = await client.CallBatchAsync(
+            batch => batch
+                .GetSceneItemList(new(sceneName: "Intro"))
+                .GetVersion()
+                .GetSceneItemList(new(sceneName: "Outro")),
+            cancellationToken: ct
+        );
+
+        var intro = results[0].GetRequiredData<GetSceneItemListResponseData>();
+        var version = results[1].GetRequiredData<GetVersionResponseData>();
+        var outro = results[2].GetRequiredData<GetSceneItemListResponseData>();
+        _ = (intro, version, outro);
+
+        if (!results.AllSucceeded())
+        {
+            foreach (var failed in results.Failures())
+            {
+                _ = $"{failed.RequestType}: {failed.RequestStatus.Comment}";
+            }
+        }
+
+        _ = results[0].GetData<GetSceneItemListResponseData>();
+    }
+
+    internal static async Task TypedErrorsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        try
+        {
+            await client.SetStudioModeEnabledAsync(new(true), ct);
+        }
+        catch (ObsWebSocketRequestException ex)
+        {
+            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+        }
+        catch (ObsWebSocketTimeoutException)
+        {
+            // No response within the request timeout.
+        }
+    }
+
+    internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
+    {
+        _ = services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"));
+        _ = services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"));
+        _ = ObsWebSocketDiagnostics.ActivitySourceName;
+        _ = ObsWebSocketDiagnostics.MeterName;
+        _ = ObsWebSocketResilience.ReconnectPipelineKey;
     }
 }
