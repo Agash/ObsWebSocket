@@ -1446,6 +1446,89 @@ internal sealed partial class Worker(
                 );
             }).ConfigureAwait(false));
 
+            results.Add(await TrySettingsCheckAsync("Batch parallel execution", async () =>
+            {
+                // OBS returns parallel results in completion order and renumbers their ids to
+                // match, so references cannot resolve. Reading one must say so rather than
+                // hand back another request's result.
+                ObsBatchBuilder par = new();
+                BatchRef<GetVersionResponseData> v = par.General.GetVersion();
+                _ = par.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: sceneName)
+                );
+
+                BatchResults r = await client
+                    .CallBatchAsync(
+                        par,
+                        executionType: RequestBatchExecutionType.Parallel,
+                        haltOnFailure: false,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                bool rawUsable = r.Count == 2 && r.AllSucceeded();
+
+                string guarded;
+                try
+                {
+                    _ = r.Get(v);
+                    guarded = "resolved a reference";
+                }
+                catch (ObsWebSocketException ex)
+                {
+                    guarded = ex.Message.Contains("Parallel", StringComparison.Ordinal)
+                        ? "explained"
+                        : "threw: " + ex.Message;
+                }
+
+                bool tryGetDeclined = !r.TryGet(v, out GetVersionResponseData? _);
+
+                return (
+                    rawUsable && guarded == "explained" && tryGetDeclined,
+                    $"{r.Count} raw result(s), references {guarded}"
+                );
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Batch halt on failure", async () =>
+            {
+                ObsBatchBuilder halt = new();
+                BatchRef<GetVersionResponseData> first = halt.General.GetVersion();
+                BatchRef<GetSceneItemListResponseData> bad = halt.SceneItems.GetSceneItemList(
+                    new GetSceneItemListRequestData(sceneName: "__no_such_scene__")
+                );
+                BatchRef<GetStatsResponseData> never = halt.General.GetStats();
+
+                BatchResults r = await client
+                    .CallBatchAsync(
+                        halt,
+                        executionType: RequestBatchExecutionType.SerialRealtime,
+                        haltOnFailure: true,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                bool firstOk = r.Get(first).ObsVersion is not null;
+                bool badRejected = !r.TryGet(bad, out GetSceneItemListResponseData? _);
+
+                // The third request never ran, so reading it explains itself rather than
+                // returning someone else's result.
+                string neverMsg;
+                try
+                {
+                    _ = r.Get(never);
+                    neverMsg = "returned a result";
+                }
+                catch (ObsWebSocketException ex)
+                {
+                    neverMsg = ex.Message.Contains("never ran", StringComparison.Ordinal)
+                        ? "explained"
+                        : "threw: " + ex.Message;
+                }
+
+                return (
+                    firstOk && badRejected && neverMsg == "explained",
+                    $"{r.Count} result(s), unrun request {neverMsg}"
+                );
+            }).ConfigureAwait(false));
+
             results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
             {
                 bool recording = await client.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);

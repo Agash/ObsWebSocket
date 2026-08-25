@@ -366,7 +366,11 @@ public static class ObsWebSocketClientConvenienceExtensions
                 )
                 .ConfigureAwait(false);
 
-            return new BatchResults(results);
+            // Parallel execution gives no way to tell which request produced which result.
+            return new BatchResults(
+                results,
+                referencesUsable: executionType != RequestBatchExecutionType.Parallel
+            );
         }
 
         /// <summary>
