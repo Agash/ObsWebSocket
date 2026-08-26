@@ -253,4 +253,35 @@ internal static class ReadmeCompileCheck
         _ = ObsWebSocketDiagnostics.MeterName;
         _ = ObsWebSocketResilience.ReconnectPipelineKey;
     }
+
+    internal static async Task ScreenshotsAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        byte[]? png = await client.Sources.GetSourceScreenshotBytesAsync("Intro", "png", cancellationToken: ct);
+        _ = png;
+        await client.Sources.SaveSourceScreenshotToFileAsync("Intro", "shot.png", cancellationToken: ct);
+    }
+
+    internal static async Task ReplayBufferAsync2(ObsWebSocketClient client, CancellationToken ct)
+    {
+        var status = await client.Outputs.GetReplayBufferStatusAsync(ct);
+        if (status.OutputActive)
+        {
+            await client.Outputs.SaveReplayBufferAsync(ct);
+        }
+    }
+
+    internal static async Task StudioModeAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        try
+        {
+            await client.Ui.SetStudioModeEnabledAsync(new(true), ct);
+        }
+        catch (ObsWebSocketRequestException ex)
+        {
+            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+        }
+        catch (ObsWebSocketTimeoutException)
+        {
+        }
+    }
 }
