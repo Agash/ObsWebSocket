@@ -1,4 +1,6 @@
 using ObsWebSocket.Core;
+using ObsWebSocket.Core.Protocol.Events;
+using ObsWebSocket.Core.Protocol.Responses;
 
 namespace ObsWebSocket.Tests;
 
@@ -168,5 +170,70 @@ public sealed class HandleTests
             "item 3 in scene 'Intro'",
             SceneHandle.FromName("Intro").Item(3).ToString()
         );
+    }
+
+    /// <summary>
+    /// An event already says which scene, by uuid. Reading the name back off it and addressing by
+    /// name again is the round trip and the race the uuid was there to avoid.
+    /// </summary>
+    [TestMethod]
+    public void AnEventCarriesAResolvedHandle()
+    {
+        CurrentProgramSceneChangedPayload changed = new(
+            sceneName: "Intro",
+            sceneUuid: "5d5db648-93a5-4985-bff8-45f4c9fe15f7"
+        );
+
+        Assert.IsTrue(changed.Scene.IsResolved);
+        Assert.AreEqual("5d5db648-93a5-4985-bff8-45f4c9fe15f7", changed.Scene.Uuid);
+        Assert.IsNull(changed.Scene.Name);
+    }
+
+    /// <summary>
+    /// A scene item needs both halves, and an event that reports one carries both.
+    /// </summary>
+    [TestMethod]
+    public void AnEventCarriesAResolvedSceneItem()
+    {
+        SceneItemEnableStateChangedPayload changed = new(
+            sceneName: "Intro",
+            sceneUuid: "5d5db648-93a5-4985-bff8-45f4c9fe15f7",
+            sceneItemId: 7,
+            sceneItemEnabled: true
+        );
+
+        Assert.AreEqual(7, changed.SceneItem.SceneItemId);
+        Assert.IsTrue(changed.SceneItem.Scene.IsResolved);
+    }
+
+    /// <summary>
+    /// Creating something answers with its uuid, so the handle for it costs no second request.
+    /// </summary>
+    [TestMethod]
+    public void CreatingSomethingAnswersWithAHandle()
+    {
+        CreateSceneResponseData created = new(sceneUuid: "5d5db648-93a5-4985-bff8-45f4c9fe15f7");
+
+        Assert.IsTrue(created.Scene.IsResolved);
+        Assert.AreEqual("5d5db648-93a5-4985-bff8-45f4c9fe15f7", created.Scene.Uuid);
+    }
+
+    /// <summary>
+    /// The preview scene is null outside studio mode, and the protocol says so in prose rather
+    /// than by marking the field optional. The accessor has to be nullable to match.
+    /// </summary>
+    [TestMethod]
+    public void AUuidTheProtocolSaysCanBeNullYieldsANullHandle()
+    {
+        GetSceneListResponseData outsideStudioMode = new(
+            scenes: [],
+            currentProgramSceneName: "Intro",
+            currentProgramSceneUuid: "5d5db648-93a5-4985-bff8-45f4c9fe15f7",
+            currentPreviewSceneName: null,
+            currentPreviewSceneUuid: null
+        );
+
+        Assert.IsNotNull(outsideStudioMode.CurrentProgramScene);
+        Assert.IsNull(outsideStudioMode.CurrentPreviewScene);
     }
 }
