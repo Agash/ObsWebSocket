@@ -810,7 +810,7 @@ internal sealed partial class Worker(
             );
 
             GetSceneListResponseData? scenes = await cycleClient
-                .Scenes.GetSceneListAsync(cancellationToken)
+                .Scenes.GetSceneListAsync(new(), cancellationToken)
                 .ConfigureAwait(false);
             if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
             {
@@ -825,7 +825,7 @@ internal sealed partial class Worker(
             int sceneCount = scenes?.Scenes?.Count ?? 0;
 
             GetInputListResponseData? inputs = await cycleClient
-                .Inputs.GetInputListAsync(cancellationToken)
+                .Inputs.GetInputListAsync(new(), cancellationToken)
                 .ConfigureAwait(false);
             if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
             {
@@ -1337,7 +1337,7 @@ internal sealed partial class Worker(
         string inputName = $"__obsws_input_{suffix}";
 
         GetSceneListResponseData? sceneList = await client
-            .Scenes.GetSceneListAsync(cancellationToken)
+            .Scenes.GetSceneListAsync(new(), cancellationToken)
             .ConfigureAwait(false);
         string originalScene = sceneList?.CurrentProgramSceneName ?? string.Empty;
 

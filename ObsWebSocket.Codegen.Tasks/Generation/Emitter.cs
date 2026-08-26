@@ -890,35 +890,6 @@ internal static partial class Emitter
     }
 
     /// <summary>
-    /// Whether every field of a request is optional, so an empty record is a valid payload.
-    /// </summary>
-    private static bool AllFieldsOptional(RequestDefinition reqDef) =>
-        reqDef.RequestFields is { Count: > 0 }
-        && reqDef.RequestFields.TrueForAll(f => f.ValueOptional.GetValueOrDefault(false));
-
-    /// <summary>
-    /// Whether a request identifies its target by either a name or a uuid. The protocol marks both
-    /// optional because either will do, but one of them has to be supplied.
-    /// </summary>
-    private static bool HasNameOrUuidChoice(RequestDefinition reqDef)
-    {
-        if (reqDef.RequestFields is null)
-        {
-            return false;
-        }
-
-        HashSet<string> names = new(
-            reqDef.RequestFields.Select(f => f.ValueName),
-            StringComparer.Ordinal
-        );
-
-        return names.Any(n =>
-            n.EndsWith("Uuid", StringComparison.Ordinal)
-            && names.Contains(string.Concat(n.AsSpan(0, n.Length - 4), "Name"))
-        );
-    }
-
-    /// <summary>
     /// Generates the source code for a single request extension method.
     /// </summary>
     private static void GenerateSingleExtensionMethod(
@@ -1028,28 +999,6 @@ internal static partial class Emitter
             $"        {awaitPrefix}await client.{baseCallMethod}<{responseDtoType}>({requestTypeStringLiteral}, {callParams}, cancellationToken: cancellationToken).ConfigureAwait(false);"
         );
         builder.AppendLine("    }");
-
-        // A request whose fields are all optional still needs an empty record at the call site,
-        // which reads as ceremony for the ones that take nothing meaningful. Emit an overload
-        // for those. Requests offering a name or a uuid are excluded: exactly one of the pair is
-        // required in practice, so a no argument call would fail at runtime.
-        if (hasRequestData && AllFieldsOptional(reqDef) && !HasNameOrUuidChoice(reqDef))
-        {
-            builder.AppendLine();
-            builder.AppendLine("    /// <summary>");
-            AppendMultiLineXmlDoc(builder, reqDef.Description, "    ///");
-            builder.AppendLine("    /// </summary>");
-            builder.AppendLine(
-                "    /// <param name=\"cancellationToken\">A token to cancel the asynchronous operation.</param>"
-            );
-            builder.AppendLine(
-                "    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>"
-            );
-            builder.AppendLine(
-                $"    public {returnType} {methodName}(CancellationToken cancellationToken = default) =>"
-            );
-            builder.AppendLine($"        {methodName}(new {requestDtoType}(), cancellationToken);");
-        }
     }
 
     #endregion
