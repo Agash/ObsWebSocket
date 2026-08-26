@@ -276,6 +276,24 @@ internal static class ReadmeCompileCheck
         }
     }
 
+    internal static async Task TypedStatusFilterAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            await client.SceneItems.GetSceneItemListAsync(new("Missing"), ct);
+        }
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode
+                is ObsWebSocket.Core.Protocol.Generated.RequestStatus.ResourceNotFound
+            )
+        {
+            // The scene, input or filter does not exist.
+        }
+    }
+
     internal static void HostIntegration(
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )

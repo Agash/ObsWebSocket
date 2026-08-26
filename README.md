@@ -343,6 +343,16 @@ catch (ObsWebSocketTimeoutException)
 }
 ```
 
+`StatusCode` reports the same status as the protocol's `RequestStatus` enum, so a filter can name
+the reason instead of a number:
+
+```csharp
+catch (ObsWebSocketRequestException ex) when (ex.StatusCode is RequestStatus.ResourceNotFound)
+{
+    // The scene, input or filter does not exist.
+}
+```
+
 `ObsWebSocketSerializationException` covers payloads that cannot be written or read, and all three
 derive from `ObsWebSocketException`.
 
