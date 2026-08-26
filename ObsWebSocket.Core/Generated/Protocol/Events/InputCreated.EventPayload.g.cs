@@ -43,7 +43,7 @@ public sealed partial record InputCreatedPayload
     /// </summary>
     [JsonPropertyName("inputKindCaps")]
     [Key("inputKindCaps")]
-    public required double InputKindCaps { get; init; }
+    public required long InputKindCaps { get; init; }
 
     /// <summary>
     /// Name of the input
@@ -82,7 +82,7 @@ public sealed partial record InputCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputCreatedPayload(double inputKindCaps, string? inputName = null, string? inputUuid = null, string? inputKind = null, string? unversionedInputKind = null, System.Text.Json.JsonElement? inputSettings = null, System.Text.Json.JsonElement? defaultInputSettings = null)
+    public InputCreatedPayload(long inputKindCaps, string? inputName = null, string? inputUuid = null, string? inputKind = null, string? unversionedInputKind = null, System.Text.Json.JsonElement? inputSettings = null, System.Text.Json.JsonElement? defaultInputSettings = null)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

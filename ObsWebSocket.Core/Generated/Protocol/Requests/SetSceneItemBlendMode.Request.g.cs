@@ -56,7 +56,7 @@ public sealed partial record SetSceneItemBlendModeRequestData
     /// </remarks>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -89,7 +89,7 @@ public sealed partial record SetSceneItemBlendModeRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneItemBlendModeRequestData(double sceneItemId, string sceneItemBlendMode, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneItemBlendModeRequestData(int sceneItemId, string sceneItemBlendMode, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

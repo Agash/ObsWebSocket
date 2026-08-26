@@ -56,7 +56,7 @@ public sealed partial record OffsetMediaInputCursorRequestData
     /// </remarks>
     [JsonPropertyName("mediaCursorOffset")]
     [Key("mediaCursorOffset")]
-    public required double MediaCursorOffset { get; init; }
+    public required long MediaCursorOffset { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -67,7 +67,7 @@ public sealed partial record OffsetMediaInputCursorRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public OffsetMediaInputCursorRequestData(double mediaCursorOffset, string? inputName = null, string? inputUuid = null)
+    public OffsetMediaInputCursorRequestData(long mediaCursorOffset, string? inputName = null, string? inputUuid = null)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

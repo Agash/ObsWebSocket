@@ -36,7 +36,7 @@ public sealed partial record SceneItemEnableStateChangedPayload
     /// </summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -61,7 +61,7 @@ public sealed partial record SceneItemEnableStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemEnableStateChangedPayload(double sceneItemId, bool sceneItemEnabled, string? sceneName = null, string? sceneUuid = null)
+    public SceneItemEnableStateChangedPayload(int sceneItemId, bool sceneItemEnabled, string? sceneName = null, string? sceneUuid = null)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

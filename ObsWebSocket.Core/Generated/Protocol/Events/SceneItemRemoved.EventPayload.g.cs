@@ -31,7 +31,7 @@ public sealed partial record SceneItemRemovedPayload
     /// </summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item was removed from
@@ -70,7 +70,7 @@ public sealed partial record SceneItemRemovedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemRemovedPayload(double sceneItemId, string? sceneName = null, string? sceneUuid = null, string? sourceName = null, string? sourceUuid = null)
+    public SceneItemRemovedPayload(int sceneItemId, string? sceneName = null, string? sceneUuid = null, string? sourceName = null, string? sourceUuid = null)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

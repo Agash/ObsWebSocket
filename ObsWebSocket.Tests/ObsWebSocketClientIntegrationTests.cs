@@ -445,7 +445,7 @@ public class ObsWebSocketClientIntegrationTests
             idResponse,
             $"Could not get SceneItemId for '{s_testOptions.TestInputName}' in scene '{s_testOptions.TestSceneName}'. Ensure it exists."
         );
-        double sceneItemId = idResponse.SceneItemId;
+        int sceneItemId = idResponse.SceneItemId;
 
         // Get the transform
         GetSceneItemTransformResponseData? transformResponse =

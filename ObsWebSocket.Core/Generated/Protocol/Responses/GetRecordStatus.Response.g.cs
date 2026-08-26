@@ -36,14 +36,14 @@ public sealed partial record GetRecordStatusResponseData
     /// </summary>
     [JsonPropertyName("outputBytes")]
     [Key("outputBytes")]
-    public required double OutputBytes { get; init; }
+    public required long OutputBytes { get; init; }
 
     /// <summary>
     /// Current duration in milliseconds for the output
     /// </summary>
     [JsonPropertyName("outputDuration")]
     [Key("outputDuration")]
-    public required double OutputDuration { get; init; }
+    public required long OutputDuration { get; init; }
 
     /// <summary>
     /// Whether the output is paused
@@ -68,7 +68,7 @@ public sealed partial record GetRecordStatusResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetRecordStatusResponseData(bool outputActive, bool outputPaused, double outputDuration, double outputBytes, string? outputTimecode = null)
+    public GetRecordStatusResponseData(bool outputActive, bool outputPaused, long outputDuration, long outputBytes, string? outputTimecode = null)
     {
         this.OutputActive = outputActive;
         this.OutputPaused = outputPaused;

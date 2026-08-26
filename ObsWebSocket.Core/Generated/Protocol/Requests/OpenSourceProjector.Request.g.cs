@@ -46,7 +46,7 @@ public sealed partial record OpenSourceProjectorRequestData
     /// </remarks>
     [JsonPropertyName("monitorIndex")]
     [Key("monitorIndex")]
-    public double? MonitorIndex { get; init; }
+    public int? MonitorIndex { get; init; }
 
     /// <summary>
     /// Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex`
@@ -89,7 +89,7 @@ public sealed partial record OpenSourceProjectorRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public OpenSourceProjectorRequestData(string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, double? monitorIndex = null, string? projectorGeometry = null)
+    public OpenSourceProjectorRequestData(string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, int? monitorIndex = null, string? projectorGeometry = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;

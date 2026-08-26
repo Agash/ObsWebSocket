@@ -44,7 +44,7 @@ public sealed partial record SetSourceFilterIndexRequestData
     /// </remarks>
     [JsonPropertyName("filterIndex")]
     [Key("filterIndex")]
-    public required double FilterIndex { get; init; }
+    public required int FilterIndex { get; init; }
 
     /// <summary>
     /// Name of the filter
@@ -87,7 +87,7 @@ public sealed partial record SetSourceFilterIndexRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSourceFilterIndexRequestData(string filterName, double filterIndex, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null)
+    public SetSourceFilterIndexRequestData(string filterName, int filterIndex, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;

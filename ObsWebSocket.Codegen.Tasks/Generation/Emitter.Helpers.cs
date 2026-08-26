@@ -244,10 +244,27 @@ internal static partial class Emitter
         }
 
         // --- Basic Type Mapping ---
+        string? numberType = null;
+        if (obsType == "Number")
+        {
+            numberType = NumericFieldTable.MapNumber(fieldName, out bool classified);
+            if (!classified)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.UnclassifiedNumberField,
+                        Location.None,
+                        fieldName,
+                        parentDtoName
+                    )
+                );
+            }
+        }
+
         string? mappedType = obsType switch
         {
             "String" => "string",
-            "Number" => "double",
+            "Number" => numberType,
             "Boolean" => "bool",
             "Uuid" => "string",
             "Object" or "Any" => "System.Text.Json.JsonElement?", // Fallback for unhandled Object/Any

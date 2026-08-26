@@ -33,7 +33,7 @@ public sealed partial record SetInputAudioSyncOffsetRequestData
     /// </remarks>
     [JsonPropertyName("inputAudioSyncOffset")]
     [Key("inputAudioSyncOffset")]
-    public required double InputAudioSyncOffset { get; init; }
+    public required int InputAudioSyncOffset { get; init; }
 
     /// <summary>
     /// Name of the input to set the audio sync offset of
@@ -66,7 +66,7 @@ public sealed partial record SetInputAudioSyncOffsetRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetInputAudioSyncOffsetRequestData(double inputAudioSyncOffset, string? inputName = null, string? inputUuid = null)
+    public SetInputAudioSyncOffsetRequestData(int inputAudioSyncOffset, string? inputName = null, string? inputUuid = null)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

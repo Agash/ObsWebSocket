@@ -114,6 +114,20 @@ internal static class Diagnostics
     );
 
     /// <summary>
+    /// Reported when the protocol defines a <c>Number</c> field the numeric table does not
+    /// classify. The field still maps to <c>double</c>, which is the safe fallback, but a whole
+    /// number field left unclassified reaches callers as a floating point value.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnclassifiedNumberField = new(
+        id: "OBSWSGEN012",
+        title: "Unclassified Number field",
+        messageFormat: "Number field '{0}' in '{1}' is not listed in NumericFieldTable. Mapping to 'double'. Add it to the table if it holds whole numbers.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>
     /// Informational diagnostic reported when an optional field that is a value type (struct) is generated as a nullable value type.
     /// </summary>
     public static readonly DiagnosticDescriptor OptionalValueTypeWarning = new(

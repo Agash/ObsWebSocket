@@ -32,7 +32,7 @@ public readonly partial struct SceneItemsGroup
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     public async Task<bool> SetSceneItemEnabledAsync(
         string sceneName,
-        double sceneItemId, // Use double as sceneItemId is Number in protocol
+        int sceneItemId,
         bool? isEnabled = null, // If null, toggles; otherwise sets to the specified state
         CancellationToken cancellationToken = default
     )
@@ -100,7 +100,7 @@ public readonly partial struct SceneItemsGroup
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         client.EnsureConnected();
 
-        double? sceneItemId = await client
+        int? sceneItemId = await client
             .SceneItems.FindSceneItemIdAsync(sceneName, sourceName, cancellationToken)
             .ConfigureAwait(false);
 
@@ -146,9 +146,7 @@ public readonly partial struct SceneItemsGroup
                 )
                 .ConfigureAwait(false);
 
-            // Scene item ids are Number on the wire because the protocol has no integer type,
-            // but OBS only ever assigns whole numbers.
-            return response is null ? null : checked((int)response.SceneItemId);
+            return response?.SceneItemId;
         }
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode is ObsRequestStatus.ResourceNotFound)
@@ -158,27 +156,6 @@ public readonly partial struct SceneItemsGroup
         }
         // Let other ObsWebSocketExceptions or different exception types propagate
     }
-
-    /// <summary>
-    /// Sets or toggles a scene item's enabled state using an integer item id.
-    /// </summary>
-    /// <param name="sceneName">The name of the scene containing the item.</param>
-    /// <param name="sceneItemId">The numeric id of the scene item.</param>
-    /// <param name="isEnabled">The desired state, or <see langword="null"/> to toggle.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>The resulting enabled state.</returns>
-    public Task<bool> SetSceneItemEnabledAsync(
-        string sceneName,
-        int sceneItemId,
-        bool? isEnabled = null,
-        CancellationToken cancellationToken = default
-    ) =>
-        client.SceneItems.SetSceneItemEnabledAsync(
-            sceneName,
-            (double)sceneItemId,
-            isEnabled,
-            cancellationToken
-        );
 
     /// <summary>
     /// Returns the scene item id for a source within a scene as an <see cref="int"/>, or

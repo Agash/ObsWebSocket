@@ -36,7 +36,7 @@ public sealed partial record CreateInputResponseData
     /// </summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -47,7 +47,7 @@ public sealed partial record CreateInputResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CreateInputResponseData(double sceneItemId, string? inputUuid = null)
+    public CreateInputResponseData(int sceneItemId, string? inputUuid = null)
     {
         this.InputUuid = inputUuid;
         this.SceneItemId = sceneItemId;

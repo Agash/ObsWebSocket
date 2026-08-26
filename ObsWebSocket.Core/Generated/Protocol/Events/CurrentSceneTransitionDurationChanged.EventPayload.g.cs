@@ -29,7 +29,7 @@ public sealed partial record CurrentSceneTransitionDurationChangedPayload
     /// </summary>
     [JsonPropertyName("transitionDuration")]
     [Key("transitionDuration")]
-    public required double TransitionDuration { get; init; }
+    public required int TransitionDuration { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -40,7 +40,7 @@ public sealed partial record CurrentSceneTransitionDurationChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CurrentSceneTransitionDurationChangedPayload(double transitionDuration)
+    public CurrentSceneTransitionDurationChangedPayload(int transitionDuration)
     {
         this.TransitionDuration = transitionDuration;
     }

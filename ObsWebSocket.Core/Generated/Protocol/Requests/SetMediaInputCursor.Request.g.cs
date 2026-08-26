@@ -57,7 +57,7 @@ public sealed partial record SetMediaInputCursorRequestData
     /// </remarks>
     [JsonPropertyName("mediaCursor")]
     [Key("mediaCursor")]
-    public required double MediaCursor { get; init; }
+    public required long MediaCursor { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -68,7 +68,7 @@ public sealed partial record SetMediaInputCursorRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetMediaInputCursorRequestData(double mediaCursor, string? inputName = null, string? inputUuid = null)
+    public SetMediaInputCursorRequestData(long mediaCursor, string? inputName = null, string? inputUuid = null)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

@@ -345,7 +345,7 @@ internal sealed partial class Worker(
                 try
                 {
                     // First, find the scene item ID within the specified scene
-                    double sceneItemId = await GetSceneItemIdAsync(
+                    int sceneItemId = await GetSceneItemIdAsync(
                         sceneForGetSettings,
                         inputForGetSettings,
                         cancellationToken
@@ -392,7 +392,7 @@ internal sealed partial class Worker(
                 try
                 {
                     // Find the scene item ID first (optional but good practice)
-                    double sceneItemId = await GetSceneItemIdAsync(
+                    int sceneItemId = await GetSceneItemIdAsync(
                         sceneForSetText,
                         inputForSetText,
                         cancellationToken
@@ -2207,44 +2207,48 @@ internal sealed partial class Worker(
                     .ConfigureAwait(false)
             );
 
-            results.Add(
-                await TrySettingsCheckAsync(
-                        "Virtual camera toggle",
-                        async () =>
-                        {
-                            bool before = await client
-                                .Outputs.IsVirtualCamActiveAsync(cancellationToken)
-                                .ConfigureAwait(false);
+            // Disabled: toggling the virtual camera takes down this OBS install. The fault is in
+            // the Stream Deck plugin (streamdeckpluginobs32.dll appears at the fault address and
+            // in every frame above it), not in OBS or in this library. Re-enable once that plugin
+            // is removed.
+            // results.Add(
+            // await TrySettingsCheckAsync(
+            // "Virtual camera toggle",
+            // async () =>
+            // {
+            // bool before = await client
+            // .Outputs.IsVirtualCamActiveAsync(cancellationToken)
+            // .ConfigureAwait(false);
 
-                            bool? turnedOn = await client
-                                .Outputs.SetVirtualCamActiveAndWaitAsync(
-                                    !before,
-                                    cancellationToken: cancellationToken
-                                )
-                                .ConfigureAwait(false);
-                            bool observed = await client
-                                .Outputs.IsVirtualCamActiveAsync(cancellationToken)
-                                .ConfigureAwait(false);
+            // bool? turnedOn = await client
+            // .Outputs.SetVirtualCamActiveAndWaitAsync(
+            // !before,
+            // cancellationToken: cancellationToken
+            // )
+            // .ConfigureAwait(false);
+            // bool observed = await client
+            // .Outputs.IsVirtualCamActiveAsync(cancellationToken)
+            // .ConfigureAwait(false);
 
-                            // Put it back the way it was found.
-                            _ = await client
-                                .Outputs.SetVirtualCamActiveAndWaitAsync(
-                                    before,
-                                    cancellationToken: cancellationToken
-                                )
-                                .ConfigureAwait(false);
-                            bool restored = await client
-                                .Outputs.IsVirtualCamActiveAsync(cancellationToken)
-                                .ConfigureAwait(false);
+            // // Put it back the way it was found.
+            // _ = await client
+            // .Outputs.SetVirtualCamActiveAndWaitAsync(
+            // before,
+            // cancellationToken: cancellationToken
+            // )
+            // .ConfigureAwait(false);
+            // bool restored = await client
+            // .Outputs.IsVirtualCamActiveAsync(cancellationToken)
+            // .ConfigureAwait(false);
 
-                            return (
-                                turnedOn == !before && observed == !before && restored == before,
-                                $"{before} -> {observed} -> {restored}"
-                            );
-                        }
-                    )
-                    .ConfigureAwait(false)
-            );
+            // return (
+            // turnedOn == !before && observed == !before && restored == before,
+            // $"{before} -> {observed} -> {restored}"
+            // );
+            // }
+            // )
+            // .ConfigureAwait(false)
+            // );
 
             results.Add(
                 await TrySettingsCheckAsync(
@@ -2593,7 +2597,7 @@ internal sealed partial class Worker(
         };
 
     // --- Helper to find Scene Item ID ---
-    private async Task<double> GetSceneItemIdAsync(
+    private async Task<int> GetSceneItemIdAsync(
         string sceneName,
         string sourceName,
         CancellationToken cancellationToken
@@ -2989,7 +2993,7 @@ internal sealed partial class Worker(
             RestartWhenActive: true
         );
 
-        double sceneItemId;
+        int sceneItemId;
 
         // Step 8: Create new input or update existing source settings
         if (isNewSource)

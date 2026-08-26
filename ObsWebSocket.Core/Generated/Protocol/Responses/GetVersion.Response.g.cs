@@ -64,7 +64,7 @@ public sealed partial record GetVersionResponseData
     /// </summary>
     [JsonPropertyName("rpcVersion")]
     [Key("rpcVersion")]
-    public required double RpcVersion { get; init; }
+    public required int RpcVersion { get; init; }
 
     /// <summary>
     /// Image formats available in `GetSourceScreenshot` and `SaveSourceScreenshot` requests.
@@ -82,7 +82,7 @@ public sealed partial record GetVersionResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetVersionResponseData(double rpcVersion, string? obsVersion = null, string? obsWebSocketVersion = null, System.Collections.Generic.List<string>? availableRequests = null, System.Collections.Generic.List<string>? supportedImageFormats = null, string? platform = null, string? platformDescription = null)
+    public GetVersionResponseData(int rpcVersion, string? obsVersion = null, string? obsWebSocketVersion = null, System.Collections.Generic.List<string>? availableRequests = null, System.Collections.Generic.List<string>? supportedImageFormats = null, string? platform = null, string? platformDescription = null)
     {
         this.ObsVersion = obsVersion;
         this.ObsWebSocketVersion = obsWebSocketVersion;
