@@ -1715,6 +1715,27 @@ internal sealed partial class Worker(
                 return (status is not null, $"state={status?.MediaState}");
             }).ConfigureAwait(false));
 
+            results.Add(await TrySettingsCheckAsync("Virtual camera toggle", async () =>
+            {
+                bool before = await client.Outputs.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
+
+                bool? turnedOn = await client
+                    .Outputs.SetVirtualCamActiveAndWaitAsync(!before, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                bool observed = await client.Outputs.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
+
+                // Put it back the way it was found.
+                _ = await client
+                    .Outputs.SetVirtualCamActiveAndWaitAsync(before, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                bool restored = await client.Outputs.IsVirtualCamActiveAsync(cancellationToken).ConfigureAwait(false);
+
+                return (
+                    turnedOn == !before && observed == !before && restored == before,
+                    $"{before} -> {observed} -> {restored}"
+                );
+            }).ConfigureAwait(false));
+
             results.Add(await TrySettingsCheckAsync("Typed exception on a rejected request", async () =>
             {
                 try
