@@ -24,7 +24,7 @@ public sealed class HandleOperationTests
     public async Task ANameHandleSendsTheNameAndNoUuid()
     {
         JsonElement sent = await CaptureAsync(
-            (client, ct) => client.Scene("Intro").SetCurrentProgramSceneAsync(ct)
+            (client, ct) => client.Scene("Intro").SetCurrentProgramAsync(ct)
         );
 
         Assert.AreEqual("Intro", sent.GetProperty("sceneName").GetString());
@@ -39,7 +39,7 @@ public sealed class HandleOperationTests
     public async Task AUuidHandleSendsTheUuidAndNoName()
     {
         JsonElement sent = await CaptureAsync(
-            (client, ct) => client.Scene(s_uuid).SetCurrentProgramSceneAsync(ct)
+            (client, ct) => client.Scene(s_uuid).SetCurrentProgramAsync(ct)
         );
 
         Assert.AreEqual(
@@ -62,7 +62,7 @@ public sealed class HandleOperationTests
         CanvasHandle vertical = CanvasHandle.FromUuid(s_uuid);
 
         JsonElement sent = await CaptureAsync(
-            (client, ct) => client.Scene(vertical.Scene("Intro")).GetSceneItemListAsync(ct)
+            (client, ct) => client.Scene(vertical.Scene("Intro")).GetItemListAsync(ct)
         );
 
         Assert.AreEqual("Intro", sent.GetProperty("sceneName").GetString());
@@ -80,9 +80,7 @@ public sealed class HandleOperationTests
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) =>
-                client
-                    .SceneItem(SceneHandle.FromName("Intro").Item(7))
-                    .SetSceneItemEnabledAsync(false, ct)
+                client.SceneItem(SceneHandle.FromName("Intro").Item(7)).SetEnabledAsync(false, ct)
         );
 
         Assert.AreEqual("Intro", sent.GetProperty("sceneName").GetString());
@@ -95,9 +93,7 @@ public sealed class HandleOperationTests
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) =>
-                client
-                    .Filter(InputHandle.FromName("Mic").Filter("EQ"))
-                    .SetSourceFilterEnabledAsync(true, ct)
+                client.Filter(InputHandle.FromName("Mic").Filter("EQ")).SetEnabledAsync(true, ct)
         );
 
         Assert.AreEqual("Mic", sent.GetProperty("sourceName").GetString());
@@ -116,7 +112,7 @@ public sealed class HandleOperationTests
             (client, ct) =>
                 client
                     .SceneItem(SceneHandle.FromName("Intro").Item(7))
-                    .DuplicateSceneItemAsync(destinationScene: "Outro", cancellationToken: ct)
+                    .DuplicateAsync(destinationScene: "Outro", cancellationToken: ct)
         );
 
         Assert.AreEqual("Intro", sent.GetProperty("sceneName").GetString());
@@ -129,7 +125,7 @@ public sealed class HandleOperationTests
     public async Task AStringReachesTheOperationsWithoutCeremony()
     {
         JsonElement sent = await CaptureAsync(
-            (client, ct) => client.Input("Mic").ToggleInputMuteAsync(ct)
+            (client, ct) => client.Input("Mic").ToggleMuteAsync(ct)
         );
 
         Assert.AreEqual("Mic", sent.GetProperty("inputName").GetString());

@@ -96,12 +96,23 @@ internal static partial class Emitter
             builder.AppendLine($"    public {handleType} Handle => handle;");
             builder.AppendLine();
 
-            foreach (
-                (RequestDefinition request, IReadOnlyList<EntityReference> refs) in byKind[kind]
-                    .OrderBy(r => r.Request.RequestType, StringComparer.Ordinal)
-            )
+            var ordered = byKind[kind]
+                .OrderBy(r => r.Request.RequestType, StringComparer.Ordinal)
+                .ToList();
+            Dictionary<string, string> methodNames = ShortMethodNames(
+                kind,
+                ordered.ConvertAll(r => r.Request.RequestType)
+            );
+
+            foreach ((RequestDefinition request, IReadOnlyList<EntityReference> refs) in ordered)
             {
-                EmitScopedRequest(context, builder, request, refs);
+                EmitScopedRequest(
+                    context,
+                    builder,
+                    request,
+                    refs,
+                    methodNames[request.RequestType]
+                );
                 builder.AppendLine();
                 emitted++;
             }
@@ -144,6 +155,71 @@ internal static partial class Emitter
         );
     }
 
+    /// <summary>
+    /// The name each request takes on the operations type, with the entity it is already scoped to
+    /// removed.
+    /// </summary>
+    /// <remarks>
+    /// <c>client.SceneItem(logo).SetSceneItemEnabledAsync(false)</c> says scene item twice, once in
+    /// the thing being addressed and once in the verb. Dropping the second reads better and loses
+    /// nothing, because the protocol name stays in the documentation and on the category group.
+    /// <para>
+    /// The whole set is named at once so a collision can be detected: two requests that shorten to
+    /// the same thing both keep their full names rather than one silently shadowing the other. No
+    /// collision exists today; this is here for the refresh that introduces one.
+    /// </para>
+    /// </remarks>
+    private static Dictionary<string, string> ShortMethodNames(
+        string kind,
+        List<string> requestTypes
+    )
+    {
+        string[] tokens = kind switch
+        {
+            "scene" => ["Scene"],
+            "input" => ["Input"],
+            "source" => ["Source"],
+            "sceneItem" => ["SceneItem"],
+            "filter" => ["SourceFilter", "Filter"],
+            _ => [],
+        };
+
+        Dictionary<string, string> shortened = new(StringComparer.Ordinal);
+        Dictionary<string, int> counts = new(StringComparer.Ordinal);
+
+        foreach (string requestType in requestTypes)
+        {
+            string candidate = requestType;
+            foreach (string token in tokens)
+            {
+                int at = candidate.IndexOf(token, StringComparison.Ordinal);
+                if (at >= 0)
+                {
+                    candidate = candidate.Remove(at, token.Length);
+                    break;
+                }
+            }
+
+            if (candidate.Length == 0)
+            {
+                candidate = requestType;
+            }
+
+            shortened[requestType] = candidate;
+            counts[candidate] = counts.TryGetValue(candidate, out int n) ? n + 1 : 1;
+        }
+
+        foreach (string requestType in requestTypes)
+        {
+            if (counts[shortened[requestType]] > 1)
+            {
+                shortened[requestType] = requestType;
+            }
+        }
+
+        return shortened;
+    }
+
     private static string OpsTypeName(string kind) =>
         kind switch
         {
@@ -179,11 +255,12 @@ internal static partial class Emitter
         SourceProductionContext context,
         StringBuilder builder,
         RequestDefinition request,
-        IReadOnlyList<EntityReference> references
+        IReadOnlyList<EntityReference> references,
+        string shortName
     )
     {
         string baseName = SanitizeIdentifier(request.RequestType);
-        string methodName = baseName + "Async";
+        string methodName = SanitizeIdentifier(shortName) + "Async";
         string requestDto = $"{GeneratedRequestsNamespace}.{baseName}RequestData";
         bool hasResponse = request.ResponseFields?.Count > 0;
         string returnType = hasResponse
@@ -259,6 +336,11 @@ internal static partial class Emitter
         builder.AppendLine("    /// <summary>");
         AppendMultiLineXmlDoc(builder, request.Description, "    ///");
         builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine(
+            $"    /// Sends the <c>{request.RequestType}</c> request, with the identity supplied by the handle."
+        );
+        builder.AppendLine("    /// </remarks>");
         foreach (string doc in docs)
         {
             builder.AppendLine(doc);
@@ -283,7 +365,7 @@ internal static partial class Emitter
         builder.AppendLine($"    public {returnType} {methodName}(");
         builder.AppendLine("        " + string.Join(",\n        ", parameters));
         builder.AppendLine("    ) =>");
-        builder.AppendLine($"        client.{groupName}.{methodName}(");
+        builder.AppendLine($"        client.{groupName}.{baseName}Async(");
         builder.AppendLine($"            new {requestDto}(");
         builder.AppendLine(
             "                "

@@ -23,11 +23,14 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Creates a new filter, adding it to the specified source.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>CreateSourceFilter</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="filterKind">The kind of filter to be created</param>
     /// <param name="filterSettings">Settings object to initialize the filter with</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task CreateSourceFilterAsync(
+    public Task CreateAsync(
         string filterKind,
         System.Text.Json.JsonElement? filterSettings = null,
         CancellationToken cancellationToken = default
@@ -47,9 +50,12 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Gets the info for a specific source filter.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSourceFilter</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData> GetSourceFilterAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterResponseData> GetAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Filters.GetSourceFilterAsync(
@@ -65,9 +71,12 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Removes a filter from a source.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>RemoveSourceFilter</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task RemoveSourceFilterAsync(
+    public Task RemoveAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Filters.RemoveSourceFilterAsync(
@@ -83,10 +92,13 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Sets the enable state of a source filter.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSourceFilterEnabled</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="filterEnabled">New enable state of the filter</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSourceFilterEnabledAsync(
+    public Task SetEnabledAsync(
         bool filterEnabled,
         CancellationToken cancellationToken = default
     ) =>
@@ -104,10 +116,13 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Sets the index position of a filter on a source.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSourceFilterIndex</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="filterIndex">New index position of the filter</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSourceFilterIndexAsync(
+    public Task SetIndexAsync(
         int filterIndex,
         CancellationToken cancellationToken = default
     ) =>
@@ -125,10 +140,13 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Sets the name of a source filter (rename).
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSourceFilterName</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="newFilterName">New name for the filter</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSourceFilterNameAsync(
+    public Task SetNameAsync(
         string newFilterName,
         CancellationToken cancellationToken = default
     ) =>
@@ -146,11 +164,14 @@ public readonly partial struct FilterOperations(ObsWebSocketClient client, Filte
     /// <summary>
     /// Sets the settings of a source filter.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSourceFilterSettings</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="filterSettings">Object of settings to apply</param>
     /// <param name="overlay">True == apply the settings on top of existing ones, False == reset the input to its defaults, then apply settings.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSourceFilterSettingsAsync(
+    public Task SetSettingsAsync(
         System.Text.Json.JsonElement? filterSettings,
         bool? overlay = null,
         CancellationToken cancellationToken = default
@@ -182,9 +203,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Gets the audio balance of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputAudioBalance</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData> GetInputAudioBalanceAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioBalanceResponseData> GetAudioBalanceAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputAudioBalanceAsync(
@@ -204,9 +228,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// - `OBS_MONITORING_TYPE_MONITOR_ONLY`
     /// - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputAudioMonitorType</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData> GetInputAudioMonitorTypeAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioMonitorTypeResponseData> GetAudioMonitorTypeAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputAudioMonitorTypeAsync(
@@ -222,9 +249,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: The audio sync offset can be negative too!
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputAudioSyncOffset</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData> GetInputAudioSyncOffsetAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioSyncOffsetResponseData> GetAudioSyncOffsetAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputAudioSyncOffsetAsync(
@@ -238,9 +268,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Gets the enable state of all audio tracks of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputAudioTracks</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData> GetInputAudioTracksAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputAudioTracksResponseData> GetAudioTracksAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputAudioTracksAsync(
@@ -261,9 +294,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputDeinterlaceFieldOrder</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData> GetInputDeinterlaceFieldOrderAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceFieldOrderResponseData> GetDeinterlaceFieldOrderAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputDeinterlaceFieldOrderAsync(
@@ -291,9 +327,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputDeinterlaceMode</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData> GetInputDeinterlaceModeAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputDeinterlaceModeResponseData> GetDeinterlaceModeAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputDeinterlaceModeAsync(
@@ -307,9 +346,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Gets the audio mute state of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputMute</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData> GetInputMuteAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputMuteResponseData> GetMuteAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputMuteAsync(
@@ -325,10 +367,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Use this in cases where an input provides a dynamic, selectable list of items. For example, display capture, where it provides a list of available displays.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputPropertiesListPropertyItems</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="propertyName">Name of the list property to get the items of</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData> GetInputPropertiesListPropertyItemsAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputPropertiesListPropertyItemsResponseData> GetPropertiesListPropertyItemsAsync(
         string propertyName,
         CancellationToken cancellationToken = default
     ) =>
@@ -346,9 +391,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Does not include defaults. To create the entire settings object, overlay `inputSettings` over the `defaultInputSettings` provided by `GetInputDefaultSettings`.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputSettings</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData> GetInputSettingsAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputSettingsResponseData> GetSettingsAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputSettingsAsync(
@@ -362,9 +410,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Gets the current volume setting of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetInputVolume</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData> GetInputVolumeAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputVolumeResponseData> GetVolumeAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.GetInputVolumeAsync(
@@ -389,9 +440,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// - `OBS_MEDIA_STATE_ENDED`
     /// - `OBS_MEDIA_STATE_ERROR`
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetMediaInputStatus</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData> GetMediaInputStatusAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetMediaInputStatusResponseData> GetMediaStatusAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.MediaInputs.GetMediaInputStatusAsync(
@@ -407,10 +461,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// This request does not perform bounds checking of the cursor position.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>OffsetMediaInputCursor</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="mediaCursorOffset">Value to offset the current cursor position by</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task OffsetMediaInputCursorAsync(
+    public Task OffsetMediaCursorAsync(
         long mediaCursorOffset,
         CancellationToken cancellationToken = default
     ) =>
@@ -426,9 +483,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Opens the filters dialog of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>OpenInputFiltersDialog</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task OpenInputFiltersDialogAsync(
+    public Task OpenFiltersDialogAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Ui.OpenInputFiltersDialogAsync(
@@ -442,9 +502,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Opens the interact dialog of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>OpenInputInteractDialog</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task OpenInputInteractDialogAsync(
+    public Task OpenInteractDialogAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Ui.OpenInputInteractDialogAsync(
@@ -458,9 +521,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Opens the properties dialog of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>OpenInputPropertiesDialog</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task OpenInputPropertiesDialogAsync(
+    public Task OpenPropertiesDialogAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Ui.OpenInputPropertiesDialogAsync(
@@ -480,10 +546,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Use this in cases where there is a button in the properties of an input that cannot be accessed in any other way. For example, browser sources, where there is a refresh button.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>PressInputPropertiesButton</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="propertyName">Name of the button property to press</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task PressInputPropertiesButtonAsync(
+    public Task PressPropertiesButtonAsync(
         string propertyName,
         CancellationToken cancellationToken = default
     ) =>
@@ -501,9 +570,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Will immediately remove all associated scene items.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>RemoveInput</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task RemoveInputAsync(
+    public Task RemoveAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.RemoveInputAsync(
@@ -517,10 +589,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the audio balance of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputAudioBalance</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputAudioBalance">New audio balance value</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputAudioBalanceAsync(
+    public Task SetAudioBalanceAsync(
         double inputAudioBalance,
         CancellationToken cancellationToken = default
     ) =>
@@ -536,10 +611,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the audio monitor type of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputAudioMonitorType</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="monitorType">Audio monitor type</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputAudioMonitorTypeAsync(
+    public Task SetAudioMonitorTypeAsync(
         string monitorType,
         CancellationToken cancellationToken = default
     ) =>
@@ -555,10 +633,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the audio sync offset of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputAudioSyncOffset</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputAudioSyncOffset">New audio sync offset in milliseconds</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputAudioSyncOffsetAsync(
+    public Task SetAudioSyncOffsetAsync(
         int inputAudioSyncOffset,
         CancellationToken cancellationToken = default
     ) =>
@@ -574,10 +655,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the enable state of audio tracks of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputAudioTracks</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputAudioTracks">Track settings to apply</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputAudioTracksAsync(
+    public Task SetAudioTracksAsync(
         System.Collections.Generic.Dictionary<string, bool>? inputAudioTracks,
         CancellationToken cancellationToken = default
     ) =>
@@ -595,10 +679,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputDeinterlaceFieldOrder</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputDeinterlaceFieldOrder">Deinterlace field order for the input</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputDeinterlaceFieldOrderAsync(
+    public Task SetDeinterlaceFieldOrderAsync(
         string inputDeinterlaceFieldOrder,
         CancellationToken cancellationToken = default
     ) =>
@@ -616,10 +703,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// Note: Deinterlacing functionality is restricted to async inputs only.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputDeinterlaceMode</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputDeinterlaceMode">Deinterlace mode for the input</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputDeinterlaceModeAsync(
+    public Task SetDeinterlaceModeAsync(
         string inputDeinterlaceMode,
         CancellationToken cancellationToken = default
     ) =>
@@ -635,10 +725,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the audio mute state of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputMute</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputMuted">Whether to mute the input or not</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputMuteAsync(
+    public Task SetMuteAsync(
         bool inputMuted,
         CancellationToken cancellationToken = default
     ) =>
@@ -654,10 +747,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the name of an input (rename).
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputName</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="newInputName">New name for the input</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputNameAsync(
+    public Task SetNameAsync(
         string newInputName,
         CancellationToken cancellationToken = default
     ) =>
@@ -673,11 +769,14 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the settings of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputSettings</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputSettings">Object of settings to apply</param>
     /// <param name="overlay">True == apply the settings on top of existing ones, False == reset the input to its defaults, then apply settings.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputSettingsAsync(
+    public Task SetSettingsAsync(
         System.Text.Json.JsonElement? inputSettings,
         bool? overlay = null,
         CancellationToken cancellationToken = default
@@ -695,11 +794,14 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Sets the volume setting of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetInputVolume</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputVolumeMul">Volume setting in mul</param>
     /// <param name="inputVolumeDb">Volume setting in dB</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetInputVolumeAsync(
+    public Task SetVolumeAsync(
         double? inputVolumeMul = null,
         double? inputVolumeDb = null,
         CancellationToken cancellationToken = default
@@ -719,10 +821,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// 
     /// This request does not perform bounds checking of the cursor position.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetMediaInputCursor</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="mediaCursor">New cursor position to set</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetMediaInputCursorAsync(
+    public Task SetMediaCursorAsync(
         long mediaCursor,
         CancellationToken cancellationToken = default
     ) =>
@@ -738,9 +843,12 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Toggles the audio mute state of an input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>ToggleInputMute</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData> ToggleInputMuteAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.ToggleInputMuteResponseData> ToggleMuteAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Inputs.ToggleInputMuteAsync(
@@ -754,10 +862,13 @@ public readonly partial struct InputOperations(ObsWebSocketClient client, InputH
     /// <summary>
     /// Triggers an action on a media input.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>TriggerMediaInputAction</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="mediaAction">Identifier of the `ObsMediaInputAction` enum</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task TriggerMediaInputActionAsync(
+    public Task TriggerMediaActionAsync(
         ObsWebSocket.Core.Protocol.Generated.MediaInputAction mediaAction,
         CancellationToken cancellationToken = default
     ) =>
@@ -785,6 +896,9 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <summary>
     /// Creates a new input, adding it as a scene item to the specified scene.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>CreateInput</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="inputName">Name of the new input to created</param>
     /// <param name="inputKind">The kind of input to be created</param>
     /// <param name="inputSettings">Settings object to initialize the input with</param>
@@ -816,11 +930,14 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Scenes only
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>CreateSceneItem</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="source">The source to use.</param>
     /// <param name="sceneItemEnabled">Enable state to apply to the scene item on creation</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData> CreateSceneItemAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.CreateSceneItemResponseData> CreateItemAsync(
         SourceHandle source,
         bool? sceneItemEnabled = null,
         CancellationToken cancellationToken = default
@@ -844,9 +961,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Groups only
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetGroupSceneItemList</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData> GetGroupSceneItemListAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetGroupSceneItemListResponseData> GetGroupItemListAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetGroupSceneItemListAsync(
@@ -863,11 +983,14 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemId</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sourceName">Name of the source to find</param>
     /// <param name="searchOffset">Number of matches to skip during search. &gt;= 0 means first forward. -1 means last (top) item</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData> GetSceneItemIdAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIdResponseData> GetItemIdAsync(
         string sourceName,
         int? searchOffset = null,
         CancellationToken cancellationToken = default
@@ -888,9 +1011,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Scenes only
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemList</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData> GetSceneItemListAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemListResponseData> GetItemListAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemListAsync(
@@ -907,9 +1033,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Note: A transition UUID response field is not currently able to be implemented as of 2024-1-18.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneSceneTransitionOverride</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData> GetSceneSceneTransitionOverrideAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneSceneTransitionOverrideResponseData> GetSceneTransitionOverrideAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Scenes.GetSceneSceneTransitionOverrideAsync(
@@ -924,9 +1053,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <summary>
     /// Removes a scene from OBS.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>RemoveScene</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task RemoveSceneAsync(
+    public Task RemoveAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Scenes.RemoveSceneAsync(
@@ -943,9 +1075,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// 
     /// Only available when studio mode is enabled.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetCurrentPreviewScene</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetCurrentPreviewSceneAsync(
+    public Task SetCurrentPreviewAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Scenes.SetCurrentPreviewSceneAsync(
@@ -959,9 +1094,12 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <summary>
     /// Sets the current program scene.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetCurrentProgramScene</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetCurrentProgramSceneAsync(
+    public Task SetCurrentProgramAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Scenes.SetCurrentProgramSceneAsync(
@@ -975,10 +1113,13 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <summary>
     /// Sets the name of a scene (rename).
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneName</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="newSceneName">New name for the scene</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneNameAsync(
+    public Task SetNameAsync(
         string newSceneName,
         CancellationToken cancellationToken = default
     ) =>
@@ -995,11 +1136,14 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <summary>
     /// Sets the scene transition overridden for a scene.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneSceneTransitionOverride</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="transitionName">Name of the scene transition to use as override. Specify `null` to remove</param>
     /// <param name="transitionDuration">Duration to use for any overridden transition. Specify `null` to remove</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneSceneTransitionOverrideAsync(
+    public Task SetSceneTransitionOverrideAsync(
         string? transitionName = null,
         int? transitionDuration = null,
         CancellationToken cancellationToken = default
@@ -1032,10 +1176,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes only
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>DuplicateSceneItem</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="destinationScene">The destinationScene to use.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData> DuplicateSceneItemAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.DuplicateSceneItemResponseData> DuplicateAsync(
         SceneHandle destinationScene,
         CancellationToken cancellationToken = default
     ) =>
@@ -1066,9 +1213,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemBlendMode</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData> GetSceneItemBlendModeAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemBlendModeResponseData> GetBlendModeAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemBlendModeAsync(
@@ -1086,9 +1236,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemEnabled</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData> GetSceneItemEnabledAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemEnabledResponseData> GetEnabledAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemEnabledAsync(
@@ -1108,9 +1261,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemIndex</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData> GetSceneItemIndexAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemIndexResponseData> GetIndexAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemIndexAsync(
@@ -1128,9 +1284,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemLocked</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData> GetSceneItemLockedAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemLockedResponseData> GetLockedAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemLockedAsync(
@@ -1146,9 +1305,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// <summary>
     /// Gets the source associated with a scene item.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemSource</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData> GetSceneItemSourceAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemSourceResponseData> GetSourceAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemSourceAsync(
@@ -1166,9 +1328,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSceneItemTransform</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData> GetSceneItemTransformAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneItemTransformResponseData> GetTransformAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.GetSceneItemTransformAsync(
@@ -1186,9 +1351,12 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes only
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>RemoveSceneItem</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task RemoveSceneItemAsync(
+    public Task RemoveAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.SceneItems.RemoveSceneItemAsync(
@@ -1206,10 +1374,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneItemBlendMode</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sceneItemBlendMode">New blend mode</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneItemBlendModeAsync(
+    public Task SetBlendModeAsync(
         string sceneItemBlendMode,
         CancellationToken cancellationToken = default
     ) =>
@@ -1229,10 +1400,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneItemEnabled</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sceneItemEnabled">New enable state of the scene item</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneItemEnabledAsync(
+    public Task SetEnabledAsync(
         bool sceneItemEnabled,
         CancellationToken cancellationToken = default
     ) =>
@@ -1252,10 +1426,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Groups
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneItemIndex</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sceneItemIndex">New index position of the scene item</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneItemIndexAsync(
+    public Task SetIndexAsync(
         int sceneItemIndex,
         CancellationToken cancellationToken = default
     ) =>
@@ -1275,10 +1452,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// 
     /// Scenes and Group
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneItemLocked</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sceneItemLocked">New lock state of the scene item</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneItemLockedAsync(
+    public Task SetLockedAsync(
         bool sceneItemLocked,
         CancellationToken cancellationToken = default
     ) =>
@@ -1296,10 +1476,13 @@ public readonly partial struct SceneItemOperations(ObsWebSocketClient client, Sc
     /// <summary>
     /// Sets the transform and crop info of a scene item.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SetSceneItemTransform</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="sceneItemTransform">Object containing scene item transform info to update</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SetSceneItemTransformAsync(
+    public Task SetTransformAsync(
         ObsWebSocket.Core.Protocol.Common.SceneItemTransformPatchStub? sceneItemTransform,
         CancellationToken cancellationToken = default
     ) =>
@@ -1331,9 +1514,12 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSourceActive</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData> GetSourceActiveAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceActiveResponseData> GetActiveAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Sources.GetSourceActiveAsync(
@@ -1348,9 +1534,12 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// <summary>
     /// Gets an array of all of a source&apos;s filters.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSourceFilterList</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData> GetSourceFilterListAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceFilterListResponseData> GetFilterListAsync(
         CancellationToken cancellationToken = default
     ) =>
         client.Filters.GetSourceFilterListAsync(
@@ -1370,13 +1559,16 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>GetSourceScreenshot</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="imageFormat">Image compression format to use. Use `GetVersion` to get compatible image formats</param>
     /// <param name="imageWidth">Width to scale the screenshot to</param>
     /// <param name="imageHeight">Height to scale the screenshot to</param>
     /// <param name="imageCompressionQuality">Compression quality to use. 0 for high compression, 100 for uncompressed. -1 to use &quot;default&quot; (whatever that means, idk)</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task yielding the response data.</returns>
-    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData> GetSourceScreenshotAsync(
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSourceScreenshotResponseData> GetScreenshotAsync(
         string imageFormat,
         int? imageWidth = null,
         int? imageHeight = null,
@@ -1401,11 +1593,14 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// 
     /// Note: This request serves to provide feature parity with 4.x. It is very likely to be changed/deprecated in a future release.
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>OpenSourceProjector</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="monitorIndex">Monitor index, use `GetMonitorList` to obtain index</param>
     /// <param name="projectorGeometry">Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex`</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task OpenSourceProjectorAsync(
+    public Task OpenProjectorAsync(
         int? monitorIndex = null,
         string? projectorGeometry = null,
         CancellationToken cancellationToken = default
@@ -1429,6 +1624,9 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// 
     /// **Compatible with inputs and scenes.**
     /// </summary>
+    /// <remarks>
+    /// Sends the <c>SaveSourceScreenshot</c> request, with the identity supplied by the handle.
+    /// </remarks>
     /// <param name="imageFormat">Image compression format to use. Use `GetVersion` to get compatible image formats</param>
     /// <param name="imageFilePath">Path to save the screenshot file to. Eg. `C:\Users\user\Desktop\screenshot.png`</param>
     /// <param name="imageWidth">Width to scale the screenshot to</param>
@@ -1436,7 +1634,7 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
     /// <param name="imageCompressionQuality">Compression quality to use. 0 for high compression, 100 for uncompressed. -1 to use &quot;default&quot; (whatever that means, idk)</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>A task that completes when OBS has processed the request.</returns>
-    public Task SaveSourceScreenshotAsync(
+    public Task SaveScreenshotAsync(
         string imageFormat,
         string imageFilePath,
         int? imageWidth = null,

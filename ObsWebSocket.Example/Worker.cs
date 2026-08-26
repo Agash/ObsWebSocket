@@ -3021,23 +3021,25 @@ internal sealed partial class Worker(
                             // The point of a uuid handle is that it survives a rename. Both forms
                             // have to reach the same scene for that to be worth anything.
                             SceneHandle byName = sceneName;
-                            SceneHandle byUuid = await client
-                                .Scenes.ResolveAsync(byName, cancellationToken)
+                            SceneOperations resolved = await client
+                                .Scene(byName)
+                                .ResolveAsync(cancellationToken)
                                 .ConfigureAwait(false);
+                            SceneHandle byUuid = resolved.Handle;
 
                             GetSceneItemListResponseData viaName = await client
                                 .Scene(byName)
-                                .GetSceneItemListAsync(cancellationToken)
+                                .GetItemListAsync(cancellationToken)
                                 .ConfigureAwait(false);
                             GetSceneItemListResponseData viaUuid = await client
                                 .Scene(byUuid)
-                                .GetSceneItemListAsync(cancellationToken)
+                                .GetItemListAsync(cancellationToken)
                                 .ConfigureAwait(false);
 
                             string renamed = sceneName + "_renamed";
                             await client
                                 .Scene(byUuid)
-                                .SetSceneNameAsync(renamed, cancellationToken)
+                                .SetNameAsync(renamed, cancellationToken)
                                 .ConfigureAwait(false);
 
                             bool uuidStillWorks;
@@ -3045,7 +3047,7 @@ internal sealed partial class Worker(
                             {
                                 _ = await client
                                     .Scene(byUuid)
-                                    .GetSceneItemListAsync(cancellationToken)
+                                    .GetItemListAsync(cancellationToken)
                                     .ConfigureAwait(false);
                                 uuidStillWorks = true;
                             }
@@ -3059,7 +3061,7 @@ internal sealed partial class Worker(
                             {
                                 _ = await client
                                     .Scene(byName)
-                                    .GetSceneItemListAsync(cancellationToken)
+                                    .GetItemListAsync(cancellationToken)
                                     .ConfigureAwait(false);
                                 nameNowMisses = false;
                             }
@@ -3070,7 +3072,7 @@ internal sealed partial class Worker(
 
                             await client
                                 .Scene(byUuid)
-                                .SetSceneNameAsync(sceneName, CancellationToken.None)
+                                .SetNameAsync(sceneName, CancellationToken.None)
                                 .ConfigureAwait(false);
 
                             return (
@@ -3126,22 +3128,26 @@ internal sealed partial class Worker(
                         {
                             // The one lookup that is not a convenience: OBS addresses scene items
                             // by a number nothing else reports.
-                            SceneItemHandle item = await client
-                                .SceneItems.ResolveAsync(
-                                    SceneHandle.FromName(sceneName).Item(inputName),
-                                    cancellationToken: cancellationToken
+                            SceneItemOperations item = await client
+                                .Scene(sceneName)
+                                .ItemAsync(inputName, cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+
+                            GetSceneItemEnabledResponseData enabled = await item.GetEnabledAsync(
+                                    cancellationToken
                                 )
                                 .ConfigureAwait(false);
 
-                            GetSceneItemEnabledResponseData enabled = await client
-                                .SceneItem(item)
-                                .GetSceneItemEnabledAsync(cancellationToken)
+                            // Navigating back up reaches the scene the item is in.
+                            GetSceneItemListResponseData siblings = await item
+                                .Scene.GetItemListAsync(cancellationToken)
                                 .ConfigureAwait(false);
 
                             return (
-                                item.SceneItemId >= 0,
-                                $"'{inputName}' is item {item.SceneItemId}, enabled "
-                                    + $"{enabled.SceneItemEnabled}"
+                                item.Handle.SceneItemId >= 0 && siblings.SceneItems.Count > 0,
+                                $"'{inputName}' is item {item.Handle.SceneItemId}, enabled "
+                                    + $"{enabled.SceneItemEnabled}, among {siblings.SceneItems.Count} "
+                                    + "in its scene"
                             );
                         }
                     )
