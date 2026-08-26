@@ -2252,6 +2252,116 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Integer fields round trip",
+                        async () =>
+                        {
+                            // The protocol calls every number "Number", so these fields used to
+                            // arrive as double. Writing one and reading it back proves the
+                            // retype survives the wire in both directions, which matters most
+                            // for MessagePack, where an int and a float are different encodings.
+                            int itemId =
+                                await client
+                                    .SceneItems.FindSceneItemIdAsync(
+                                        sceneName,
+                                        inputName,
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false)
+                                ?? throw new InvalidOperationException(
+                                    $"'{inputName}' is not in '{sceneName}'."
+                                );
+
+                            GetSceneItemIndexResponseData originalIndex = await client
+                                .SceneItems.GetSceneItemIndexAsync(
+                                    new GetSceneItemIndexRequestData(
+                                        sceneItemId: itemId,
+                                        sceneName: sceneName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .SceneItems.SetSceneItemIndexAsync(
+                                    new SetSceneItemIndexRequestData(
+                                        sceneItemId: itemId,
+                                        sceneItemIndex: 0,
+                                        sceneName: sceneName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetSceneItemIndexResponseData afterIndex = await client
+                                .SceneItems.GetSceneItemIndexAsync(
+                                    new GetSceneItemIndexRequestData(
+                                        sceneItemId: itemId,
+                                        sceneName: sceneName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .SceneItems.SetSceneItemIndexAsync(
+                                    new SetSceneItemIndexRequestData(
+                                        sceneItemId: itemId,
+                                        sceneItemIndex: originalIndex.SceneItemIndex,
+                                        sceneName: sceneName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // A negative value, since OBS accepts negative sync offsets and a
+                            // sign error would otherwise go unnoticed.
+                            GetInputAudioSyncOffsetResponseData originalOffset = await client
+                                .Inputs.GetInputAudioSyncOffsetAsync(
+                                    new GetInputAudioSyncOffsetRequestData(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .Inputs.SetInputAudioSyncOffsetAsync(
+                                    new SetInputAudioSyncOffsetRequestData(
+                                        inputAudioSyncOffset: -125,
+                                        inputName: inputName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetInputAudioSyncOffsetResponseData afterOffset = await client
+                                .Inputs.GetInputAudioSyncOffsetAsync(
+                                    new GetInputAudioSyncOffsetRequestData(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .Inputs.SetInputAudioSyncOffsetAsync(
+                                    new SetInputAudioSyncOffsetRequestData(
+                                        inputAudioSyncOffset: originalOffset.InputAudioSyncOffset,
+                                        inputName: inputName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            return (
+                                afterIndex.SceneItemIndex == 0
+                                    && afterOffset.InputAudioSyncOffset == -125,
+                                $"index {originalIndex.SceneItemIndex} -> {afterIndex.SceneItemIndex}, "
+                                    + $"syncOffset {originalOffset.InputAudioSyncOffset} -> {afterOffset.InputAudioSyncOffset}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Typed exception on a rejected request",
                         async () =>
                         {

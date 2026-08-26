@@ -18,9 +18,9 @@ public static class ObsWebSocketServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/> to add the services to.</param>
     /// <param name="configureOptions">An optional action to configure the <see cref="ObsWebSocketClientOptions"/>.</param>
-    /// <returns>The original <see cref="IServiceCollection"/> for chaining.</returns>
+    /// <returns>A builder for configuring this client.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> is null.</exception>
-    public static IServiceCollection AddObsWebSocketClient(
+    public static IObsWebSocketClientBuilder AddObsWebSocketClient(
         this IServiceCollection services,
         Action<ObsWebSocketClientOptions>? configureOptions = null
     )
@@ -97,7 +97,7 @@ public static class ObsWebSocketServiceCollectionExtensions
             );
         });
 
-        return services;
+        return new ObsWebSocketClientBuilder(services, name: null);
     }
 
     /// <summary>
@@ -108,10 +108,10 @@ public static class ObsWebSocketServiceCollectionExtensions
     /// <param name="services">The <see cref="IServiceCollection"/> to add the services to.</param>
     /// <param name="name">The key identifying this client.</param>
     /// <param name="configureOptions">An optional action to configure this client's options.</param>
-    /// <returns>The original <see cref="IServiceCollection"/> for chaining.</returns>
+    /// <returns>A builder for configuring this client.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
-    public static IServiceCollection AddObsWebSocketClient(
+    public static IObsWebSocketClientBuilder AddObsWebSocketClient(
         this IServiceCollection services,
         string name,
         Action<ObsWebSocketClientOptions>? configureOptions = null
@@ -166,7 +166,7 @@ public static class ObsWebSocketServiceCollectionExtensions
             }
         );
 
-        return services;
+        return new ObsWebSocketClientBuilder(services, name);
     }
 }
 

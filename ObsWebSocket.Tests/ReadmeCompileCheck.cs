@@ -298,9 +298,7 @@ internal static class ReadmeCompileCheck
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )
     {
-        _ = builder.AddObsWebSocketClient("obs");
-        _ = builder.Services.WithAutoConnect();
-        _ = builder.Services.AddHealthChecks().AddObsWebSocket();
+        _ = builder.AddObsWebSocketClient("obs").WithAutoConnect().WithHealthCheck();
     }
 
     internal static void TelemetryAndKeyedRegistration(IServiceCollection services)

@@ -39,8 +39,8 @@ using ObsWebSocket.Core;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-builder.AddObsWebSocketClient("obs");   // endpoint from ConnectionStrings:obs
-builder.Services.WithAutoConnect();     // connect on start, disconnect on stop
+builder.AddObsWebSocketClient("obs")    // endpoint from ConnectionStrings:obs
+       .WithAutoConnect();              // connect on start, disconnect on stop
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
@@ -284,9 +284,9 @@ and `ToWireValue()` converts an enum back.
 ## Host integration
 
 ```csharp
-builder.AddObsWebSocketClient("obs");          // reads ConnectionStrings:obs
-builder.Services.WithAutoConnect();            // connects on start, disconnects on stop
-builder.Services.AddHealthChecks().AddObsWebSocket();
+builder.AddObsWebSocketClient("obs")   // reads ConnectionStrings:obs
+       .WithAutoConnect()              // connects on start, disconnects on stop
+       .WithHealthCheck();
 ```
 
 The password may travel in the connection string or be set on the options; either way it is kept off

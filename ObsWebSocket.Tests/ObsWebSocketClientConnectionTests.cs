@@ -808,7 +808,7 @@ public class ObsWebSocketClientConnectionTests
     }
 
     [TestMethod]
-    [Timeout(3000)] // Slightly increased timeout
+    [Timeout(TestTimeout)]
     public async Task ConnectAsync_InfiniteRetries_AttemptsMultipleTimes()
     {
         // Arrange
@@ -830,11 +830,18 @@ public class ObsWebSocketClientConnectionTests
 
         int attemptCounter = 0;
         object counterLock = new();
+        TaskCompletionSource attemptsReached = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         client.Connecting += (_, _) =>
         {
             lock (counterLock)
             {
                 attemptCounter++;
+                if (attemptCounter >= minExpectedAttempts)
+                {
+                    _ = attemptsReached.TrySetResult();
+                }
             }
         };
 
@@ -861,12 +868,13 @@ public class ObsWebSocketClientConnectionTests
         // Act
         Task connectTask = client.ConnectAsync(cts.Token); // Pass the cancellation token
 
-        // Advance the fake clock until enough attempts have occurred or the task completes.
+        // Advance the fake clock until enough attempts have occurred, waiting on a signal rather
+        // than a fixed iteration count. The reconnect delay comes from the fake clock, but the
+        // continuation after it still needs the scheduler, so each advance is followed by a real
+        // yield. Bounded so a regression fails here with a count rather than hanging.
         for (
             int i = 0;
-            i < 2000
-                && Volatile.Read(ref attemptCounter) < minExpectedAttempts
-                && !connectTask.IsCompleted;
+            i < 200 && !attemptsReached.Task.IsCompleted && !connectTask.IsCompleted;
             i++
         )
         {

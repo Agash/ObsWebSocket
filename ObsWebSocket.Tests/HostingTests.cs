@@ -96,13 +96,14 @@ public sealed class HostingTests
         // survivable rather than fatal.
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Logging.SetMinimumLevel(LogLevel.Critical);
-        _ = builder.Services.AddObsWebSocketClient(o =>
-        {
-            o.ServerUri = new Uri("ws://127.0.0.1:59999");
-            o.AutoReconnectEnabled = false;
-            o.HandshakeTimeoutMs = 200;
-        });
-        _ = builder.Services.WithAutoConnect();
+        _ = builder
+            .Services.AddObsWebSocketClient(o =>
+            {
+                o.ServerUri = new Uri("ws://127.0.0.1:59999");
+                o.AutoReconnectEnabled = false;
+                o.HandshakeTimeoutMs = 200;
+            })
+            .WithAutoConnect();
 
         using IHost host = builder.Build();
 
