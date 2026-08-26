@@ -268,7 +268,7 @@ internal static class ReadmeCompileCheck
         }
         catch (ObsWebSocketRequestException ex)
         {
-            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+            _ = $"{ex.RequestType} failed with {(int?)ex.StatusCode}: {ex.Comment}";
         }
         catch (ObsWebSocketTimeoutException)
         {
@@ -378,7 +378,7 @@ internal static class ReadmeCompileCheck
         }
         catch (ObsWebSocketRequestException ex)
         {
-            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+            _ = $"{ex.RequestType} failed with {(int?)ex.StatusCode}: {ex.Comment}";
         }
         catch (ObsWebSocketTimeoutException) { }
     }

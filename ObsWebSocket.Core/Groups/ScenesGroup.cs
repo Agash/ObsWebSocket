@@ -226,7 +226,7 @@ public readonly partial struct ScenesGroup
         client.EnsureConnected();
 
         GetSceneListResponseData? scenes = await client
-            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .Scenes.GetSceneListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return scenes?.Scenes?.Any(s =>

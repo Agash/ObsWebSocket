@@ -704,7 +704,7 @@ internal sealed partial class Worker(
                 {
                     // Typed failure carries the protocol status, so no message matching.
                     UiWarn(
-                        $"OBS rejected {ex.RequestType} with code {ex.Status?.Code}: {ex.Comment}"
+                        $"OBS rejected {ex.RequestType} with code {(int?)ex.StatusCode}: {ex.Comment}"
                     );
                 }
 
@@ -810,7 +810,7 @@ internal sealed partial class Worker(
             );
 
             GetSceneListResponseData? scenes = await cycleClient
-                .Scenes.GetSceneListAsync(new(), cancellationToken)
+                .Scenes.GetSceneListAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (scenes?.Scenes is null || scenes.Scenes.Count == 0)
             {
@@ -825,7 +825,7 @@ internal sealed partial class Worker(
             int sceneCount = scenes?.Scenes?.Count ?? 0;
 
             GetInputListResponseData? inputs = await cycleClient
-                .Inputs.GetInputListAsync(new GetInputListRequestData(), cancellationToken)
+                .Inputs.GetInputListAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
             {
@@ -1337,7 +1337,7 @@ internal sealed partial class Worker(
         string inputName = $"__obsws_input_{suffix}";
 
         GetSceneListResponseData? sceneList = await client
-            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .Scenes.GetSceneListAsync(cancellationToken)
             .ConfigureAwait(false);
         string originalScene = sceneList?.CurrentProgramSceneName ?? string.Empty;
 
@@ -1755,7 +1755,7 @@ internal sealed partial class Worker(
                             }
                             catch (ObsWebSocketRequestException ex)
                             {
-                                caught = $"code {ex.Status?.Code}";
+                                caught = $"code {(int?)ex.StatusCode}";
                             }
 
                             // TryGet reports the failure without throwing.
@@ -2592,8 +2592,9 @@ internal sealed partial class Worker(
                             catch (ObsWebSocketRequestException ex)
                             {
                                 return (
-                                    ex.Status?.Code == 600 && ex.RequestType == "GetSceneItemList",
-                                    $"{ex.RequestType} code {ex.Status?.Code}"
+                                    ex.StatusCode == RequestStatusCode.ResourceNotFound
+                                        && ex.RequestType == "GetSceneItemList",
+                                    $"{ex.RequestType} code {(int?)ex.StatusCode}"
                                 );
                             }
                         }

@@ -298,6 +298,16 @@ public readonly partial struct ConfigGroup(ObsWebSocketClient client)
     }
 
     /// <summary>
+    /// Sets the current video settings.
+    /// 
+    /// Note: Fields must be specified in pairs. For example, you cannot set only `baseWidth` without needing to specify `baseHeight`.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task SetVideoSettingsAsync(CancellationToken cancellationToken = default) =>
+        SetVideoSettingsAsync(new ObsWebSocket.Core.Protocol.Requests.SetVideoSettingsRequestData(), cancellationToken);
+
+    /// <summary>
     /// Gets the current stream service settings (stream destination).
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
@@ -720,6 +730,16 @@ public readonly partial struct GeneralGroup(ObsWebSocketClient client)
     }
 
     /// <summary>
+    /// Triggers a hotkey using a sequence of keys.
+    /// 
+    /// Note: Hotkey functionality in obs-websocket comes as-is, and we do not guarantee support if things are broken. In 9/10 usages of hotkey requests, there exists a better, more reliable method via other requests.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task TriggerHotkeyByKeySequenceAsync(CancellationToken cancellationToken = default) =>
+        TriggerHotkeyByKeySequenceAsync(new ObsWebSocket.Core.Protocol.Requests.TriggerHotkeyByKeySequenceRequestData(), cancellationToken);
+
+    /// <summary>
     /// Sleeps for a time duration or number of frames. Only available in request batches with types `SERIAL_REALTIME` or `SERIAL_FRAME`.
     /// </summary>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.SleepRequestData"/>).</param>
@@ -737,6 +757,14 @@ public readonly partial struct GeneralGroup(ObsWebSocketClient client)
     {
         await client.CallAsync<object>("Sleep", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Sleeps for a time duration or number of frames. Only available in request batches with types `SERIAL_REALTIME` or `SERIAL_FRAME`.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task SleepAsync(CancellationToken cancellationToken = default) =>
+        SleepAsync(new ObsWebSocket.Core.Protocol.Requests.SleepRequestData(), cancellationToken);
 
 }
 
@@ -766,6 +794,14 @@ public readonly partial struct InputsGroup(ObsWebSocketClient client)
     }
 
     /// <summary>
+    /// Gets an array of all inputs in OBS.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputListResponseData> GetInputListAsync(CancellationToken cancellationToken = default) =>
+        GetInputListAsync(new ObsWebSocket.Core.Protocol.Requests.GetInputListRequestData(), cancellationToken);
+
+    /// <summary>
     /// Gets an array of all available input kinds in OBS.
     /// </summary>
     /// <param name="requestData">The data required for the request (<see cref="ObsWebSocket.Core.Protocol.Requests.GetInputKindListRequestData"/>).</param>
@@ -783,6 +819,14 @@ public readonly partial struct InputsGroup(ObsWebSocketClient client)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData>("GetInputKindList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Gets an array of all available input kinds in OBS.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetInputKindListResponseData> GetInputKindListAsync(CancellationToken cancellationToken = default) =>
+        GetInputKindListAsync(new ObsWebSocket.Core.Protocol.Requests.GetInputKindListRequestData(), cancellationToken);
 
     /// <summary>
     /// Gets the names of all special inputs.
@@ -1914,6 +1958,16 @@ public readonly partial struct RecordGroup(ObsWebSocketClient client)
         await client.CallAsync<object>("CreateRecordChapter", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Adds a new chapter marker to the file currently being recorded.
+    /// 
+    /// Note: As of OBS 30.2.0, the only file format supporting this feature is Hybrid MP4.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task CreateRecordChapterAsync(CancellationToken cancellationToken = default) =>
+        CreateRecordChapterAsync(new ObsWebSocket.Core.Protocol.Requests.CreateRecordChapterRequestData(), cancellationToken);
+
 }
 
 /// <summary>
@@ -2315,6 +2369,14 @@ public readonly partial struct ScenesGroup(ObsWebSocketClient client)
     {
         return await client.CallRequiredAsync<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData>("GetSceneList", requestData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Gets an array of scenes in OBS.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    /// <remarks>Sends the request with no fields set, since all of them are optional.</remarks>
+    public Task<ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData> GetSceneListAsync(CancellationToken cancellationToken = default) =>
+        GetSceneListAsync(new ObsWebSocket.Core.Protocol.Requests.GetSceneListRequestData(), cancellationToken);
 
     /// <summary>
     /// Gets an array of all groups in OBS.

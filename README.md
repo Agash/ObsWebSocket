@@ -74,7 +74,7 @@ conveniences this library adds all sit in the group their category owns, so ther
 reach anything:
 
 ```csharp
-await client.Scenes.GetSceneListAsync(new(), ct);                                   // generated request
+await client.Scenes.GetSceneListAsync(ct);                                   // generated request
 await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
 await client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct);         // event stream
 await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);

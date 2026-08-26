@@ -90,7 +90,7 @@ public sealed class BatchResultTests
             result.GetRequiredData<GetSceneItemListResponseData>()
         );
 
-        Assert.AreEqual(600, ex.Status?.Code);
+        Assert.AreEqual(600, (int?)ex.StatusCode);
         Assert.AreEqual("GetSceneItemList", ex.RequestType);
     }
 

@@ -57,7 +57,7 @@ public readonly partial struct SourcesGroup
             // Check scenes if not found in inputs
             ObsWebSocket.Core.Protocol.Responses.GetSceneListResponseData? sceneListResponse =
                 await client
-                    .Scenes.GetSceneListAsync(new(), cancellationToken: cancellationToken)
+                    .Scenes.GetSceneListAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             return sceneListResponse?.Scenes?.Any(s =>
                     string.Equals(s.SceneName, sourceName, StringComparison.Ordinal)
