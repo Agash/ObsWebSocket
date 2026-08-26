@@ -59,7 +59,7 @@ public sealed class Worker(ObsWebSocketClient client) : BackgroundService
         var version = await client.General.GetVersionAsync(ct);
         Console.WriteLine($"Connected to OBS {version.ObsVersion}");
 
-        await foreach (var e in client.CurrentProgramSceneChangedStream(cancellationToken: ct))
+        await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct))
         {
             Console.WriteLine($"Scene changed: {e.EventData.SceneName}");
         }
@@ -69,12 +69,14 @@ public sealed class Worker(ObsWebSocketClient client) : BackgroundService
 
 ## Everything is grouped by category
 
-The client mirrors the categories the OBS protocol defines, and the conveniences this library adds
-sit in the same group as the requests they wrap, so there is one way to reach anything:
+The client mirrors the categories the OBS protocol defines. Requests, event streams and the
+conveniences this library adds all sit in the group their category owns, so there is one way to
+reach anything:
 
 ```csharp
 await client.Scenes.GetSceneListAsync(new(), ct);                                   // generated request
 await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
+await client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct);         // event stream
 await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
 await client.SceneItems.SetSceneItemEnabledAsync("Intro", "Logo", false, ct);
 ```
@@ -88,11 +90,11 @@ category.
 
 ## Observing events
 
-Every OBS event is exposed as an async sequence. The stream subscribes for the lifetime of the loop
-and unsubscribes when it ends, so there is no handler bookkeeping:
+Every OBS event is exposed as an async sequence on its category group. The stream subscribes for the
+lifetime of the loop and unsubscribes when it ends, so there is no handler bookkeeping:
 
 ```csharp
-await foreach (var e in client.CurrentProgramSceneChangedStream(cancellationToken: ct))
+await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct))
 {
     Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
 }

@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>SceneItems</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct SceneItemsRequestGroup
+public readonly partial struct SceneItemsGroup
 {
     /// <summary>
     /// Sets or toggles the enabled (visibility) state of a scene item, identified by its numeric ID.

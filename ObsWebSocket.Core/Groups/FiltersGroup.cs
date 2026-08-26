@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Filters</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct FiltersRequestGroup
+public readonly partial struct FiltersGroup
 {
     /// <summary>
     /// Retrieves the settings for a specific filter on a source and deserializes them using an explicit <see cref="JsonTypeInfo{T}"/>.

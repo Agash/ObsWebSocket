@@ -714,7 +714,7 @@ internal static partial class Emitter
             builder.AppendLine("/// </summary>");
             builder.AppendLine("/// <param name=\"client\">The client these requests are sent on.</param>");
             builder.AppendLine(
-                $"public readonly partial struct {groupName}RequestGroup(ObsWebSocketClient client)"
+                $"public readonly partial struct {groupName}Group(ObsWebSocketClient client)"
             );
             builder.AppendLine("{");
 
@@ -758,7 +758,7 @@ internal static partial class Emitter
             );
             builder.AppendLine("        /// </summary>");
             builder.AppendLine(
-                $"        public {groupName}RequestGroup {groupName} => new(client);"
+                $"        public {groupName}Group {groupName} => new(client);"
             );
             builder.AppendLine("    }");
             builder.AppendLine();

@@ -18,7 +18,7 @@ public sealed class ScreenshotDecodeTests
     {
         string dataUri = "data:image/png;base64," + Convert.ToBase64String(PngSignature);
 
-        byte[] decoded = SourcesRequestGroup.DecodeImageData(dataUri);
+        byte[] decoded = SourcesGroup.DecodeImageData(dataUri);
 
         CollectionAssert.AreEqual(PngSignature, decoded);
     }
@@ -26,7 +26,7 @@ public sealed class ScreenshotDecodeTests
     [TestMethod]
     public void DecodeImageData_WithBareBase64_StillDecodes()
     {
-        byte[] decoded = SourcesRequestGroup.DecodeImageData(
+        byte[] decoded = SourcesGroup.DecodeImageData(
             Convert.ToBase64String(PngSignature)
         );
 
@@ -35,5 +35,5 @@ public sealed class ScreenshotDecodeTests
 
     [TestMethod]
     public void DecodeImageData_WhenEmpty_Throws() =>
-        Assert.ThrowsExactly<ArgumentException>(() => SourcesRequestGroup.DecodeImageData(""));
+        Assert.ThrowsExactly<ArgumentException>(() => SourcesGroup.DecodeImageData(""));
 }

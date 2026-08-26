@@ -15,23 +15,23 @@ using ObsWebSocket.Core.Protocol.Responses;
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Conveniences for the <c>Record</c> category, alongside its generated requests.
+/// Conveniences for the <c>Stream</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct RecordRequestGroup
+public readonly partial struct StreamGroup
 {
     private static readonly TimeSpan s_defaultOutputTimeout = TimeSpan.FromSeconds(10);
 
         /// <summary>
-        /// Starts or stops recording and waits for OBS to confirm the state change.
+        /// Starts or stops streaming and waits for OBS to confirm the state change.
         /// </summary>
-        /// <param name="activate"><see langword="true"/> to start recording; <see langword="false"/> to stop it.</param>
+        /// <param name="activate"><see langword="true"/> to start streaming; <see langword="false"/> to stop it.</param>
         /// <param name="timeout">Maximum time to wait for the state-change event. Defaults to 10 seconds.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>
         /// The state reported by the event, or <see langword="null"/> if the timeout elapsed first.
         /// </returns>
         /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-        public async Task<OutputState?> SetRecordActiveAndWaitAsync(
+        public async Task<OutputState?> SetStreamActiveAndWaitAsync(
             bool activate,
             TimeSpan? timeout = null,
             CancellationToken cancellationToken = default
@@ -39,8 +39,7 @@ public readonly partial struct RecordRequestGroup
         {
             client.EnsureConnected();
 
-            // Set up the wait before issuing the command to avoid missing the event.
-            Task<RecordStateChangedEventArgs> waitTask = client.WaitForEventAsync<RecordStateChangedEventArgs>(
+            Task<StreamStateChangedEventArgs> waitTask = client.WaitForEventAsync<StreamStateChangedEventArgs>(
                 predicate: _ => true,
                 timeout: timeout ?? s_defaultOutputTimeout,
                 cancellationToken: cancellationToken
@@ -48,16 +47,16 @@ public readonly partial struct RecordRequestGroup
 
             if (activate)
             {
-                await client.Record.StartRecordAsync(cancellationToken).ConfigureAwait(false);
+                await client.Stream.StartStreamAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                _ = await client.Record.StopRecordAsync(cancellationToken).ConfigureAwait(false);
+                await client.Stream.StopStreamAsync(cancellationToken).ConfigureAwait(false);
             }
 
             try
             {
-                RecordStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
+                StreamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
                 return OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
             }
             catch (TimeoutException)
@@ -67,17 +66,17 @@ public readonly partial struct RecordRequestGroup
         }
 
         /// <summary>
-        /// Returns whether recording is currently active.
+        /// Returns whether streaming is currently active.
         /// </summary>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-        public async Task<bool> IsRecordActiveAsync(
+        public async Task<bool> IsStreamActiveAsync(
             CancellationToken cancellationToken = default
         )
         {
             client.EnsureConnected();
-            GetRecordStatusResponseData? status = await client
-                .Record.GetRecordStatusAsync(cancellationToken)
+            GetStreamStatusResponseData? status = await client
+                .Stream.GetStreamStatusAsync(cancellationToken)
                 .ConfigureAwait(false);
             return status?.OutputActive ?? false;
         }

@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Outputs</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct OutputsRequestGroup
+public readonly partial struct OutputsGroup
 {
     /// <summary>
     /// Gets the settings for an output as a strongly-typed object.

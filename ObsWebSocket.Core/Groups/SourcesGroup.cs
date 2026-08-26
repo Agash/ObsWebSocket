@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Sources</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct SourcesRequestGroup
+public readonly partial struct SourcesGroup
 {
     /// <summary>
     /// Checks if an input or scene source with the given name exists in OBS.

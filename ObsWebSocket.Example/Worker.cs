@@ -534,7 +534,7 @@ internal sealed partial class Worker(
                 try
                 {
                     await foreach (
-                        CurrentProgramSceneChangedEventArgs sceneEvent in _obsClient.CurrentProgramSceneChangedStream(
+                        CurrentProgramSceneChangedEventArgs sceneEvent in _obsClient.Scenes.CurrentProgramSceneChangedStream(
                             cancellationToken: watchCts.Token
                         )
                     )
@@ -1279,7 +1279,7 @@ internal sealed partial class Worker(
                     try
                     {
                         await foreach (CurrentProgramSceneChangedEventArgs sceneEvent
-                            in client.CurrentProgramSceneChangedStream(cancellationToken: streamCts.Token)
+                            in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: streamCts.Token)
                             .ConfigureAwait(false))
                         {
                             observed.Add(sceneEvent.EventData.SceneName ?? string.Empty);
@@ -1470,7 +1470,7 @@ internal sealed partial class Worker(
                 cts.CancelAfter(TimeSpan.FromSeconds(10));
 
                 IAsyncEnumerator<SceneItemEnableStateChangedEventArgs> enumerator = client
-                    .SceneItemEnableStateChangedStream(capacity: 2, cancellationToken: cts.Token)
+                    .SceneItems.SceneItemEnableStateChangedStream(capacity: 2, cancellationToken: cts.Token)
                     .GetAsyncEnumerator(cts.Token);
 
                 try

@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Config</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct ConfigRequestGroup
+public readonly partial struct ConfigGroup
 {
     /// <summary>
     /// Gets the current stream service settings as a strongly-typed object. The service type string is discarded.

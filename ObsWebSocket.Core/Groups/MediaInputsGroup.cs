@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>MediaInputs</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct MediaInputsRequestGroup
+public readonly partial struct MediaInputsGroup
 {
         /// <summary>
         /// Triggers a media action on an input using the typed <see cref="MediaInputAction"/> enum

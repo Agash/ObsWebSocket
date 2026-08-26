@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Inputs</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct InputsRequestGroup
+public readonly partial struct InputsGroup
 {
     /// <summary>
     /// Sets the text content of a Text (GDI+, Freetype 2, Pango) source.

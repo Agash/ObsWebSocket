@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// Requests in the <c>canvases</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct CanvasesRequestGroup(ObsWebSocketClient client)
+public readonly partial struct CanvasesGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of canvases in OBS.
@@ -43,7 +43,7 @@ public readonly partial struct CanvasesRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>config</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct ConfigRequestGroup(ObsWebSocketClient client)
+public readonly partial struct ConfigGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the value of a &quot;slot&quot; from the selected persistent data realm.
@@ -379,7 +379,7 @@ public readonly partial struct ConfigRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>filters</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct FiltersRequestGroup(ObsWebSocketClient client)
+public readonly partial struct FiltersGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of all available source filter kinds.
@@ -578,7 +578,7 @@ public readonly partial struct FiltersRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>general</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct GeneralRequestGroup(ObsWebSocketClient client)
+public readonly partial struct GeneralGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets data about the current plugin and RPC version.
@@ -744,7 +744,7 @@ public readonly partial struct GeneralRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>inputs</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct InputsRequestGroup(ObsWebSocketClient client)
+public readonly partial struct InputsGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of all inputs in OBS.
@@ -1328,7 +1328,7 @@ public readonly partial struct InputsRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>media inputs</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct MediaInputsRequestGroup(ObsWebSocketClient client)
+public readonly partial struct MediaInputsGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the status of a media input.
@@ -1427,7 +1427,7 @@ public readonly partial struct MediaInputsRequestGroup(ObsWebSocketClient client
 /// Requests in the <c>outputs</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct OutputsRequestGroup(ObsWebSocketClient client)
+public readonly partial struct OutputsGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the status of the virtualcam output.
@@ -1747,7 +1747,7 @@ public readonly partial struct OutputsRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>record</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct RecordRequestGroup(ObsWebSocketClient client)
+public readonly partial struct RecordGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the status of the record output.
@@ -1920,7 +1920,7 @@ public readonly partial struct RecordRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>scene items</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct SceneItemsRequestGroup(ObsWebSocketClient client)
+public readonly partial struct SceneItemsGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets a list of all scene items in a scene.
@@ -2295,7 +2295,7 @@ public readonly partial struct SceneItemsRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>scenes</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct ScenesRequestGroup(ObsWebSocketClient client)
+public readonly partial struct ScenesGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of scenes in OBS.
@@ -2523,7 +2523,7 @@ public readonly partial struct ScenesRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>sources</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct SourcesRequestGroup(ObsWebSocketClient client)
+public readonly partial struct SourcesGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the active and show state of a source.
@@ -2600,7 +2600,7 @@ public readonly partial struct SourcesRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>stream</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct StreamRequestGroup(ObsWebSocketClient client)
+public readonly partial struct StreamGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets the status of the stream output.
@@ -2699,7 +2699,7 @@ public readonly partial struct StreamRequestGroup(ObsWebSocketClient client)
 /// Requests in the <c>transitions</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct TransitionsRequestGroup(ObsWebSocketClient client)
+public readonly partial struct TransitionsGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets an array of all available transition kinds.
@@ -2881,7 +2881,7 @@ public readonly partial struct TransitionsRequestGroup(ObsWebSocketClient client
 /// Requests in the <c>ui</c> category.
 /// </summary>
 /// <param name="client">The client these requests are sent on.</param>
-public readonly partial struct UiRequestGroup(ObsWebSocketClient client)
+public readonly partial struct UiGroup(ObsWebSocketClient client)
 {
     /// <summary>
     /// Gets whether studio is enabled.
@@ -3055,7 +3055,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>canvases</c> category.
         /// </summary>
-        public CanvasesRequestGroup Canvases => new(client);
+        public CanvasesGroup Canvases => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3063,7 +3063,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>config</c> category.
         /// </summary>
-        public ConfigRequestGroup Config => new(client);
+        public ConfigGroup Config => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3071,7 +3071,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>filters</c> category.
         /// </summary>
-        public FiltersRequestGroup Filters => new(client);
+        public FiltersGroup Filters => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3079,7 +3079,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>general</c> category.
         /// </summary>
-        public GeneralRequestGroup General => new(client);
+        public GeneralGroup General => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3087,7 +3087,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>inputs</c> category.
         /// </summary>
-        public InputsRequestGroup Inputs => new(client);
+        public InputsGroup Inputs => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3095,7 +3095,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>media inputs</c> category.
         /// </summary>
-        public MediaInputsRequestGroup MediaInputs => new(client);
+        public MediaInputsGroup MediaInputs => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3103,7 +3103,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>outputs</c> category.
         /// </summary>
-        public OutputsRequestGroup Outputs => new(client);
+        public OutputsGroup Outputs => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3111,7 +3111,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>record</c> category.
         /// </summary>
-        public RecordRequestGroup Record => new(client);
+        public RecordGroup Record => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3119,7 +3119,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>scene items</c> category.
         /// </summary>
-        public SceneItemsRequestGroup SceneItems => new(client);
+        public SceneItemsGroup SceneItems => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3127,7 +3127,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>scenes</c> category.
         /// </summary>
-        public ScenesRequestGroup Scenes => new(client);
+        public ScenesGroup Scenes => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3135,7 +3135,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>sources</c> category.
         /// </summary>
-        public SourcesRequestGroup Sources => new(client);
+        public SourcesGroup Sources => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3143,7 +3143,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>stream</c> category.
         /// </summary>
-        public StreamRequestGroup Stream => new(client);
+        public StreamGroup Stream => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3151,7 +3151,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>transitions</c> category.
         /// </summary>
-        public TransitionsRequestGroup Transitions => new(client);
+        public TransitionsGroup Transitions => new(client);
     }
 
     extension(ObsWebSocketClient client)
@@ -3159,7 +3159,7 @@ public static class ObsWebSocketClientExtensions
         /// <summary>
         /// Requests in the <c>ui</c> category.
         /// </summary>
-        public UiRequestGroup Ui => new(client);
+        public UiGroup Ui => new(client);
     }
 
 }

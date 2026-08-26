@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Scenes</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct ScenesRequestGroup
+public readonly partial struct ScenesGroup
 {
     /// <summary>
     /// Switches the active Program or Preview scene, optionally setting a specific transition and duration beforehand.

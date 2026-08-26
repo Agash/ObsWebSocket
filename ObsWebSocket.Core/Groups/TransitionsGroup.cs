@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Transitions</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct TransitionsRequestGroup
+public readonly partial struct TransitionsGroup
 {
     /// <summary>
     /// Gets the settings for the current scene transition as a strongly-typed object.

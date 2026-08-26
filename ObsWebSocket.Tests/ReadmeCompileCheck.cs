@@ -127,7 +127,7 @@ internal static class ReadmeCompileCheck
 
     internal static async Task EventStreamsAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await foreach (var e in client.CurrentProgramSceneChangedStream(cancellationToken: ct))
+        await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct))
         {
             _ = e.EventData.SceneName;
             break;

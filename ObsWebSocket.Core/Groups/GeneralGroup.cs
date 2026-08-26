@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>General</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct GeneralRequestGroup
+public readonly partial struct GeneralGroup
 {
     /// <summary>
     /// Triggers an OBS hotkey by its canonical name (e.g., "OBSWebSocket.StartStream").
