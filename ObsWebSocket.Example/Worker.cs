@@ -3015,6 +3015,141 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Handles address by name and by uuid",
+                        async () =>
+                        {
+                            // The point of a uuid handle is that it survives a rename. Both forms
+                            // have to reach the same scene for that to be worth anything.
+                            SceneHandle byName = sceneName;
+                            SceneHandle byUuid = await client
+                                .Scenes.ResolveAsync(byName, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            GetSceneItemListResponseData viaName = await client
+                                .Scene(byName)
+                                .GetSceneItemListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneItemListResponseData viaUuid = await client
+                                .Scene(byUuid)
+                                .GetSceneItemListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            string renamed = sceneName + "_renamed";
+                            await client
+                                .Scene(byUuid)
+                                .SetSceneNameAsync(renamed, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            bool uuidStillWorks;
+                            try
+                            {
+                                _ = await client
+                                    .Scene(byUuid)
+                                    .GetSceneItemListAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+                                uuidStillWorks = true;
+                            }
+                            catch (ObsWebSocketRequestException)
+                            {
+                                uuidStillWorks = false;
+                            }
+
+                            bool nameNowMisses;
+                            try
+                            {
+                                _ = await client
+                                    .Scene(byName)
+                                    .GetSceneItemListAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+                                nameNowMisses = false;
+                            }
+                            catch (ObsWebSocketRequestException)
+                            {
+                                nameNowMisses = true;
+                            }
+
+                            await client
+                                .Scene(byUuid)
+                                .SetSceneNameAsync(sceneName, CancellationToken.None)
+                                .ConfigureAwait(false);
+
+                            return (
+                                byUuid.IsResolved
+                                    && viaName.SceneItems.Count == viaUuid.SceneItems.Count
+                                    && uuidStillWorks
+                                    && nameNowMisses,
+                                $"resolved to {byUuid.Uuid}, both read {viaUuid.SceneItems.Count} "
+                                    + $"item(s); after a rename the uuid still resolves "
+                                    + $"({uuidStillWorks}) and the name does not ({nameNowMisses})"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "A miss says what does exist",
+                        async () =>
+                        {
+                            // OBS answers ResourceNotFound and the name you already gave it. The
+                            // list is in hand from the lookup, so the client can do better.
+                            ObsWebSocketResourceNotFoundException ex =
+                                await ExpectThrowAsync<ObsWebSocketResourceNotFoundException>(() =>
+                                        client
+                                            .Scenes.ResolveAsync(
+                                                "__obsws_no_such_scene",
+                                                cancellationToken
+                                            )
+                                            .AsTask()
+                                    )
+                                    .ConfigureAwait(false);
+
+                            return (
+                                ex.Available.Count > 0
+                                    && ex.Message.Contains(
+                                        "__obsws_no_such_scene",
+                                        StringComparison.Ordinal
+                                    )
+                                    && ex.Available.Contains(sceneName, StringComparer.Ordinal),
+                                $"named {ex.Available.Count} scene(s), including the one the run made"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "A scene item resolves by source name",
+                        async () =>
+                        {
+                            // The one lookup that is not a convenience: OBS addresses scene items
+                            // by a number nothing else reports.
+                            SceneItemHandle item = await client
+                                .SceneItems.ResolveAsync(
+                                    SceneHandle.FromName(sceneName).Item(inputName),
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetSceneItemEnabledResponseData enabled = await client
+                                .SceneItem(item)
+                                .GetSceneItemEnabledAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (
+                                item.SceneItemId >= 0,
+                                $"'{inputName}' is item {item.SceneItemId}, enabled "
+                                    + $"{enabled.SceneItemEnabled}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Canvases category",
                         async () =>
                         {
@@ -5662,6 +5797,26 @@ internal sealed partial class Worker(
                     : string.Join(" | ", unsendable.Take(3))
             ),
         ];
+    }
+
+    /// <summary>
+    /// Runs an action expected to throw, and hands back the exception it threw.
+    /// </summary>
+    private static async Task<TException> ExpectThrowAsync<TException>(Func<Task> action)
+        where TException : Exception
+    {
+        try
+        {
+            await action().ConfigureAwait(false);
+        }
+        catch (TException expected)
+        {
+            return expected;
+        }
+
+        throw new InvalidOperationException(
+            $"Expected {typeof(TException).Name}, but the call succeeded."
+        );
     }
 
     private static void RenderKeyValueTable(
