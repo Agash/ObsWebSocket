@@ -354,9 +354,20 @@ foreach (RequestResponsePayload<object> row in results.Raw)
 }
 ```
 
-That is usable when the batch is homogeneous and the order does not matter, when the payload
-identifies itself, or when you only need the values in aggregate. It is not usable when you need to
-know which request an answer came from.
+That works when every request in the batch returns the **same** type, so it does not matter which
+row is which, and when the order is not what you needed.
+
+A parallel batch of **different** request types is a different matter, and the transport decides
+whether it is merely awkward or actively unsafe:
+
+- On JSON, a payload read as the wrong record throws `ObsWebSocketSerializationException`, so you
+  can try each type you expect and let the mismatch tell you. Ugly, but sound.
+- On MessagePack it is **not detectable**. The format maps by key name, so reading a payload as the
+  wrong record quietly leaves every unmatched property at its default and returns an object. A
+  reading of `cpu=0.00, memory=0.0` is indistinguishable from a genuine one.
+
+So do not mix request types in a parallel batch and expect to sort the results out afterwards. Use a
+serial batch, or concurrent requests.
 
 Anything that does not depend on which row is which stays exact:
 
