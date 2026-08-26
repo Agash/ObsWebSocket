@@ -286,12 +286,25 @@ internal static class ReadmeCompileCheck
             await client.SceneItems.GetSceneItemListAsync(new("Missing"), ct);
         }
         catch (ObsWebSocketRequestException ex)
-            when (ex.StatusCode
-                is ObsWebSocket.Core.Protocol.Generated.RequestStatusCode.ResourceNotFound
-            )
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             // The scene, input or filter does not exist.
         }
+    }
+
+    internal static async Task NumbersAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        int id =
+            await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct)
+            ?? throw new InvalidOperationException();
+        await client.SceneItems.SetSceneItemIndexAsync(
+            new(sceneItemId: id, sceneItemIndex: 0, sceneName: "Intro"),
+            ct
+        );
+
+        long bytes = (await client.Stream.GetStreamStatusAsync(ct)).OutputBytes;
+        double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputVolumeMul;
+        _ = $"{bytes} {volume}";
     }
 
     internal static void HostIntegration(

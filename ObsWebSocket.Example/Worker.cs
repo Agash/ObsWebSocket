@@ -593,14 +593,16 @@ internal sealed partial class Worker(
                 // Add remains for anything the generated methods do not cover.
                 _ = exampleBatch.Add("GetStats");
 
-                List<RequestResponsePayload<object>> batchResults = (
-                    await _obsClient.CallBatchAsync(
+                // BatchResults is itself the list of results, so there is no reason to drop to
+                // Raw here; keeping it means the typed references stay usable further down.
+                BatchResults batchResults = await _obsClient
+                    .CallBatchAsync(
                         exampleBatch,
                         executionType: RequestBatchExecutionType.SerialRealtime,
                         haltOnFailure: false, // Continue even if one fails
                         cancellationToken: cancellationToken
                     )
-                ).Raw.ToList();
+                    .ConfigureAwait(false);
 
                 Table batchTable = new()
                 {
@@ -956,6 +958,8 @@ internal sealed partial class Worker(
                 );
             }
 
+            // The low level path, on purpose: the raw overload takes request items rather than the
+            // typed builder, and still works for anyone who needs to hand roll a batch.
             List<RequestResponsePayload<object>> batch = await cycleClient
                 .CallBatchAsync(
                     [new("GetVersion", null), new("GetSceneList", null)],

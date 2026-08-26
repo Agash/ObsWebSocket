@@ -281,6 +281,23 @@ await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Res
 The wire constants remain available as `const` strings on `ObsOutputState` and `ObsMediaInputAction`,
 and `ToWireValue()` converts an enum back.
 
+## Numbers
+
+The protocol has a single `Number` type because JSON does, so a scene item id and a volume
+multiplier look identical in the definition. Fields that hold whole numbers are generated as `int`
+or `long` rather than `double`:
+
+```csharp
+int id = await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct) ?? throw new(...);
+await client.SceneItems.SetSceneItemIndexAsync(new(sceneItemId: id, sceneItemIndex: 0, sceneName: "Intro"), ct);
+
+long bytes = (await client.Stream.GetStreamStatusAsync(ct)).OutputBytes;
+double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputVolumeMul;
+```
+
+Which fields those are is an explicit list in the generator, not a rule over field names, so a
+volume can never be silently truncated by a naming coincidence.
+
 ## Host integration
 
 ```csharp
@@ -316,13 +333,20 @@ startup with the offending option named, rather than on the first connection att
 Register clients by name and resolve them with `[FromKeyedServices]`:
 
 ```csharp
-builder.Services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"));
-builder.Services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"));
+builder.Services.AddObsWebSocketClient("main", o => o.ServerUri = new Uri("ws://localhost:4455"))
+       .WithAutoConnect()
+       .WithHealthCheck();
+
+builder.Services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"))
+       .WithAutoConnect();
 
 public sealed class Worker(
     [FromKeyedServices("main")] ObsWebSocketClient main,
     [FromKeyedServices("booth")] ObsWebSocketClient booth);
 ```
+
+Each client gets its own options instance, its own connection service and a health check named after
+its key, so the two do not collide.
 
 ## Errors
 
@@ -343,11 +367,13 @@ catch (ObsWebSocketTimeoutException)
 }
 ```
 
-`StatusCode` reports the same status as the protocol's `RequestStatus` enum, so a filter can name
-the reason instead of a number:
+`StatusCode` reports the status as the `RequestStatusCode` enum, so a filter can name the reason
+instead of a number:
 
 ```csharp
-catch (ObsWebSocketRequestException ex) when (ex.StatusCode is RequestStatus.ResourceNotFound)
+using ObsWebSocket.Core.Protocol.Generated;
+
+catch (ObsWebSocketRequestException ex) when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
 {
     // The scene, input or filter does not exist.
 }
