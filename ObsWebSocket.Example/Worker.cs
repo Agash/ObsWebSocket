@@ -1591,6 +1591,149 @@ internal sealed partial class Worker(
                 );
             }).ConfigureAwait(false));
 
+            results.Add(await TrySettingsCheckAsync("SetInputVolumeMulAsync", async () =>
+            {
+                GetInputVolumeResponseData? before = await client
+                    .Inputs.GetInputVolumeAsync(new GetInputVolumeRequestData(inputName: inputName), cancellationToken)
+                    .ConfigureAwait(false);
+                double original = before!.InputVolumeMul;
+
+                await client.Inputs.SetInputVolumeMulAsync(inputName, 0.5, cancellationToken).ConfigureAwait(false);
+                GetInputVolumeResponseData? after = await client
+                    .Inputs.GetInputVolumeAsync(new GetInputVolumeRequestData(inputName: inputName), cancellationToken)
+                    .ConfigureAwait(false);
+                double mul = after!.InputVolumeMul;
+
+                await client.Inputs.SetInputVolumeMulAsync(inputName, original, cancellationToken).ConfigureAwait(false);
+                return (Math.Abs(mul - 0.5) < 0.01, $"mul={mul:0.###}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("SwitchProgramSceneAsync", async () =>
+            {
+                await client.Scenes.SwitchProgramSceneAsync(sceneName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                GetSceneListResponseData? mid = await client
+                    .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+                    .ConfigureAwait(false);
+                bool switched = string.Equals(mid?.CurrentProgramSceneName, sceneName, StringComparison.Ordinal);
+
+                await client.Scenes.SwitchProgramSceneAsync(originalScene, cancellationToken: cancellationToken).ConfigureAwait(false);
+                GetSceneListResponseData? restored = await client
+                    .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+                    .ConfigureAwait(false);
+
+                return (
+                    switched && string.Equals(restored?.CurrentProgramSceneName, originalScene, StringComparison.Ordinal),
+                    $"switched={switched}, restored to '{restored?.CurrentProgramSceneName}'"
+                );
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("FindSceneItemIdInt32Async", async () =>
+            {
+                int? id = await client
+                    .SceneItems.FindSceneItemIdInt32Async(sceneName, inputName, cancellationToken)
+                    .ConfigureAwait(false);
+                int? miss = await client
+                    .SceneItems.FindSceneItemIdInt32Async(sceneName, "__absent__", cancellationToken)
+                    .ConfigureAwait(false);
+
+                return (id is not null && miss is null, $"id={id}, miss={(miss is null ? "null" : "unexpected")}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Screenshot helpers", async () =>
+            {
+                byte[]? bytes = await client
+                    .Sources.GetSourceScreenshotBytesAsync(sceneName, "png", cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                string path = Path.Combine(Path.GetTempPath(), $"obsws_{Guid.NewGuid():N}.png");
+                try
+                {
+                    await client
+                        .Sources.SaveSourceScreenshotToFileAsync(sceneName, path, "png", cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    // A PNG starts with the eight byte signature, so this checks real image data
+                    // rather than merely that the call returned.
+                    byte[] written = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+                    bool pngOnDisk =
+                        written.Length > 8
+                        && written[0] == 0x89 && written[1] == 0x50 && written[2] == 0x4E && written[3] == 0x47;
+                    bool pngInMemory =
+                        bytes is { Length: > 8 }
+                        && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
+
+                    return (pngInMemory && pngOnDisk, $"{bytes?.Length ?? 0} bytes in memory, {written.Length} on disk");
+                }
+                finally
+                {
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
+                }
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Ensure profile and scene collection", async () =>
+            {
+                // Asking for the one already active proves the check without disrupting OBS,
+                // since switching either of these reloads the whole configuration.
+                GetProfileListResponseData? profiles = await client
+                    .Config.GetProfileListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                GetSceneCollectionListResponseData? collections = await client
+                    .Config.GetSceneCollectionListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                bool profileOk = await client
+                    .Config.EnsureProfileActiveAsync(profiles!.CurrentProfileName!, cancellationToken)
+                    .ConfigureAwait(false);
+                bool collectionOk = await client
+                    .Config.EnsureSceneCollectionActiveAsync(collections!.CurrentSceneCollectionName!, cancellationToken)
+                    .ConfigureAwait(false);
+                bool absent = await client
+                    .Config.EnsureProfileActiveAsync("__no_such_profile__", cancellationToken)
+                    .ConfigureAwait(false);
+
+                return (
+                    profileOk && collectionOk && !absent,
+                    $"profile={profiles.CurrentProfileName}, collection={collections.CurrentSceneCollectionName}, absent reported {absent}"
+                );
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Media transport shorthands", async () =>
+            {
+                await client.MediaInputs.PlayMediaAsync(inputName, cancellationToken).ConfigureAwait(false);
+                await client.MediaInputs.PauseMediaAsync(inputName, cancellationToken).ConfigureAwait(false);
+                await client.MediaInputs.RestartMediaAsync(inputName, cancellationToken).ConfigureAwait(false);
+                await client.MediaInputs.StopMediaAsync(inputName, cancellationToken).ConfigureAwait(false);
+
+                GetMediaInputStatusResponseData? status = await client
+                    .MediaInputs.GetMediaInputStatusAsync(
+                        new GetMediaInputStatusRequestData(inputName: inputName), cancellationToken)
+                    .ConfigureAwait(false);
+
+                return (status is not null, $"state={status?.MediaState}");
+            }).ConfigureAwait(false));
+
+            results.Add(await TrySettingsCheckAsync("Typed exception on a rejected request", async () =>
+            {
+                try
+                {
+                    _ = await client
+                        .SceneItems.GetSceneItemListAsync(
+                            new GetSceneItemListRequestData(sceneName: "__no_such_scene__"), cancellationToken)
+                        .ConfigureAwait(false);
+                    return (false, "no exception");
+                }
+                catch (ObsWebSocketRequestException ex)
+                {
+                    return (
+                        ex.Status?.Code == 600 && ex.RequestType == "GetSceneItemList",
+                        $"{ex.RequestType} code {ex.Status?.Code}"
+                    );
+                }
+            }).ConfigureAwait(false));
+
             results.Add(await TrySettingsCheckAsync("Output state helpers", async () =>
             {
                 bool recording = await client.Record.IsRecordActiveAsync(cancellationToken).ConfigureAwait(false);
