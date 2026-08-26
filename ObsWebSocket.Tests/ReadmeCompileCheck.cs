@@ -323,6 +323,83 @@ internal static class ReadmeCompileCheck
         _ = $"{wire} {raw}";
     }
 
+    internal static async Task ParallelRecoveryAsync(
+        ObsWebSocketClient client,
+        ObsBatchBuilder batch,
+        CancellationToken ct
+    )
+    {
+        BatchResults results = await client.CallBatchAsync(
+            batch,
+            executionType: RequestBatchExecutionType.Parallel,
+            haltOnFailure: false,
+            cancellationToken: ct
+        );
+
+        foreach (RequestResponsePayload<object> row in results.Raw)
+        {
+            if (!row.RequestStatus.Result)
+            {
+                _ = $"one request failed with {row.RequestStatus.Code}";
+                continue;
+            }
+
+            GetSceneItemListResponseData? data = row.GetData<GetSceneItemListResponseData>();
+            _ = data?.SceneItems?.Count;
+        }
+
+        _ = results.AllSucceeded();
+        _ = results.GetFailures().Count();
+    }
+
+    internal static async Task ConcurrentRequestsAsync(
+        ObsWebSocketClient client,
+        string[] sceneNames,
+        CancellationToken ct
+    )
+    {
+        Task<GetVersionResponseData> version = client.General.GetVersionAsync(ct);
+        Task<GetStatsResponseData> stats = client.General.GetStatsAsync(ct);
+        Task<GetSceneItemListResponseData>[] perScene =
+        [
+            .. sceneNames.Select(n =>
+                client.SceneItems.GetSceneItemListAsync(new(sceneName: n), ct)
+            ),
+        ];
+
+        await Task.WhenAll([version, stats, .. perScene.Cast<Task>()]);
+        _ = version.Result.ObsVersion;
+    }
+
+    internal static async Task LowLevelAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>(
+            "GetVersion",
+            null,
+            cancellationToken: ct
+        );
+
+        System.Text.Json.JsonElement? raw =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                new { someField = 1 },
+                cancellationToken: ct
+            );
+
+        List<RequestResponsePayload<object>> results = await client.CallBatchAsync(
+            [new BatchRequestItem("GetVersion", null), new BatchRequestItem("GetStats", null)],
+            executionType: RequestBatchExecutionType.SerialRealtime,
+            cancellationToken: ct
+        );
+
+        foreach (RequestResponsePayload<object> result in results)
+        {
+            _ = result.GetData<GetVersionResponseData>();
+        }
+
+        _ = $"{v?.ObsVersion} {raw}";
+    }
+
     internal static void HostIntegration(
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )

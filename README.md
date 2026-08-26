@@ -321,11 +321,111 @@ batch.Add("GetStats");
 batch.Add("SetInputSettings", myJsonElement);
 ```
 
-> `RequestBatchExecutionType.Parallel` is best avoided when you care about the results. OBS collects
-> them in completion order but labels them from the submission order, so every result carries
-> another request's `responseData` and `requestStatus`. That happens before the response leaves OBS,
-> so it cannot be corrected here; references refuse to resolve on such a batch and say why. See
-> [#16](https://github.com/Agash/ObsWebSocket/issues/16).
+### Running requests in parallel
+
+`RequestBatchExecutionType.Parallel` works, but OBS mislabels what comes back. It collects results
+in completion order and labels them from the submission order, so on any one row the
+`requestType` and `requestId` belong to a different request than the `requestStatus` and
+`responseData` beside them. That happens before the response leaves OBS, so it cannot be corrected
+here. See [#16](https://github.com/Agash/ObsWebSocket/issues/16).
+
+Only the labelling is wrong. `requestStatus` and `responseData` come from the same object, so each
+row's status does belong to the payload beside it; it is the `requestType` and `requestId` on that
+row that name a different request. `Get` and the indexer therefore throw rather than hand back data
+under the wrong reference, and `TryGet` reports `false`.
+
+Nothing is lost, though, and `Raw` still reaches all of it. `GetData<T>` reads the payload without
+consulting the label, so every response is recoverable as a set:
+
+```csharp
+BatchResults results = await client.CallBatchAsync(
+    batch, executionType: RequestBatchExecutionType.Parallel, haltOnFailure: false, cancellationToken: ct);
+
+foreach (RequestResponsePayload<object> row in results.Raw)
+{
+    if (!row.RequestStatus.Result)
+    {
+        Console.WriteLine($"one request failed with {row.RequestStatus.Code}");
+        continue;   // the code is right, the requestType naming it is not
+    }
+
+    // Correct data, from one of the requests in the batch. Which one is not knowable.
+    GetSceneItemListResponseData? data = row.GetData<GetSceneItemListResponseData>();
+}
+```
+
+That is usable when the batch is homogeneous and the order does not matter, when the payload
+identifies itself, or when you only need the values in aggregate. It is not usable when you need to
+know which request an answer came from.
+
+Anything that does not depend on which row is which stays exact:
+
+```csharp
+ObsBatchBuilder batch = new();
+foreach (string input in inputs)
+{
+    _ = batch.Inputs.SetInputMute(new(inputName: input, inputMuted: true));
+}
+
+BatchResults results = await client.CallBatchAsync(
+    batch, executionType: RequestBatchExecutionType.Parallel, cancellationToken: ct);
+
+bool everythingWorked = results.AllSucceeded();   // reliable: order does not change the verdict
+int failureCount = results.GetFailures().Count(); // reliable count, unreliable names
+```
+
+So `Parallel` suits a set of writes you want applied as fast as possible, where you only need to
+know whether they all took. It does not suit reading anything back.
+
+When you need results attributed, use concurrent requests rather than a parallel batch. The client
+multiplexes on the request id, so anything in flight at once is matched back to its own caller:
+
+```csharp
+Task<GetVersionResponseData> version = client.General.GetVersionAsync(ct);
+Task<GetStatsResponseData> stats = client.General.GetStatsAsync(ct);
+Task<GetSceneItemListResponseData>[] perScene =
+[
+    .. sceneNames.Select(n => client.SceneItems.GetSceneItemListAsync(new(sceneName: n), ct)),
+];
+
+await Task.WhenAll([version, stats, .. perScene.Cast<Task>()]);
+
+Console.WriteLine(version.Result.ObsVersion);   // each result belongs to its own request
+```
+
+That costs one round trip per request rather than one for the set. Use a serial batch when the round
+trip is what you are saving, and concurrent requests when you need the answers attributed.
+
+## Dropping to the low level
+
+Nothing above is a wall. Every generated request is a thin wrapper over the same primitives, and
+they stay available for a request this build does not model, an OBS newer than this library, or a
+vendor plugin:
+
+```csharp
+// A request with a reference type response.
+GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>("GetVersion", null, cancellationToken: ct);
+
+// A value type response, JsonElement included. CallAsync is constrained to classes, so a struct
+// response goes through CallAsyncValue.
+JsonElement? raw = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", new { someField = 1 }, cancellationToken: ct);
+
+// A batch assembled by hand, without the typed builder.
+List<RequestResponsePayload<object>> results = await client.CallBatchAsync(
+    [new BatchRequestItem("GetVersion", null), new BatchRequestItem("GetStats", null)],
+    executionType: RequestBatchExecutionType.SerialRealtime,
+    cancellationToken: ct);
+
+foreach (RequestResponsePayload<object> result in results)
+{
+    GetVersionResponseData? data = result.GetData<GetVersionResponseData>();
+}
+```
+
+The same applies to events and enums: `client.SceneCreated` remains alongside
+`client.Scenes.SceneCreated`, and `ToWireValue()` / `FromWireValue()` convert an enum to and from
+the protocol string when you are building a payload by hand.
 
 ## Protocol types
 
@@ -373,17 +473,9 @@ This covers the enums the protocol declares. `mediaState`, `monitorType`, `scene
 their values, so they stay strings rather than being given an enum this library would have to keep
 correct by hand.
 
-**Dropping to the wire.** Nothing above is a wall. `ToWireValue()` and `FromWireValue()` convert
-either way, the wire values remain as `const` strings, and `CallAsync` sends a request the generated
-surface does not model at all:
-
-```csharp
-string wire = MediaInputAction.Restart.ToWireValue();   // OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART
-
-// CallAsync for a reference type response, CallAsyncValue for a value type such as JsonElement.
-JsonElement? raw = await client.CallAsyncValue<JsonElement>(
-    "SomeNewRequest", new { someField = 1 }, cancellationToken: ct);
-```
+The wire values also remain as `const` strings on `ObsOutputState` and `ObsMediaInputAction`, and
+`ToWireValue()` converts an enum back, for payloads built by hand. See
+[Dropping to the low level](#dropping-to-the-low-level).
 
 ## Host integration
 

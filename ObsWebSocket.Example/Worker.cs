@@ -2574,6 +2574,174 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Parallel batch, verdict without attribution",
+                        async () =>
+                        {
+                            // A parallel batch of writes is the case Parallel is actually good
+                            // for: OBS mispairs the rows, but a verdict over all of them does not
+                            // depend on which row is which.
+                            ObsBatchBuilder par = new();
+                            _ = par.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: true)
+                            );
+                            _ = par.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: false)
+                            );
+
+                            BatchResults ok = await client
+                                .CallBatchAsync(
+                                    par,
+                                    executionType: RequestBatchExecutionType.Parallel,
+                                    haltOnFailure: false,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // Same again with one request that cannot succeed, so the count of
+                            // failures is checked as well as the all-succeeded verdict.
+                            ObsBatchBuilder mixed = new();
+                            _ = mixed.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: false)
+                            );
+                            _ = mixed.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(
+                                    inputName: "__absent__",
+                                    inputMuted: true
+                                )
+                            );
+
+                            BatchResults partial = await client
+                                .CallBatchAsync(
+                                    mixed,
+                                    executionType: RequestBatchExecutionType.Parallel,
+                                    haltOnFailure: false,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            int failures = partial.GetFailures().Count();
+
+                            return (
+                                ok.AllSucceeded() && !partial.AllSucceeded() && failures == 1,
+                                $"all-ok verdict {ok.AllSucceeded()}, mixed verdict "
+                                    + $"{partial.AllSucceeded()} with {failures} failure(s)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Concurrent requests keep their own results",
+                        async () =>
+                        {
+                            // The answer to "how do I run things in parallel" once a parallel
+                            // batch is ruled out for reads. The client multiplexes on request id.
+                            Task<GetVersionResponseData> version = client.General.GetVersionAsync(
+                                cancellationToken
+                            );
+                            Task<GetVideoSettingsResponseData> video =
+                                client.Config.GetVideoSettingsAsync(cancellationToken);
+                            Task<GetSceneItemListResponseData> itemsHere =
+                                client.SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: sceneName),
+                                    cancellationToken
+                                );
+                            Task<GetSceneItemListResponseData> itemsThere =
+                                client.SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: originalScene),
+                                    cancellationToken
+                                );
+
+                            await Task.WhenAll(version, video, itemsHere, itemsThere)
+                                .ConfigureAwait(false);
+
+                            // Each answer has to match what the same request returns on its own.
+                            GetVersionResponseData serialVersion = await client
+                                .General.GetVersionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneItemListResponseData serialHere = await client
+                                .SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: sceneName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                string.Equals(
+                                    version.Result.ObsVersion,
+                                    serialVersion.ObsVersion,
+                                    StringComparison.Ordinal
+                                )
+                                && video.Result.FpsNumerator > 0
+                                && itemsHere.Result.SceneItems?.Count
+                                    == serialHere.SceneItems?.Count;
+
+                            return (
+                                ok,
+                                $"v={version.Result.ObsVersion}, fps={video.Result.FpsNumerator}, "
+                                    + $"items {itemsHere.Result.SceneItems?.Count} here vs "
+                                    + $"{itemsThere.Result.SceneItems?.Count} there"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Low level Add and raw results",
+                        async () =>
+                        {
+                            // Hand rolled batch: Add covers anything the generated methods do not,
+                            // and the raw payload helpers read it back.
+                            ObsBatchBuilder raw = new();
+                            _ = raw.Add("GetVersion");
+                            _ = raw.Add("GetStats");
+
+                            BatchResults rawResults = await client
+                                .CallBatchAsync(
+                                    raw,
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetVersionResponseData? v = rawResults
+                                .Raw[0]
+                                .GetData<GetVersionResponseData>();
+
+                            // And the same request without any batch at all.
+                            GetVersionResponseData? direct = await client
+                                .CallAsync<GetVersionResponseData>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                rawResults.Count == 2
+                                && v is not null
+                                && direct is not null
+                                && string.Equals(
+                                    v.ObsVersion,
+                                    direct.ObsVersion,
+                                    StringComparison.Ordinal
+                                );
+
+                            return (
+                                ok,
+                                $"raw batch {rawResults.Count}, CallAsync {direct?.ObsVersion}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Typed exception on a rejected request",
                         async () =>
                         {
