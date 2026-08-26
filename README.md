@@ -426,11 +426,20 @@ GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>("GetV
 // response goes through CallAsyncValue.
 JsonElement? raw = await client.CallAsyncValue<JsonElement>("GetStats", null, cancellationToken: ct);
 
-// Request data must be a JsonElement or a type the library's serializer context knows, because
-// the payload is written through a source generated context. An anonymous object has no metadata
-// there and throws ObsWebSocketSerializationException at runtime.
-using JsonDocument body = JsonDocument.Parse("""{"someField":1}""");
+// Request data is written through a source generated context, so it must be a JsonElement, a type
+// the library knows, or a type you supply metadata for. An anonymous object has no metadata
+// anywhere and throws ObsWebSocketSerializationException.
+
+// Your own type, with your own context. AOT safe, and nothing to hand build.
+[JsonSerializable(typeof(MyRequest))]
+internal sealed partial class MyContext : JsonSerializerContext;
+
 JsonElement? answer = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", new MyRequest(1), MyContext.Default.MyRequest, cancellationToken: ct);
+
+// Or a JsonElement built by hand, when a one-off payload does not deserve a type.
+using JsonDocument body = JsonDocument.Parse("""{"someField":1}""");
+JsonElement? viaElement = await client.CallAsyncValue<JsonElement>(
     "SomeNewRequest", body.RootElement, cancellationToken: ct);
 
 // A batch assembled by hand, without the typed builder.
@@ -444,6 +453,10 @@ foreach (RequestResponsePayload<object> result in results)
     GetVersionResponseData? data = result.GetData<GetVersionResponseData>();
 }
 ```
+
+Those two are the AOT-safe ways to build a payload. `JsonSerializer.SerializeToElement` without a
+`JsonTypeInfo`, and the `JsonNode` and `JsonObject` routes, all work at runtime but carry `IL2026`
+and `IL3050`, so they are not options under Native AOT.
 
 The same applies to events and enums: `client.SceneCreated` remains alongside
 `client.Scenes.SceneCreated`, and `ToWireValue()` / `FromWireValue()` convert an enum to and from

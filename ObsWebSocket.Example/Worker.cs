@@ -3022,6 +3022,20 @@ internal sealed partial class Worker(
                                 .GetData<GetVersionResponseData>()
                                 ?.ObsVersion;
 
+                            // 7. A consumer's own JsonSerializerContext, so a type this library
+                            // has never heard of is sent without hand building a JsonElement.
+                            JsonElement? viaConsumerContext = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetSceneItemList",
+                                    new ConsumerSceneRequest(sceneName),
+                                    ExampleRequestContext.Default.ConsumerSceneRequest,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            int itemsViaContext =
+                                viaConsumerContext?.GetProperty("sceneItems").GetArrayLength()
+                                ?? -1;
+
                             // And the one shape that is not supported, asserted as unsupported:
                             // an anonymous object has no metadata in the serializer context.
                             string anonymous;
@@ -3048,12 +3062,14 @@ internal sealed partial class Worker(
                                 && viaBatch == expected
                                 && viaRawBatchVersion == expected
                                 && itemsViaJsonBody >= 0
+                                && itemsViaContext == itemsViaJsonBody
                                 && anonymous == "refused";
 
                             return (
                                 allAgree,
-                                $"six paths agree on {expected}, JsonElement body read "
-                                    + $"{itemsViaJsonBody} item(s), anonymous object {anonymous}"
+                                $"seven paths agree on {expected}, JsonElement body and consumer "
+                                    + $"context both read {itemsViaJsonBody} item(s), anonymous "
+                                    + $"object {anonymous}"
                             );
                         }
                     )
@@ -4124,3 +4140,19 @@ internal sealed record WorkerGainDbSettings([property: JsonPropertyName("db")] d
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
 )]
 internal sealed partial class WorkerSettingsJsonContext : JsonSerializerContext { }
+
+/// <summary>
+/// A request payload this library has no metadata for, sent with the consumer's own context.
+/// </summary>
+/// <param name="SceneName">The scene to list items for.</param>
+internal sealed record ConsumerSceneRequest(
+    [property: System.Text.Json.Serialization.JsonPropertyName("sceneName")] string SceneName
+);
+
+/// <summary>
+/// The consumer side serializer context, the AOT safe way to describe a payload the library does
+/// not model.
+/// </summary>
+[System.Text.Json.Serialization.JsonSerializable(typeof(ConsumerSceneRequest))]
+internal sealed partial class ExampleRequestContext
+    : System.Text.Json.Serialization.JsonSerializerContext;
