@@ -45,6 +45,8 @@ public static class BatchResultExtensions
             return already;
         }
 
+        PayloadShape.EnsurePlausible<TResponse>(result.ResponseData);
+
         // The MessagePack transport hands back the raw payload bytes, the JSON transport a
         // JsonElement, so a batch result has to be read according to which produced it.
         if (result.ResponseData is ReadOnlyMemory<byte> packed)

@@ -40,6 +40,7 @@ internal static class ProtocolCodeGenerator
         Emitter.GenerateEnums(context, protocol);
         Emitter.GenerateRequestDtos(context, protocol);
         Emitter.GenerateResponseDtos(context, protocol);
+        Emitter.GeneratePayloadSchema(context, protocol);
         Emitter.GenerateClientExtensions(context, protocol);
         Emitter.GenerateEventPayloads(context, protocol);
         Emitter.GenerateEventArgs(context, protocol);

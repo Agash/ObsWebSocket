@@ -357,17 +357,19 @@ foreach (RequestResponsePayload<object> row in results.Raw)
 That works when every request in the batch returns the **same** type, so it does not matter which
 row is which, and when the order is not what you needed.
 
-A parallel batch of **different** request types is a different matter, and the transport decides
-whether it is merely awkward or actively unsafe:
+A parallel batch of **different** request types is harder, because nothing on a row tells you which
+type its payload really is. `GetData<T>` will not invent an answer, though: it checks the payload
+against the fields `T` expects and throws `ObsWebSocketSerializationException` when the payload
+carries none of them. So you can try each type you expect and let the mismatch tell you.
 
-- On JSON, a payload read as the wrong record throws `ObsWebSocketSerializationException`, so you
-  can try each type you expect and let the mismatch tell you. Ugly, but sound.
-- On MessagePack it is **not detectable**. The format maps by key name, so reading a payload as the
-  wrong record quietly leaves every unmatched property at its default and returns an object. A
-  reading of `cpu=0.00, memory=0.0` is indistinguishable from a genuine one.
+That check rejects rather than identifies. Two records that share field names cannot be told apart
+this way, and a payload overlapping the target only partly still passes with the rest of the
+properties left at their defaults. Where two records are field for field identical, which happens
+for five shapes including `GetInputMute` and `ToggleInputMute`, reading one as the other gives the
+right values anyway.
 
-So do not mix request types in a parallel batch and expect to sort the results out afterwards. Use a
-serial batch, or concurrent requests.
+So a heterogeneous parallel batch is possible to unpick but never reliable. Use a serial batch, or
+concurrent requests.
 
 Anything that does not depend on which row is which stays exact:
 
