@@ -216,6 +216,9 @@ internal static partial class Emitter
     /// <param name="field">The field definition being mapped.</param>
     /// <param name="parentDtoName">Name of the DTO this field belongs to (for diagnostics).</param>
     /// <returns>A tuple containing the C# type name (or null if unmappable) and a boolean indicating if it's a value type.</returns>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\d\.\d")]
+    private static partial System.Text.RegularExpressions.Regex FractionalRestriction();
+
     private static (string? CSharpType, bool IsValueType) MapProtocolTypeToCSharp(
         SourceProductionContext context,
         FieldDefinition field,
@@ -237,7 +240,11 @@ internal static partial class Emitter
                 case "sceneItemTransform":
                     // Map specifically named 'Object' field to Stub record
                     // Use the fully qualified name to avoid potential namespace conflicts
-                    return ($"{GeneratedCommonNamespace}.SceneItemTransformStub?", false);
+                    // SetSceneItemTransform applies only the fields present, so a request carries
+                    // a patch. A response carries the whole transform OBS computed.
+                    return parentDtoName.EndsWith("RequestData", StringComparison.Ordinal)
+                        ? ($"{GeneratedCommonNamespace}.SceneItemTransformPatchStub?", false)
+                        : ($"{GeneratedCommonNamespace}.SceneItemTransformStub?", false);
                 // Add other specific 'Object' mappings here if needed in the future
             }
             // If not handled above, it falls through to the general 'Object'/'Any' handling below
@@ -248,6 +255,27 @@ internal static partial class Emitter
         if (obsType == "Number")
         {
             numberType = NumericFieldTable.MapNumber(fieldName, out bool classified);
+
+            // A restriction written with a decimal point is the protocol saying the field is
+            // fractional. SetTBarPosition shipped as an int this way, so only the two ends of the
+            // T-bar could be reached.
+            if (
+                classified
+                && numberType != "double"
+                && field.ValueRestrictions is { Length: > 0 } restrictions
+                && FractionalRestriction().IsMatch(restrictions)
+            )
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.FractionalFieldClassifiedAsWhole,
+                        Location.None,
+                        fieldName,
+                        restrictions
+                    )
+                );
+            }
+
             if (!classified)
             {
                 context.ReportDiagnostic(

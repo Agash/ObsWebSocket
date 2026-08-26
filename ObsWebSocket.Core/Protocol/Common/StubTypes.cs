@@ -379,6 +379,154 @@ public sealed class SceneItemTransformStub
 }
 
 /// <summary>
+/// The fields of a scene item transform a caller wants to change.
+/// </summary>
+/// <remarks>
+/// Separate from <see cref="SceneItemTransformStub"/> because <c>SetSceneItemTransform</c>
+/// reads only the fields that are present and applies those; it is not a whole object write.
+/// A transform read back from OBS is refused, because it carries the source dimensions OBS
+/// computes for itself.
+/// </remarks>
+[MessagePackObject]
+public sealed class SceneItemTransformPatchStub
+{
+    /// <summary>
+    /// Position X value.
+    /// </summary>
+    [JsonPropertyName("positionX")]
+    [Key("positionX")]
+    public double? PositionX { get; init; }
+
+    /// <summary>
+    /// Position X value.
+    /// </summary>
+    [JsonPropertyName("positionY")]
+    [Key("positionY")]
+    public double? PositionY { get; init; }
+
+    /// <summary>
+    /// Rotation value.
+    /// </summary>
+    [JsonPropertyName("rotation")]
+    [Key("rotation")]
+    public double? Rotation { get; init; }
+
+    /// <summary>
+    /// Scale X value.
+    /// </summary>
+    [JsonPropertyName("scaleX")]
+    [Key("scaleX")]
+    public double? ScaleX { get; init; }
+
+    /// <summary>
+    /// Scale Y value.
+    /// </summary>
+    [JsonPropertyName("scaleY")]
+    [Key("scaleY")]
+    public double? ScaleY { get; init; }
+
+    /// <summary>
+    /// Width value.
+    /// </summary>
+    [JsonPropertyName("width")]
+    [Key("width")]
+    public double? Width { get; init; }
+
+    /// <summary>
+    /// Height value.
+    /// </summary>
+    [JsonPropertyName("height")]
+    [Key("height")]
+    public double? Height { get; init; }
+
+    /// <summary>
+    /// Source width value.
+    /// </summary>
+    [JsonPropertyName("sourceWidth")]
+    [Key("sourceWidth")]
+    public double? SourceWidth { get; init; }
+
+    /// <summary>
+    /// Source height value.
+    /// </summary>
+    [JsonPropertyName("sourceHeight")]
+    [Key("sourceHeight")]
+    public double? SourceHeight { get; init; }
+
+    /// <summary>
+    /// Alignment value.
+    /// </summary>
+    [JsonPropertyName("alignment")]
+    [Key("alignment")]
+    public int? Alignment { get; init; }
+
+    /// <summary>
+    /// Bounds type value.
+    /// </summary>
+    [JsonPropertyName("boundsType")]
+    [Key("boundsType")]
+    public string? BoundsType { get; init; }
+
+    /// <summary>
+    /// Bounds alignment value.
+    /// </summary>
+    [JsonPropertyName("boundsAlignment")]
+    [Key("boundsAlignment")]
+    public int? BoundsAlignment { get; init; }
+
+    /// <summary>
+    /// Bounds width value.
+    /// </summary>
+    [JsonPropertyName("boundsWidth")]
+    [Key("boundsWidth")]
+    public double? BoundsWidth { get; init; }
+
+    /// <summary>
+    /// Bounds height value.
+    /// </summary>
+    [JsonPropertyName("boundsHeight")]
+    [Key("boundsHeight")]
+    public double? BoundsHeight { get; init; }
+
+    /// <summary>
+    /// Crop left value.
+    /// </summary>
+    [JsonPropertyName("cropLeft")]
+    [Key("cropLeft")]
+    public int? CropLeft { get; init; }
+
+    /// <summary>
+    /// Crop top value.
+    /// </summary>
+    [JsonPropertyName("cropTop")]
+    [Key("cropTop")]
+    public int? CropTop { get; init; }
+
+    /// <summary>
+    /// Crop right value.
+    /// </summary>
+    [JsonPropertyName("cropRight")]
+    [Key("cropRight")]
+    public int? CropRight { get; init; }
+
+    /// <summary>
+    /// Crop bottom value.
+    /// </summary>
+    [JsonPropertyName("cropBottom")]
+    [Key("cropBottom")]
+    public int? CropBottom { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public SceneItemTransformPatchStub() { }
+}
+
+/// <summary>
 /// Represents a common structure for scene item data, often used in lists. Resilient to missing fields.
 /// </summary>
 /// <remarks>Generated from heuristics based on obs-websocket protocol.</remarks>

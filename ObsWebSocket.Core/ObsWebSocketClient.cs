@@ -453,7 +453,12 @@ public sealed partial class ObsWebSocketClient(
                 requestTags
             );
 
-            return _serializer.DeserializePayload<TResponse>(response.ResponseData);
+            // `object` is what the generated methods ask for when the request declares no response
+            // payload. There is nothing to deserialize into, and OBS sends one anyway for some of
+            // them, so attempting it fails on a request that actually succeeded.
+            return typeof(TResponse) == typeof(object)
+                ? null
+                : _serializer.DeserializePayload<TResponse>(response.ResponseData);
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)

@@ -662,6 +662,54 @@ internal sealed partial class Worker(
                 await RunTransportValidationSuiteAsync(cancellationToken).ConfigureAwait(false);
                 return false;
 
+            case "cleanup-fixtures":
+            {
+                // The sweeps name everything they create with a known prefix, so a run that dies
+                // before its teardown leaves findable litter rather than a puzzle.
+                GetInputListResponseData allInputs = await _obsClient
+                    .Inputs.GetInputListAsync(new(), cancellationToken)
+                    .ConfigureAwait(false);
+                int removedInputs = 0;
+                foreach (
+                    InputStub leftover in allInputs.Inputs.Where(i =>
+                        i.InputName.StartsWith("__obsws", StringComparison.Ordinal)
+                    )
+                )
+                {
+                    await _obsClient
+                        .Inputs.RemoveInputAsync(
+                            new(inputName: leftover.InputName),
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    removedInputs++;
+                }
+
+                GetSceneListResponseData allScenes = await _obsClient
+                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                    .ConfigureAwait(false);
+                int removedScenes = 0;
+                foreach (
+                    SceneStub leftover in allScenes.Scenes.Where(sc =>
+                        sc.SceneName.StartsWith("__obsws", StringComparison.Ordinal)
+                    )
+                )
+                {
+                    await _obsClient
+                        .Scenes.RemoveSceneAsync(
+                            new(sceneName: leftover.SceneName),
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    removedScenes++;
+                }
+
+                UiSuccess(
+                    $"Removed {removedInputs} leftover input(s) and {removedScenes} scene(s)."
+                );
+                return false;
+            }
+
             case "list-subs":
                 RenderKeyValueTable(
                     "Event Subscriptions",
@@ -996,6 +1044,11 @@ internal sealed partial class Worker(
 
             modernResults.AddRange(
                 await SweepEveryReadRequestAsync(cycleClient, cancellationToken)
+                    .ConfigureAwait(false)
+            );
+
+            modernResults.AddRange(
+                await SweepEveryWriteRequestAsync(cycleClient, cancellationToken)
                     .ConfigureAwait(false)
             );
 
@@ -4225,386 +4278,471 @@ internal sealed partial class Worker(
         // The nine discovery calls above are themselves read requests.
         read += 9;
 
-        await Probe("GetCanvasList", () => client.Canvases.GetCanvasListAsync(cancellationToken))
+        // Four of these requests need OBS to be in a particular state, not just to be asked
+        // nicely. Without the fixture they answer InvalidResourceState and the response shape is
+        // never exercised, which is coverage the report would otherwise claim.
+        string fixtureSuffix = Guid.NewGuid().ToString("N")[..8];
+        string readScene = $"__obsws_rsweep_{fixtureSuffix}";
+        string audioInput = $"__obsws_rsweep_audio_{fixtureSuffix}";
+        string mediaInput = $"__obsws_rsweep_media_{fixtureSuffix}";
+
+        GetStudioModeEnabledResponseData studioBefore = await client
+            .Ui.GetStudioModeEnabledAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await Probe(
-                "GetPersistentData",
-                () =>
-                    client.Config.GetPersistentDataAsync(
-                        new(realm: "OBS_WEBSOCKET_DATA_REALM_PROFILE", slotName: "__obsws_sweep"),
-                        cancellationToken
-                    )
+        await client
+            .Scenes.CreateSceneAsync(new(sceneName: readScene), cancellationToken)
+            .ConfigureAwait(false);
+        await client
+            .Inputs.CreateInputAsync(
+                new(
+                    inputName: audioInput,
+                    inputKind: "wasapi_output_capture",
+                    sceneName: readScene
+                ),
+                cancellationToken
             )
             .ConfigureAwait(false);
-        await Probe(
-                "GetSceneCollectionList",
-                () => client.Config.GetSceneCollectionListAsync(cancellationToken)
+        await client
+            .Inputs.CreateInputAsync(
+                new(inputName: mediaInput, inputKind: "ffmpeg_source", sceneName: readScene),
+                cancellationToken
             )
             .ConfigureAwait(false);
-        await Probe("GetProfileList", () => client.Config.GetProfileListAsync(cancellationToken))
-            .ConfigureAwait(false);
-        await Probe(
-                "GetProfileParameter",
-                () =>
-                    client.Config.GetProfileParameterAsync(
-                        new(parameterCategory: "General", parameterName: "Name"),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetVideoSettings",
-                () => client.Config.GetVideoSettingsAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetStreamServiceSettings",
-                () => client.Config.GetStreamServiceSettingsAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetRecordDirectory",
-                () => client.Config.GetRecordDirectoryAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-
-        await Probe(
-                "GetSourceFilterDefaultSettings",
-                () =>
-                    client.Filters.GetSourceFilterDefaultSettingsAsync(
-                        new(filterKind: filterKind),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        if (filterName is not null)
+        if (!studioBefore.StudioModeEnabled)
         {
-            await Probe(
-                    "GetSourceFilter",
-                    () =>
-                        client.Filters.GetSourceFilterAsync(
-                            new(filterName: filterName, sourceName: inputName),
-                            cancellationToken
-                        )
-                )
+            await client
+                .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
                 .ConfigureAwait(false);
         }
-        else
-        {
-            untested.Add("GetSourceFilter (no filter on the first input)");
-        }
 
-        await Probe("GetVersion", () => client.General.GetVersionAsync(cancellationToken))
-            .ConfigureAwait(false);
-        await Probe("GetStats", () => client.General.GetStatsAsync(cancellationToken))
-            .ConfigureAwait(false);
-        await Probe("GetHotkeyList", () => client.General.GetHotkeyListAsync(cancellationToken))
-            .ConfigureAwait(false);
-
-        await Probe(
-                "GetSpecialInputs",
-                () => client.Inputs.GetSpecialInputsAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputDefaultSettings",
-                () =>
-                    client.Inputs.GetInputDefaultSettingsAsync(
-                        new(inputKind: inputKind),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputSettings",
-                () =>
-                    client.Inputs.GetInputSettingsAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputMute",
-                () => client.Inputs.GetInputMuteAsync(new(inputName: inputName), cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputVolume",
-                () =>
-                    client.Inputs.GetInputVolumeAsync(new(inputName: inputName), cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputAudioBalance",
-                () =>
-                    client.Inputs.GetInputAudioBalanceAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputAudioSyncOffset",
-                () =>
-                    client.Inputs.GetInputAudioSyncOffsetAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputAudioMonitorType",
-                () =>
-                    client.Inputs.GetInputAudioMonitorTypeAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputAudioTracks",
-                () =>
-                    client.Inputs.GetInputAudioTracksAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputDeinterlaceMode",
-                () =>
-                    client.Inputs.GetInputDeinterlaceModeAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputDeinterlaceFieldOrder",
-                () =>
-                    client.Inputs.GetInputDeinterlaceFieldOrderAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetInputPropertiesListPropertyItems",
-                () =>
-                    client.Inputs.GetInputPropertiesListPropertyItemsAsync(
-                        new(propertyName: "monitor", inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-
-        await Probe(
-                "GetMediaInputStatus",
-                () =>
-                    client.MediaInputs.GetMediaInputStatusAsync(
-                        new(inputName: inputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-
-        await Probe(
-                "GetVirtualCamStatus",
-                () => client.Outputs.GetVirtualCamStatusAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetReplayBufferStatus",
-                () => client.Outputs.GetReplayBufferStatusAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetLastReplayBufferReplay",
-                () => client.Outputs.GetLastReplayBufferReplayAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetOutputStatus",
-                () =>
-                    client.Outputs.GetOutputStatusAsync(
-                        new(outputName: outputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetOutputSettings",
-                () =>
-                    client.Outputs.GetOutputSettingsAsync(
-                        new(outputName: outputName),
-                        cancellationToken
-                    )
-            )
-            .ConfigureAwait(false);
-
-        await Probe("GetRecordStatus", () => client.Record.GetRecordStatusAsync(cancellationToken))
-            .ConfigureAwait(false);
-
-        if (groupName is not null)
+        try
         {
             await Probe(
-                    "GetGroupSceneItemList",
-                    () =>
-                        client.SceneItems.GetGroupSceneItemListAsync(
-                            new(sceneName: groupName),
-                            cancellationToken
-                        )
+                    "GetCanvasList",
+                    () => client.Canvases.GetCanvasListAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
-        }
-        else
-        {
-            untested.Add("GetGroupSceneItemList (no group in the collection)");
-        }
 
-        if (sceneItemId >= 0)
-        {
             await Probe(
-                    "GetSceneItemId",
+                    "GetPersistentData",
                     () =>
-                        client.SceneItems.GetSceneItemIdAsync(
-                            new(sourceName: itemSourceName!, sceneName: sceneName),
+                        client.Config.GetPersistentDataAsync(
+                            new(
+                                realm: "OBS_WEBSOCKET_DATA_REALM_PROFILE",
+                                slotName: "__obsws_sweep"
+                            ),
                             cancellationToken
                         )
                 )
                 .ConfigureAwait(false);
             await Probe(
-                    "GetSceneItemSource",
+                    "GetSceneCollectionList",
+                    () => client.Config.GetSceneCollectionListAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetProfileList",
+                    () => client.Config.GetProfileListAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetProfileParameter",
                     () =>
-                        client.SceneItems.GetSceneItemSourceAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                        client.Config.GetProfileParameterAsync(
+                            new(parameterCategory: "General", parameterName: "Name"),
                             cancellationToken
                         )
                 )
                 .ConfigureAwait(false);
             await Probe(
-                    "GetSceneItemTransform",
-                    () =>
-                        client.SceneItems.GetSceneItemTransformAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
-                            cancellationToken
-                        )
+                    "GetVideoSettings",
+                    () => client.Config.GetVideoSettingsAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
             await Probe(
-                    "GetSceneItemEnabled",
-                    () =>
-                        client.SceneItems.GetSceneItemEnabledAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
-                            cancellationToken
-                        )
+                    "GetStreamServiceSettings",
+                    () => client.Config.GetStreamServiceSettingsAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
             await Probe(
-                    "GetSceneItemLocked",
-                    () =>
-                        client.SceneItems.GetSceneItemLockedAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
-                            cancellationToken
-                        )
+                    "GetRecordDirectory",
+                    () => client.Config.GetRecordDirectoryAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
-            await Probe(
-                    "GetSceneItemIndex",
-                    () =>
-                        client.SceneItems.GetSceneItemIndexAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
-                            cancellationToken
-                        )
-                )
-                .ConfigureAwait(false);
-            await Probe(
-                    "GetSceneItemBlendMode",
-                    () =>
-                        client.SceneItems.GetSceneItemBlendModeAsync(
-                            new(sceneItemId: sceneItemId, sceneName: sceneName),
-                            cancellationToken
-                        )
-                )
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            untested.Add("7 scene item requests (the program scene has no items)");
-        }
 
-        await Probe(
-                "GetCurrentProgramScene",
-                () => client.Scenes.GetCurrentProgramSceneAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetCurrentPreviewScene",
-                () => client.Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetSceneSceneTransitionOverride",
-                () =>
-                    client.Scenes.GetSceneSceneTransitionOverrideAsync(
-                        new(sceneName: sceneName),
-                        cancellationToken
+            await Probe(
+                    "GetSourceFilterDefaultSettings",
+                    () =>
+                        client.Filters.GetSourceFilterDefaultSettingsAsync(
+                            new(filterKind: filterKind),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            if (filterName is not null)
+            {
+                await Probe(
+                        "GetSourceFilter",
+                        () =>
+                            client.Filters.GetSourceFilterAsync(
+                                new(filterName: filterName, sourceName: inputName),
+                                cancellationToken
+                            )
                     )
-            )
-            .ConfigureAwait(false);
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                untested.Add("GetSourceFilter (no filter on the first input)");
+            }
 
-        await Probe(
-                "GetSourceActive",
-                () =>
-                    client.Sources.GetSourceActiveAsync(
-                        new(sourceName: inputName),
-                        cancellationToken
+            await Probe("GetVersion", () => client.General.GetVersionAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe("GetStats", () => client.General.GetStatsAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe("GetHotkeyList", () => client.General.GetHotkeyListAsync(cancellationToken))
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetSpecialInputs",
+                    () => client.Inputs.GetSpecialInputsAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputDefaultSettings",
+                    () =>
+                        client.Inputs.GetInputDefaultSettingsAsync(
+                            new(inputKind: inputKind),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputSettings",
+                    () =>
+                        client.Inputs.GetInputSettingsAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputMute",
+                    () =>
+                        client.Inputs.GetInputMuteAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputVolume",
+                    () =>
+                        client.Inputs.GetInputVolumeAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputAudioBalance",
+                    () =>
+                        client.Inputs.GetInputAudioBalanceAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputAudioSyncOffset",
+                    () =>
+                        client.Inputs.GetInputAudioSyncOffsetAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputAudioMonitorType",
+                    () =>
+                        client.Inputs.GetInputAudioMonitorTypeAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputAudioTracks",
+                    () =>
+                        client.Inputs.GetInputAudioTracksAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputDeinterlaceMode",
+                    () =>
+                        client.Inputs.GetInputDeinterlaceModeAsync(
+                            new(inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputDeinterlaceFieldOrder",
+                    () =>
+                        client.Inputs.GetInputDeinterlaceFieldOrderAsync(
+                            new(inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetInputPropertiesListPropertyItems",
+                    () =>
+                        client.Inputs.GetInputPropertiesListPropertyItemsAsync(
+                            new(propertyName: "device_id", inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetMediaInputStatus",
+                    () =>
+                        client.MediaInputs.GetMediaInputStatusAsync(
+                            new(inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetVirtualCamStatus",
+                    () => client.Outputs.GetVirtualCamStatusAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetReplayBufferStatus",
+                    () => client.Outputs.GetReplayBufferStatusAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetLastReplayBufferReplay",
+                    () => client.Outputs.GetLastReplayBufferReplayAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetOutputStatus",
+                    () =>
+                        client.Outputs.GetOutputStatusAsync(
+                            new(outputName: outputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetOutputSettings",
+                    () =>
+                        client.Outputs.GetOutputSettingsAsync(
+                            new(outputName: outputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetRecordStatus",
+                    () => client.Record.GetRecordStatusAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+
+            if (groupName is not null)
+            {
+                await Probe(
+                        "GetGroupSceneItemList",
+                        () =>
+                            client.SceneItems.GetGroupSceneItemListAsync(
+                                new(sceneName: groupName),
+                                cancellationToken
+                            )
                     )
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetSourceScreenshot",
-                () =>
-                    client.Sources.GetSourceScreenshotAsync(
-                        new(imageFormat: "png", sourceName: sceneName),
-                        cancellationToken
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // There is no CreateGroup request in the protocol, so a group can only come from a
+                // scene collection that already has one.
+                untested.Add("GetGroupSceneItemList (no group; the protocol cannot create one)");
+            }
+
+            if (sceneItemId >= 0)
+            {
+                await Probe(
+                        "GetSceneItemId",
+                        () =>
+                            client.SceneItems.GetSceneItemIdAsync(
+                                new(sourceName: itemSourceName!, sceneName: sceneName),
+                                cancellationToken
+                            )
                     )
-            )
-            .ConfigureAwait(false);
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemSource",
+                        () =>
+                            client.SceneItems.GetSceneItemSourceAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemTransform",
+                        () =>
+                            client.SceneItems.GetSceneItemTransformAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemEnabled",
+                        () =>
+                            client.SceneItems.GetSceneItemEnabledAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemLocked",
+                        () =>
+                            client.SceneItems.GetSceneItemLockedAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemIndex",
+                        () =>
+                            client.SceneItems.GetSceneItemIndexAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+                await Probe(
+                        "GetSceneItemBlendMode",
+                        () =>
+                            client.SceneItems.GetSceneItemBlendModeAsync(
+                                new(sceneItemId: sceneItemId, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                untested.Add("7 scene item requests (the program scene has no items)");
+            }
 
-        await Probe("GetStreamStatus", () => client.Stream.GetStreamStatusAsync(cancellationToken))
-            .ConfigureAwait(false);
+            await Probe(
+                    "GetCurrentProgramScene",
+                    () => client.Scenes.GetCurrentProgramSceneAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetCurrentPreviewScene",
+                    () => client.Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneSceneTransitionOverride",
+                    () =>
+                        client.Scenes.GetSceneSceneTransitionOverrideAsync(
+                            new(sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
 
-        await Probe(
-                "GetTransitionKindList",
-                () => client.Transitions.GetTransitionKindListAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetSceneTransitionList",
-                () => client.Transitions.GetSceneTransitionListAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetCurrentSceneTransition",
-                () => client.Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe(
-                "GetCurrentSceneTransitionCursor",
-                () => client.Transitions.GetCurrentSceneTransitionCursorAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
+            await Probe(
+                    "GetSourceActive",
+                    () =>
+                        client.Sources.GetSourceActiveAsync(
+                            new(sourceName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSourceScreenshot",
+                    () =>
+                        client.Sources.GetSourceScreenshotAsync(
+                            new(imageFormat: "png", sourceName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
 
-        await Probe(
-                "GetStudioModeEnabled",
-                () => client.Ui.GetStudioModeEnabledAsync(cancellationToken)
-            )
-            .ConfigureAwait(false);
-        await Probe("GetMonitorList", () => client.Ui.GetMonitorListAsync(cancellationToken))
-            .ConfigureAwait(false);
+            await Probe(
+                    "GetStreamStatus",
+                    () => client.Stream.GetStreamStatusAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetTransitionKindList",
+                    () => client.Transitions.GetTransitionKindListAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneTransitionList",
+                    () => client.Transitions.GetSceneTransitionListAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetCurrentSceneTransition",
+                    () => client.Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetCurrentSceneTransitionCursor",
+                    () => client.Transitions.GetCurrentSceneTransitionCursorAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "GetStudioModeEnabled",
+                    () => client.Ui.GetStudioModeEnabledAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe("GetMonitorList", () => client.Ui.GetMonitorListAsync(cancellationToken))
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            if (!studioBefore.StudioModeEnabled)
+            {
+                await client
+                    .Ui.SetStudioModeEnabledAsync(new(false), CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+
+            foreach (string fixture in new[] { audioInput, mediaInput })
+            {
+                await client
+                    .Inputs.RemoveInputAsync(new(inputName: fixture), CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+
+            await client
+                .Scenes.RemoveSceneAsync(new(sceneName: readScene), CancellationToken.None)
+                .ConfigureAwait(false);
+        }
 
         return
         [
@@ -4614,6 +4752,822 @@ internal sealed partial class Worker(
                 unreadable.Count == 0
                     ? $"{read} of 60 read; untested: {string.Join(", ", untested)}"
                     : string.Join(" | ", unreadable.Take(3))
+            ),
+        ];
+    }
+
+    /// <summary>
+    /// Sends every write request that can be exercised without taking the machine somewhere it
+    /// cannot come back from, and reports the ones that could not be serialized.
+    /// </summary>
+    /// <remarks>
+    /// Most write requests answer with no payload, so what this covers is the request side. That
+    /// is not a formality: <c>SetInputAudioTracks</c> could not be sent over MessagePack at all,
+    /// for the same missing formatter that made <c>GetInputAudioTracks</c> unreadable.
+    /// <para>
+    /// Everything runs against a scene, an input and a filter this method creates and removes.
+    /// Requests that can only touch global state read the current value and write it back, so the
+    /// call is real and the setting is unchanged.
+    /// </para>
+    /// <para>
+    /// Deliberately not sent, because the cost of running them is not a shape bug: anything that
+    /// starts a stream, a recording, the replay buffer or the virtual camera; profile and scene
+    /// collection switching, which reloads OBS underneath the run; the dialog and projector
+    /// requests, which open windows; <c>TriggerHotkeyByName</c> and
+    /// <c>PressInputPropertiesButton</c>, which do whatever the target happens to do;
+    /// <c>CallVendorRequest</c>, which needs a plugin; and <c>Sleep</c>, which is batch only.
+    /// </para>
+    /// </remarks>
+    private static async Task<
+        List<(string Label, bool Pass, string Detail)>
+    > SweepEveryWriteRequestAsync(ObsWebSocketClient client, CancellationToken cancellationToken)
+    {
+        List<string> unsendable = [];
+        List<string> declined = [];
+        int sent = 0;
+
+        async Task Probe(string name, Func<Task> call)
+        {
+            try
+            {
+                await call().ConfigureAwait(false);
+                sent++;
+            }
+            catch (ObsWebSocketSerializationException ex)
+            {
+                unsendable.Add($"{name}: {ex.InnerException?.Message ?? ex.Message}");
+            }
+            catch (ObsWebSocketRequestException ex)
+            {
+                declined.Add($"{name} ({ex.StatusCode})");
+            }
+        }
+
+        string suffix = Guid.NewGuid().ToString("N")[..8];
+        string sceneName = $"__obsws_wsweep_{suffix}";
+        string renamedScene = $"{sceneName}_r";
+        string inputName = $"__obsws_wsweep_in_{suffix}";
+        string renamedInput = $"{inputName}_r";
+        string filterName = "__obsws_wsweep_filter";
+        string renamedFilter = $"{filterName}_r";
+
+        GetSceneListResponseData scenesBefore = await client
+            .Scenes.GetSceneListAsync(new(), cancellationToken)
+            .ConfigureAwait(false);
+        string originalProgramScene = scenesBefore.CurrentProgramSceneName!;
+
+        // ── Fixture ──────────────────────────────────────────────────────────
+        await Probe(
+                "CreateScene",
+                () => client.Scenes.CreateSceneAsync(new(sceneName: sceneName), cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "CreateInput",
+                () =>
+                    client.Inputs.CreateInputAsync(
+                        new(
+                            inputName: inputName,
+                            inputKind: "color_source_v3",
+                            sceneName: sceneName
+                        ),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        // A colour source has no audio and cannot be deinterlaced. Pointing every audio and media
+        // request at one is how six read requests came back declined rather than exercised.
+        string audioInput = $"__obsws_wsweep_audio_{suffix}";
+        string mediaInput = $"__obsws_wsweep_media_{suffix}";
+        await Probe(
+                "CreateInput (audio)",
+                () =>
+                    client.Inputs.CreateInputAsync(
+                        new(
+                            inputName: audioInput,
+                            inputKind: "wasapi_output_capture",
+                            sceneName: sceneName
+                        ),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "CreateInput (media)",
+                () =>
+                    client.Inputs.CreateInputAsync(
+                        new(
+                            inputName: mediaInput,
+                            inputKind: "ffmpeg_source",
+                            sceneName: sceneName
+                        ),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        try
+        {
+            GetSceneItemListResponseData fixtureItems = await client
+                .SceneItems.GetSceneItemListAsync(new(sceneName: sceneName), cancellationToken)
+                .ConfigureAwait(false);
+            int itemId = fixtureItems.SceneItems[0].SceneItemId;
+
+            // ── Scenes ───────────────────────────────────────────────────────
+            await Probe(
+                    "SetCurrentProgramScene",
+                    () =>
+                        client.Scenes.SetCurrentProgramSceneAsync(
+                            new(sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSceneSceneTransitionOverride",
+                    () =>
+                        client.Scenes.SetSceneSceneTransitionOverrideAsync(
+                            new(sceneName: sceneName, transitionName: "Fade"),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSceneName",
+                    () =>
+                        client.Scenes.SetSceneNameAsync(
+                            new(newSceneName: renamedScene, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            sceneName = renamedScene;
+
+            // ── Scene items ──────────────────────────────────────────────────
+            await Probe(
+                    "SetSceneItemEnabled",
+                    () =>
+                        client.SceneItems.SetSceneItemEnabledAsync(
+                            new(sceneItemId: itemId, sceneItemEnabled: true, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSceneItemLocked",
+                    () =>
+                        client.SceneItems.SetSceneItemLockedAsync(
+                            new(sceneItemId: itemId, sceneItemLocked: false, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSceneItemIndex",
+                    () =>
+                        client.SceneItems.SetSceneItemIndexAsync(
+                            new(sceneItemId: itemId, sceneItemIndex: 0, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSceneItemBlendMode",
+                    () =>
+                        client.SceneItems.SetSceneItemBlendModeAsync(
+                            new(
+                                sceneItemId: itemId,
+                                sceneItemBlendMode: "OBS_BLEND_NORMAL",
+                                sceneName: sceneName
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // A whole transform read back from OBS is refused: it carries the source dimensions
+            // OBS computes and will not accept back. A caller sets the fields they mean to.
+            SceneItemTransformPatchStub transformPatch = new()
+            {
+                PositionX = 0.0,
+                PositionY = 0.0,
+                Rotation = 0.0,
+            };
+            await Probe(
+                    "SetSceneItemTransform",
+                    () =>
+                        client.SceneItems.SetSceneItemTransformAsync(
+                            new(
+                                sceneItemId: itemId,
+                                sceneItemTransform: transformPatch,
+                                sceneName: sceneName
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            int? addedItemId = null;
+            try
+            {
+                CreateSceneItemResponseData added = await client
+                    .SceneItems.CreateSceneItemAsync(
+                        new(sceneName: sceneName, sourceName: inputName),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                addedItemId = added.SceneItemId;
+                sent++;
+            }
+            catch (ObsWebSocketRequestException ex)
+            {
+                declined.Add($"CreateSceneItem ({ex.StatusCode})");
+            }
+
+            int? duplicatedItemId = null;
+            try
+            {
+                DuplicateSceneItemResponseData duplicated = await client
+                    .SceneItems.DuplicateSceneItemAsync(
+                        new(sceneItemId: itemId, sceneName: sceneName),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                duplicatedItemId = duplicated.SceneItemId;
+                sent++;
+            }
+            catch (ObsWebSocketRequestException ex)
+            {
+                declined.Add($"DuplicateSceneItem ({ex.StatusCode})");
+            }
+
+            // Only the two this sweep added. Removing the last scene item that references an input
+            // destroys the input, which took the audio and media fixtures with it.
+            foreach (int extra in new[] { addedItemId, duplicatedItemId }.OfType<int>())
+            {
+                await Probe(
+                        "RemoveSceneItem",
+                        () =>
+                            client.SceneItems.RemoveSceneItemAsync(
+                                new(sceneItemId: extra, sceneName: sceneName),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+            }
+
+            // ── Inputs ───────────────────────────────────────────────────────
+            await Probe(
+                    "SetInputSettings",
+                    () =>
+                        client.Inputs.SetInputSettingsAsync(
+                            inputName,
+                            new ColorSourceSettings { Width = 320, Height = 180 },
+                            cancellationToken: cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputMute",
+                    () =>
+                        client.Inputs.SetInputMuteAsync(
+                            new(inputMuted: false, inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "ToggleInputMute",
+                    () =>
+                        client.Inputs.ToggleInputMuteAsync(
+                            new(inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputVolume",
+                    () =>
+                        client.Inputs.SetInputVolumeAsync(
+                            new(inputName: audioInput, inputVolumeMul: 1.0),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputAudioBalance",
+                    () =>
+                        client.Inputs.SetInputAudioBalanceAsync(
+                            new(inputAudioBalance: 0.5, inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputAudioSyncOffset",
+                    () =>
+                        client.Inputs.SetInputAudioSyncOffsetAsync(
+                            new(inputAudioSyncOffset: 0, inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputAudioMonitorType",
+                    () =>
+                        client.Inputs.SetInputAudioMonitorTypeAsync(
+                            new(monitorType: "OBS_MONITORING_TYPE_NONE", inputName: audioInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // The request that could not be sent over MessagePack at all.
+            GetInputAudioTracksResponseData? tracks = null;
+            try
+            {
+                tracks = await client
+                    .Inputs.GetInputAudioTracksAsync(new(inputName: audioInput), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (ObsWebSocketRequestException)
+            {
+                // Deliberately not logged: the write below is probed either way and reports what
+                // OBS said about it.
+            }
+            await Probe(
+                    "SetInputAudioTracks",
+                    () =>
+                        client.Inputs.SetInputAudioTracksAsync(
+                            new(
+                                inputAudioTracks: tracks?.InputAudioTracks
+                                    ?? new Dictionary<string, bool> { ["1"] = true },
+                                inputName: audioInput
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            await Probe(
+                    "SetInputDeinterlaceMode",
+                    () =>
+                        client.Inputs.SetInputDeinterlaceModeAsync(
+                            new(
+                                inputDeinterlaceMode: "OBS_DEINTERLACE_MODE_DISABLE",
+                                inputName: mediaInput
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputDeinterlaceFieldOrder",
+                    () =>
+                        client.Inputs.SetInputDeinterlaceFieldOrderAsync(
+                            new(
+                                inputDeinterlaceFieldOrder: "OBS_DEINTERLACE_FIELD_ORDER_TOP",
+                                inputName: mediaInput
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetInputName",
+                    () =>
+                        client.Inputs.SetInputNameAsync(
+                            new(newInputName: renamedInput, inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            inputName = renamedInput;
+
+            // ── Media inputs, on an input that is not one ────────────────────
+            await Probe(
+                    "SetMediaInputCursor",
+                    () =>
+                        client.MediaInputs.SetMediaInputCursorAsync(
+                            new(mediaCursor: 0, inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "OffsetMediaInputCursor",
+                    () =>
+                        client.MediaInputs.OffsetMediaInputCursorAsync(
+                            new(mediaCursorOffset: 0, inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "TriggerMediaInputAction",
+                    () =>
+                        client.MediaInputs.TriggerMediaInputActionAsync(
+                            new(mediaAction: MediaInputAction.Stop, inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "PressInputPropertiesButton",
+                    () =>
+                        client.Inputs.PressInputPropertiesButtonAsync(
+                            new(propertyName: "__obsws_no_such_button", inputName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // ── Filters ──────────────────────────────────────────────────────
+            await Probe(
+                    "CreateSourceFilter",
+                    () =>
+                        client.Filters.CreateSourceFilterAsync(
+                            new(
+                                filterName: filterName,
+                                filterKind: "color_filter_v2",
+                                sourceName: inputName
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSourceFilterEnabled",
+                    () =>
+                        client.Filters.SetSourceFilterEnabledAsync(
+                            new(filterName: filterName, filterEnabled: true, sourceName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSourceFilterIndex",
+                    () =>
+                        client.Filters.SetSourceFilterIndexAsync(
+                            new(filterName: filterName, filterIndex: 0, sourceName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSourceFilterSettings",
+                    () =>
+                        client.Filters.SetSourceFilterSettingsAsync(
+                            inputName,
+                            filterName,
+                            new ColorCorrectionFilterSettings { Opacity = 1.0 },
+                            cancellationToken: cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetSourceFilterName",
+                    () =>
+                        client.Filters.SetSourceFilterNameAsync(
+                            new(
+                                filterName: filterName,
+                                newFilterName: renamedFilter,
+                                sourceName: inputName
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "RemoveSourceFilter",
+                    () =>
+                        client.Filters.RemoveSourceFilterAsync(
+                            new(filterName: renamedFilter, sourceName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // ── General ──────────────────────────────────────────────────────
+            using JsonDocument custom = JsonDocument.Parse("""{"obswsSweep":true}""");
+            await Probe(
+                    "BroadcastCustomEvent",
+                    () =>
+                        client.General.BroadcastCustomEventAsync(
+                            new(eventData: custom.RootElement.Clone()),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "TriggerHotkeyByKeySequence",
+                    () =>
+                        client.General.TriggerHotkeyByKeySequenceAsync(
+                            new(
+                                keyId: "OBS_KEY_F13",
+                                keyModifiers: new TriggerHotkeyByKeySequenceRequestData_KeyModifiers(
+                                    shift: false,
+                                    control: false,
+                                    alt: false,
+                                    command: false
+                                )
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // ── Config, every one a read then a write of the same value ──────
+            await Probe(
+                    "SetPersistentData",
+                    () =>
+                        client.Config.SetPersistentDataAsync(
+                            new(
+                                realm: "OBS_WEBSOCKET_DATA_REALM_PROFILE",
+                                slotName: "__obsws_sweep",
+                                slotValue: JsonDocument.Parse("\"probe\"").RootElement.Clone()
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            GetProfileParameterResponseData profileParameter = await client
+                .Config.GetProfileParameterAsync(
+                    new(parameterCategory: "Output", parameterName: "Mode"),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetProfileParameter",
+                    () =>
+                        client.Config.SetProfileParameterAsync(
+                            new(
+                                parameterCategory: "Output",
+                                parameterName: "Mode",
+                                parameterValue: profileParameter.ParameterValue
+                                    ?? profileParameter.DefaultParameterValue
+                                    ?? "Simple"
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            GetVideoSettingsResponseData video = await client
+                .Config.GetVideoSettingsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetVideoSettings",
+                    () =>
+                        client.Config.SetVideoSettingsAsync(
+                            new(
+                                fpsNumerator: video.FpsNumerator,
+                                fpsDenominator: video.FpsDenominator,
+                                baseWidth: video.BaseWidth,
+                                baseHeight: video.BaseHeight,
+                                outputWidth: video.OutputWidth,
+                                outputHeight: video.OutputHeight
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            GetRecordDirectoryResponseData recordDirectory = await client
+                .Config.GetRecordDirectoryAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetRecordDirectory",
+                    () =>
+                        client.Config.SetRecordDirectoryAsync(
+                            new(recordDirectory: recordDirectory.RecordDirectory),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            GetStreamServiceSettingsResponseData streamService = await client
+                .Config.GetStreamServiceSettingsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetStreamServiceSettings",
+                    () =>
+                        client.Config.SetStreamServiceSettingsAsync(
+                            new(
+                                streamServiceType: streamService.StreamServiceType,
+                                streamServiceSettings: streamService.StreamServiceSettings
+                                    ?? JsonDocument.Parse("{}").RootElement.Clone()
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // ── Transitions, same read then write ────────────────────────────
+            GetCurrentSceneTransitionResponseData transition = await client
+                .Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetCurrentSceneTransition",
+                    () =>
+                        client.Transitions.SetCurrentSceneTransitionAsync(
+                            new(transitionName: transition.TransitionName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetCurrentSceneTransitionDuration",
+                    () =>
+                        client.Transitions.SetCurrentSceneTransitionDurationAsync(
+                            new(transitionDuration: transition.TransitionDuration ?? 300),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetCurrentSceneTransitionSettings",
+                    () =>
+                        client.Transitions.SetCurrentSceneTransitionSettingsAsync(
+                            new(
+                                transitionSettings: transition.TransitionSettings
+                                    ?? JsonDocument.Parse("{}").RootElement.Clone()
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // ── UI and studio mode, restored below ───────────────────────────
+            GetStudioModeEnabledResponseData studio = await client
+                .Ui.GetStudioModeEnabledAsync(cancellationToken)
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetStudioModeEnabled",
+                    () => client.Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetCurrentPreviewScene",
+                    () =>
+                        client.Scenes.SetCurrentPreviewSceneAsync(
+                            new(sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SetTBarPosition",
+                    () =>
+                        client.Transitions.SetTBarPositionAsync(
+                            new(position: 0.0, release: true),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "TriggerStudioModeTransition",
+                    () => client.Transitions.TriggerStudioModeTransitionAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            if (!studio.StudioModeEnabled)
+            {
+                await client
+                    .Ui.SetStudioModeEnabledAsync(new(false), CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+
+            // ── Requests OBS should decline in this state, sent anyway so the
+            //    request side is still exercised ───────────────────────────────
+            await Probe("StopRecord", () => client.Record.StopRecordAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe(
+                    "ToggleRecordPause",
+                    () => client.Record.ToggleRecordPauseAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe("PauseRecord", () => client.Record.PauseRecordAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe("ResumeRecord", () => client.Record.ResumeRecordAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe(
+                    "SplitRecordFile",
+                    () => client.Record.SplitRecordFileAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "CreateRecordChapter",
+                    () =>
+                        client.Record.CreateRecordChapterAsync(
+                            new(chapterName: "__obsws_sweep"),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe("StopStream", () => client.Stream.StopStreamAsync(cancellationToken))
+                .ConfigureAwait(false);
+            await Probe(
+                    "SendStreamCaption",
+                    () =>
+                        client.Stream.SendStreamCaptionAsync(
+                            new(captionText: "__obsws_sweep"),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "StopReplayBuffer",
+                    () => client.Outputs.StopReplayBufferAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "SaveReplayBuffer",
+                    () => client.Outputs.SaveReplayBufferAsync(cancellationToken)
+                )
+                .ConfigureAwait(false);
+
+            GetOutputListResponseData outputs = await client
+                .Outputs.GetOutputListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            string outputName = outputs.Outputs[0].OutputName;
+            await Probe(
+                    "StopOutput",
+                    () =>
+                        client.Outputs.StopOutputAsync(
+                            new(outputName: outputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // SetOutputSettings is deliberately not sent. Writing settings back to a real
+            // output wedged the output subsystem: GetOutputList then timed out for the rest of
+            // the session, in checks that had nothing to do with the sweep.
+            declined.Add("SetOutputSettings (not sent: wedges the output subsystem)");
+
+            // ── Sources ──────────────────────────────────────────────────────
+            string screenshotPath = Path.Combine(Path.GetTempPath(), $"obsws_sweep_{suffix}.png");
+            await Probe(
+                    "SaveSourceScreenshot",
+                    () =>
+                        client.Sources.SaveSourceScreenshotAsync(
+                            new(
+                                imageFormat: "png",
+                                imageFilePath: screenshotPath,
+                                sourceName: sceneName
+                            ),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            if (File.Exists(screenshotPath))
+            {
+                File.Delete(screenshotPath);
+            }
+        }
+        finally
+        {
+            await client
+                .Scenes.SetCurrentProgramSceneAsync(
+                    new(sceneName: originalProgramScene),
+                    CancellationToken.None
+                )
+                .ConfigureAwait(false);
+
+            foreach (string fixture in new[] { inputName, audioInput, mediaInput })
+            {
+                await Probe(
+                        "RemoveInput",
+                        () =>
+                            client.Inputs.RemoveInputAsync(
+                                new(inputName: fixture),
+                                CancellationToken.None
+                            )
+                    )
+                    .ConfigureAwait(false);
+            }
+            await Probe(
+                    "RemoveScene",
+                    () =>
+                        client.Scenes.RemoveSceneAsync(
+                            new(sceneName: sceneName),
+                            CancellationToken.None
+                        )
+                )
+                .ConfigureAwait(false);
+        }
+
+        return
+        [
+            (
+                "Every write request serializes",
+                unsendable.Count == 0,
+                unsendable.Count == 0
+                    ? $"{sent} sent and accepted, {declined.Count} declined: "
+                        + string.Join(", ", declined)
+                    : string.Join(" | ", unsendable.Take(3))
             ),
         ];
     }

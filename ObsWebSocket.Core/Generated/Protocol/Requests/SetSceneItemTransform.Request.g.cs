@@ -54,7 +54,7 @@ public sealed partial record SetSceneItemTransformRequestData
     /// </remarks>
     [JsonPropertyName("sceneItemTransform")]
     [Key("sceneItemTransform")]
-    public required ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? SceneItemTransform { get; init; }
+    public required ObsWebSocket.Core.Protocol.Common.SceneItemTransformPatchStub? SceneItemTransform { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -87,7 +87,7 @@ public sealed partial record SetSceneItemTransformRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneItemTransformRequestData(int sceneItemId, ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneItemTransformRequestData(int sceneItemId, ObsWebSocket.Core.Protocol.Common.SceneItemTransformPatchStub? sceneItemTransform, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

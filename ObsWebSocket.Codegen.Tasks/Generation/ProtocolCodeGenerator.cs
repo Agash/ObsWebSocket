@@ -36,6 +36,7 @@ internal static class ProtocolCodeGenerator
             return (context.Sources, context.Diagnostics);
         }
 
+        ReportUnmappedStringEnums(context, protocol);
         Emitter.PreGenerateNestedDtos(context, protocol);
         Emitter.GenerateEnums(context, protocol);
         Emitter.GenerateRequestDtos(context, protocol);
@@ -52,5 +53,53 @@ internal static class ProtocolCodeGenerator
         Emitter.GenerateMsgPackResolver(context, protocol);
 
         return (context.Sources, context.Diagnostics);
+    }
+
+    /// <summary>
+    /// Fails the build when the protocol declares a string-valued enum that no field is mapped
+    /// onto.
+    /// </summary>
+    /// <remarks>
+    /// The definition types these fields as plain <c>String</c> and never says which enum they
+    /// draw from, so the association is hand written. That table cannot be derived, but it can be
+    /// checked: a protocol refresh introducing a new string enum has to be noticed, or every field
+    /// carrying it silently stays a string.
+    /// </remarks>
+    private static void ReportUnmappedStringEnums(
+        SourceProductionContext context,
+        ProtocolDefinition protocol
+    )
+    {
+        if (protocol.Enums is null)
+        {
+            return;
+        }
+
+        HashSet<string> mapped = new(StringEnumFieldTable.MappedEnums, StringComparer.Ordinal);
+
+        foreach (EnumDefinition definition in protocol.Enums)
+        {
+            bool stringValued =
+                definition.EnumIdentifiers.Count > 0
+                && definition.EnumIdentifiers.TrueForAll(i =>
+                    i.EnumValue.ValueKind == System.Text.Json.JsonValueKind.String
+                );
+
+            // The generated C# name drops the protocol's Obs prefix.
+            string generatedName = definition.EnumType.StartsWith("Obs", StringComparison.Ordinal)
+                ? definition.EnumType["Obs".Length..]
+                : definition.EnumType;
+
+            if (stringValued && !mapped.Contains(generatedName))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.UnmappedStringEnum,
+                        Location.None,
+                        definition.EnumType
+                    )
+                );
+            }
+        }
     }
 }

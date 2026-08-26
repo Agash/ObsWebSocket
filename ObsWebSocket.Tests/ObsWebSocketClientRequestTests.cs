@@ -235,6 +235,75 @@ public class ObsWebSocketClientRequestTests
         Assert.AreEqual(0, pendingRequests.Count, "Pending request should have been removed.");
     }
 
+    /// <summary>
+    /// A request the protocol says has no response payload is generated as
+    /// <c>CallAsync&lt;object&gt;</c>. OBS sends a payload for some of them anyway, and there is no
+    /// metadata for <c>object</c>, so attempting the read failed a request that had succeeded.
+    /// </summary>
+    [TestMethod]
+    [Timeout(TestTimeout)]
+    public async Task CallAsyncOfObject_ResponseCarriesAPayload_DoesNotAttemptToReadIt()
+    {
+        // Arrange
+        (
+            ObsWebSocketClient? client,
+            Mock<IWebSocketMessageSerializer>? mockSerializer,
+            Mock<IWebSocketConnection>? mockWebSocket
+        ) = TestUtils.SetupConnectedClientForceState();
+
+        JsonElement? rawResponseData = TestUtils.ToJsonElement(new { outputPaused = true });
+        Assert.IsNotNull(rawResponseData);
+
+        _ = mockWebSocket
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType msgType,
+                    bool endOfMsg,
+                    CancellationToken ct
+                ) =>
+                {
+                    OutgoingMessage<RequestPayload>? requestMsg = JsonSerializer.Deserialize<
+                        OutgoingMessage<RequestPayload>
+                    >(buffer.Span, TestUtils.s_jsonSerializerOptions);
+                    if (requestMsg?.D?.RequestType != "ToggleRecordPause")
+                    {
+                        return;
+                    }
+
+                    RequestResponsePayload<object> response = new(
+                        RequestType: "ToggleRecordPause",
+                        RequestId: requestMsg.D.RequestId,
+                        RequestStatus: new RequestStatus(
+                            Result: true,
+                            Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
+                        ),
+                        ResponseData: rawResponseData.Value
+                    );
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestMsg.D.RequestId,
+                        response
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.Record.ToggleRecordPauseAsync();
+
+        // Assert
+        mockSerializer.Verify(s => s.DeserializePayload<object>(It.IsAny<object>()), Times.Never);
+    }
+
     // --- Test Request WITH Request Data and NO Response Data ---
 
     /// <summary>
@@ -324,7 +393,8 @@ public class ObsWebSocketClientRequestTests
         );
 
         // Verify the base object deserialization *was* attempted (even with null data)
-        mockSerializer.Verify(s => s.DeserializePayload<object>(It.IsAny<object>()), Times.Once());
+        // A request with no response payload never reads one, whatever OBS sends back.
+        mockSerializer.Verify(s => s.DeserializePayload<object>(It.IsAny<object>()), Times.Never);
 
         // Verify the pending request was removed
         ConcurrentDictionary<string, TaskCompletionSource<object>>? pendingRequests =

@@ -30,6 +30,7 @@ namespace ObsWebSocket.Core.Serialization;
 [JsonSerializable(typeof(SceneStub))]
 [JsonSerializable(typeof(SceneItemStub))]
 [JsonSerializable(typeof(SceneItemTransformStub))]
+[JsonSerializable(typeof(SceneItemTransformPatchStub))]
 [JsonSerializable(typeof(FilterStub))]
 [JsonSerializable(typeof(InputStub))]
 [JsonSerializable(typeof(TransitionStub))]

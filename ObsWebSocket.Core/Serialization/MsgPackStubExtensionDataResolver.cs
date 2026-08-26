@@ -36,6 +36,7 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
         Register<SceneStub>(map);
         Register<SceneItemStub>(map);
         Register<SceneItemTransformStub>(map);
+        Register<SceneItemTransformPatchStub>(map);
         Register<FilterStub>(map);
         Register<InputStub>(map);
         Register<InputVolumeMeterStub>(map);

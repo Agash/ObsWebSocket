@@ -65,6 +65,7 @@ internal static partial class Emitter
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemTransformStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemTransformPatchStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(FilterStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(InputStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(TransitionStub))]");

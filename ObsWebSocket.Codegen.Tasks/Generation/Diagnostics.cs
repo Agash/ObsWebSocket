@@ -107,9 +107,9 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor ArrayItemTypeUnknownWarning = new(
         id: "OBSWSGEN010",
         title: "Array item type unknown",
-        messageFormat: "Could not determine item type for array field '{0}' in '{1}' from type string '{2}'. Mapping to 'List<System.Text.Json.JsonElement>'.",
+        messageFormat: "Could not determine item type for array field '{0}' in '{1}' from type string '{2}'. Map it to a stub; List<JsonElement> has no MessagePack formatter in most resolver chains and the message becomes unreadable on that transport.",
         category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning, // Warning as List<JsonElement> is usable
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
 
@@ -121,9 +121,37 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor UnclassifiedNumberField = new(
         id: "OBSWSGEN012",
         title: "Unclassified Number field",
-        messageFormat: "Number field '{0}' in '{1}' is not listed in NumericFieldTable. Mapping to 'double'. Add it to the table if it holds whole numbers.",
+        messageFormat: "Number field '{0}' in '{1}' is not listed in NumericFieldTable. Classify it deliberately: whole numbers reach callers as floating point otherwise.",
         category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>
+    /// Reported when a field the numeric table calls a whole number carries a protocol restriction
+    /// written with a decimal point. The restriction is the protocol stating the field is
+    /// fractional, so the classification is wrong and the value would be truncated on the wire.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FractionalFieldClassifiedAsWhole = new(
+        id: "OBSWSGEN013",
+        title: "Whole-number field has a fractional restriction",
+        messageFormat: "Number field '{0}' is listed as a whole number but the protocol restricts it to '{1}', which is fractional. Move it to the double set.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>
+    /// Reported when the protocol declares a string-valued enum that no field is mapped onto. The
+    /// generated property would be a plain string, which is the state every string enum was in
+    /// before the mapping table existed.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnmappedStringEnum = new(
+        id: "OBSWSGEN014",
+        title: "Unmapped string enum",
+        messageFormat: "The protocol declares string-valued enum '{0}' but no field maps onto it. Add its fields to StringEnumFieldTable, or the properties stay strings.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
 

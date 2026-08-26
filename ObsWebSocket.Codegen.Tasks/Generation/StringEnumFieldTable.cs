@@ -22,6 +22,9 @@ internal static class StringEnumFieldTable
         ["mediaAction"] = "MediaInputAction",
     };
 
+    /// <summary>The enum type names this table maps fields onto.</summary>
+    public static IEnumerable<string> MappedEnums => s_fieldToEnum.Values;
+
     /// <summary>
     /// Returns the enum type name a <c>String</c> field maps to, or <see langword="null"/> when it
     /// is an ordinary string.
