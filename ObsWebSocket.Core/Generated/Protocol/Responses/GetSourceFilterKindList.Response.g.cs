@@ -41,7 +41,7 @@ public sealed partial record GetSourceFilterKindListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSourceFilterKindListResponseData(System.Collections.Generic.List<string>? sourceFilterKinds = null)
+    public GetSourceFilterKindListResponseData(System.Collections.Generic.List<string>? sourceFilterKinds = default)
     {
         this.SourceFilterKinds = sourceFilterKinds;
     }

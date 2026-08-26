@@ -53,7 +53,7 @@ public sealed partial record SceneItemListReindexedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneItemListReindexedPayload(string? sceneName = null, string? sceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? sceneItems = null)
+    public SceneItemListReindexedPayload(string? sceneName = null, string? sceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? sceneItems = default)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

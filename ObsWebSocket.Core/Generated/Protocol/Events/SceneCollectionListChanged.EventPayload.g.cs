@@ -39,7 +39,7 @@ public sealed partial record SceneCollectionListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneCollectionListChangedPayload(System.Collections.Generic.List<string>? sceneCollections = null)
+    public SceneCollectionListChangedPayload(System.Collections.Generic.List<string>? sceneCollections = default)
     {
         this.SceneCollections = sceneCollections;
     }

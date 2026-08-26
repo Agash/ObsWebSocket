@@ -39,7 +39,7 @@ public sealed partial record GetMonitorListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetMonitorListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub>? monitors = null)
+    public GetMonitorListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub>? monitors = default)
     {
         this.Monitors = monitors;
     }

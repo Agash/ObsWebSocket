@@ -53,7 +53,7 @@ public sealed partial record SourceFilterSettingsChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SourceFilterSettingsChangedPayload(string? sourceName = null, string? filterName = null, System.Text.Json.JsonElement? filterSettings = null)
+    public SourceFilterSettingsChangedPayload(string? sourceName = null, string? filterName = null, System.Text.Json.JsonElement? filterSettings = default)
     {
         this.SourceName = sourceName;
         this.FilterName = filterName;

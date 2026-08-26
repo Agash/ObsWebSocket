@@ -39,7 +39,7 @@ public sealed partial record GetInputListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.InputStub>? inputs = null)
+    public GetInputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.InputStub>? inputs = default)
     {
         this.Inputs = inputs;
     }

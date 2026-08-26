@@ -39,7 +39,7 @@ public sealed partial record GetInputAudioTracksResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputAudioTracksResponseData(System.Collections.Generic.Dictionary<string, bool>? inputAudioTracks = null)
+    public GetInputAudioTracksResponseData(System.Collections.Generic.Dictionary<string, bool>? inputAudioTracks = default)
     {
         this.InputAudioTracks = inputAudioTracks;
     }

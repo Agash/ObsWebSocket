@@ -2366,6 +2366,214 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Preview scene helpers",
+                        async () =>
+                        {
+                            // Preview only exists in Studio Mode, so turn it on for the check and
+                            // put it back however it was found.
+                            GetStudioModeEnabledResponseData studio = await client
+                                .Ui.GetStudioModeEnabledAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            if (!studio.StudioModeEnabled)
+                            {
+                                await client
+                                    .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+
+                            try
+                            {
+                                // Every switch waits for the event confirming it. OBS points
+                                // Preview at the Program scene while enabling Studio Mode, and
+                                // that lands after StudioModeStateChanged, so a switch that does
+                                // not wait for its own confirmation gets silently undone.
+                                await client
+                                    .Scenes.SwitchPreviewSceneAndWaitAsync(
+                                        sceneName,
+                                        cancellationToken: cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                GetCurrentPreviewSceneResponseData preview = await client
+                                    .Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                // The plain overload, confirmed by waiting on the event directly.
+                                Task<CurrentPreviewSceneChangedEventArgs> back =
+                                    client.WaitForEventAsync<CurrentPreviewSceneChangedEventArgs>(
+                                        e =>
+                                            string.Equals(
+                                                e.EventData.SceneName,
+                                                originalScene,
+                                                StringComparison.Ordinal
+                                            ),
+                                        TimeSpan.FromSeconds(5),
+                                        cancellationToken
+                                    );
+                                await client
+                                    .Scenes.SwitchPreviewSceneAsync(
+                                        originalScene,
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                _ = await back.ConfigureAwait(false);
+
+                                GetCurrentPreviewSceneResponseData restored = await client
+                                    .Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                bool ok =
+                                    string.Equals(
+                                        preview.SceneName,
+                                        sceneName,
+                                        StringComparison.Ordinal
+                                    )
+                                    && string.Equals(
+                                        restored.SceneName,
+                                        originalScene,
+                                        StringComparison.Ordinal
+                                    );
+
+                                return (
+                                    ok,
+                                    $"wanted {sceneName} got {preview.SceneName}, "
+                                        + $"then wanted {originalScene} got {restored.SceneName}"
+                                );
+                            }
+                            finally
+                            {
+                                if (!studio.StudioModeEnabled)
+                                {
+                                    await client
+                                        .Ui.SetStudioModeEnabledAsync(new(false), cancellationToken)
+                                        .ConfigureAwait(false);
+                                }
+                            }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "SourceExistsAsync",
+                        async () =>
+                        {
+                            bool present = await client
+                                .Sources.SourceExistsAsync(inputName, cancellationToken)
+                                .ConfigureAwait(false);
+                            bool absent = await client
+                                .Sources.SourceExistsAsync("__absent__", cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (present && !absent, $"present={present}, absent={absent}");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "SetInputMutesAsync",
+                        async () =>
+                        {
+                            GetInputMuteResponseData before = await client
+                                .Inputs.GetInputMuteAsync(
+                                    new(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // One real input beside one that does not exist, so the returned
+                            // results have to show a success next to a failure.
+                            BatchResults muteResults = await client
+                                .Inputs.SetInputMutesAsync(
+                                    [(inputName, !before.InputMuted), ("__absent__", true)],
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetInputMuteResponseData after = await client
+                                .Inputs.GetInputMuteAsync(
+                                    new(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .Inputs.SetInputMutesAsync(
+                                    [(inputName, before.InputMuted)],
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                muteResults.Count == 2
+                                && muteResults[0].RequestStatus.Result
+                                && !muteResults[1].RequestStatus.Result
+                                && after.InputMuted == !before.InputMuted;
+
+                            return (
+                                ok,
+                                $"{muteResults.Count} results, muted {before.InputMuted} -> {after.InputMuted}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Transition settings read",
+                        async () =>
+                        {
+                            GetCurrentSceneTransitionResponseData current = await client
+                                .Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            // The typed Get*SettingsAsync helpers deserialize into a settings
+                            // record; the generated request is the way to read the raw JSON.
+                            // A transition with nothing to configure, such as Fade, legitimately
+                            // reports no settings, so the name and kind are what is asserted.
+                            JsonElement? settings = current.TransitionSettings;
+
+                            return (
+                                !string.IsNullOrEmpty(current.TransitionName)
+                                    && !string.IsNullOrEmpty(current.TransitionKind),
+                                $"{current.TransitionName} ({current.TransitionKind}), "
+                                    + $"settings {(settings is null ? "none" : "present")}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Canvas screenshot helper",
+                        async () =>
+                        {
+                            byte[]? bytes = await client
+                                .Sources.GetSourceScreenshotOnCanvasBytesAsync(
+                                    sceneName,
+                                    "png",
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool png =
+                                bytes is { Length: > 8 }
+                                && bytes[0] == 0x89
+                                && bytes[1] == 0x50
+                                && bytes[2] == 0x4E
+                                && bytes[3] == 0x47;
+
+                            return (png, $"{bytes?.Length ?? 0} bytes at canvas size");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Typed exception on a rejected request",
                         async () =>
                         {
@@ -3365,9 +3573,7 @@ internal sealed partial class Worker(
 
     private void OnStreamStateChanged(object? sender, StreamStateChangedEventArgs e)
     {
-        // The wire value is a string; OutputStateExtensions.FromWireValue turns it into the
-        // typed enum so it can be matched instead of compared against protocol constants.
-        string description = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+        string description = e.EventData.OutputState switch
         {
             OutputState.Starting => "starting up",
             OutputState.Started => "live",
@@ -3377,7 +3583,6 @@ internal sealed partial class Worker(
             OutputState.Reconnected => "reconnected",
             OutputState.Paused => "paused",
             OutputState.Unknown => "in an unknown state",
-            null => $"reporting an unrecognised state ({e.EventData.OutputState})",
             _ => "in an unhandled state",
         };
 

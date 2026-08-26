@@ -61,7 +61,7 @@ public sealed partial record SceneItemTransformChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemTransformChangedPayload(int sceneItemId, string? sceneName = null, string? sceneUuid = null, ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = null)
+    public SceneItemTransformChangedPayload(int sceneItemId, string? sceneName = null, string? sceneUuid = null, ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = default)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

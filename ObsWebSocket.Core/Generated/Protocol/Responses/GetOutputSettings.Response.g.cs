@@ -39,7 +39,7 @@ public sealed partial record GetOutputSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetOutputSettingsResponseData(System.Text.Json.JsonElement? outputSettings = null)
+    public GetOutputSettingsResponseData(System.Text.Json.JsonElement? outputSettings = default)
     {
         this.OutputSettings = outputSettings;
     }

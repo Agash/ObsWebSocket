@@ -39,7 +39,7 @@ public sealed partial record GetCanvasListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetCanvasListResponseData(System.Collections.Generic.List<System.Text.Json.JsonElement>? canvases = null)
+    public GetCanvasListResponseData(System.Collections.Generic.List<System.Text.Json.JsonElement>? canvases = default)
     {
         this.Canvases = canvases;
     }

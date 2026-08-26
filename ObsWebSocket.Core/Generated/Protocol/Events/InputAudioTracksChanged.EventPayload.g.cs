@@ -53,7 +53,7 @@ public sealed partial record InputAudioTracksChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public InputAudioTracksChangedPayload(string? inputName = null, string? inputUuid = null, System.Collections.Generic.Dictionary<string, bool>? inputAudioTracks = null)
+    public InputAudioTracksChangedPayload(string? inputName = null, string? inputUuid = null, System.Collections.Generic.Dictionary<string, bool>? inputAudioTracks = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

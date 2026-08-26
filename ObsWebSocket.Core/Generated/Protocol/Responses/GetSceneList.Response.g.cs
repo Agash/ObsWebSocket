@@ -67,7 +67,7 @@ public sealed partial record GetSceneListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneListResponseData(string? currentProgramSceneName = null, string? currentProgramSceneUuid = null, string? currentPreviewSceneName = null, string? currentPreviewSceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = null)
+    public GetSceneListResponseData(string? currentProgramSceneName = null, string? currentProgramSceneUuid = null, string? currentPreviewSceneName = null, string? currentPreviewSceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = default)
     {
         this.CurrentProgramSceneName = currentProgramSceneName;
         this.CurrentProgramSceneUuid = currentProgramSceneUuid;

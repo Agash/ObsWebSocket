@@ -46,7 +46,7 @@ public sealed partial record GetSceneCollectionListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneCollectionListResponseData(string? currentSceneCollectionName = null, System.Collections.Generic.List<string>? sceneCollections = null)
+    public GetSceneCollectionListResponseData(string? currentSceneCollectionName = null, System.Collections.Generic.List<string>? sceneCollections = default)
     {
         this.CurrentSceneCollectionName = currentSceneCollectionName;
         this.SceneCollections = sceneCollections;

@@ -39,7 +39,7 @@ public sealed partial record GetOutputListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetOutputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub>? outputs = null)
+    public GetOutputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub>? outputs = default)
     {
         this.Outputs = outputs;
     }

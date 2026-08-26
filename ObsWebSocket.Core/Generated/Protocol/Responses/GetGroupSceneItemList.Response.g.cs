@@ -43,7 +43,7 @@ public sealed partial record GetGroupSceneItemListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetGroupSceneItemListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? sceneItems = null)
+    public GetGroupSceneItemListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? sceneItems = default)
     {
         this.SceneItems = sceneItems;
     }

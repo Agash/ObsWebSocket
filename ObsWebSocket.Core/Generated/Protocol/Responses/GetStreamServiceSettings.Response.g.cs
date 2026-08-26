@@ -46,7 +46,7 @@ public sealed partial record GetStreamServiceSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetStreamServiceSettingsResponseData(string? streamServiceType = null, System.Text.Json.JsonElement? streamServiceSettings = null)
+    public GetStreamServiceSettingsResponseData(string? streamServiceType = null, System.Text.Json.JsonElement? streamServiceSettings = default)
     {
         this.StreamServiceType = streamServiceType;
         this.StreamServiceSettings = streamServiceSettings;

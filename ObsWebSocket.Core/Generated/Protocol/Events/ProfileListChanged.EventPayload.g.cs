@@ -39,7 +39,7 @@ public sealed partial record ProfileListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public ProfileListChangedPayload(System.Collections.Generic.List<string>? profiles = null)
+    public ProfileListChangedPayload(System.Collections.Generic.List<string>? profiles = default)
     {
         this.Profiles = profiles;
     }

@@ -56,7 +56,7 @@ public sealed partial record VendorEventPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public VendorEventPayload(string? vendorName = null, string? eventType = null, System.Text.Json.JsonElement? eventData = null)
+    public VendorEventPayload(string? vendorName = null, string? eventType = null, System.Text.Json.JsonElement? eventData = default)
     {
         this.VendorName = vendorName;
         this.EventType = eventType;

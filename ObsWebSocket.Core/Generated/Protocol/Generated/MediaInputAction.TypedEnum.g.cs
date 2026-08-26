@@ -74,3 +74,31 @@ public static class MediaInputActionExtensions
         _ => null,
     };
 }
+
+/// <summary>
+/// Reads and writes <see cref="MediaInputAction"/> as the protocol string in JSON.
+/// </summary>
+public sealed class MediaInputActionJsonConverter : System.Text.Json.Serialization.JsonConverter<MediaInputAction>
+{
+    /// <inheritdoc/>
+    public override MediaInputAction Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>
+        MediaInputActionExtensions.FromWireValue(reader.GetString()) ?? MediaInputAction.None;
+
+    /// <inheritdoc/>
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, MediaInputAction value, System.Text.Json.JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.ToWireValue());
+}
+
+/// <summary>
+/// Reads and writes <see cref="MediaInputAction"/> as the protocol string in MessagePack.
+/// </summary>
+public sealed class MediaInputActionMessagePackFormatter : MessagePack.Formatters.IMessagePackFormatter<MediaInputAction>
+{
+    /// <inheritdoc/>
+    public MediaInputAction Deserialize(ref MessagePack.MessagePackReader reader, MessagePack.MessagePackSerializerOptions options) =>
+        MediaInputActionExtensions.FromWireValue(reader.ReadString()) ?? MediaInputAction.None;
+
+    /// <inheritdoc/>
+    public void Serialize(ref MessagePack.MessagePackWriter writer, MediaInputAction value, MessagePack.MessagePackSerializerOptions options) =>
+        writer.Write(value.ToWireValue());
+}

@@ -525,6 +525,19 @@ internal static partial class Emitter
                 continue;
             }
 
+            // A field mapped onto a protocol enum needs the wire value on both transports, not the
+            // member name and not the ordinal. It is never nullable: OBS always sends a value, and
+            // one it does not recognise maps onto the enum's zero member rather than onto null, so
+            // a caller never has to null check a state before switching on it.
+            string? propertyStringEnum =
+                associatedFieldDef?.ValueType == "String"
+                    ? StringEnumFieldTable.MapStringEnum(originalName)
+                    : null;
+            if (propertyStringEnum is not null)
+            {
+                propertyNullableSuffix = string.Empty;
+            }
+
             PropertyGenInfo propInfo = new(
                 propertyName,
                 ToCamelCase(propertyName),
@@ -561,6 +574,16 @@ internal static partial class Emitter
 
             mainBuilder.AppendLine($"    [JsonPropertyName(\"{originalName}\")]");
             mainBuilder.AppendLine($"    [Key(\"{originalName}\")]");
+
+            if (propertyStringEnum is not null)
+            {
+                mainBuilder.AppendLine(
+                    $"    [JsonConverter(typeof({GeneratedEnumsNamespace}.{propertyStringEnum}JsonConverter))]"
+                );
+                mainBuilder.AppendLine(
+                    $"    [MessagePackFormatter(typeof({GeneratedEnumsNamespace}.{propertyStringEnum}MessagePackFormatter))]"
+                );
+            }
             mainBuilder.Append("    public ");
             if (isConsideredRequired)
             {
@@ -648,7 +671,9 @@ internal static partial class Emitter
             // Append optional parameters WITH default null value
             constructorParams.AddRange(
                 optionalParamsList.Select(p =>
-                    $"{p.CSharpType}{p.NullableSuffix} {p.ParamName} = null"
+                    // A non-nullable optional parameter cannot default to null. That happens for
+                    // the enum-typed fields, whose zero member is the "unknown" one anyway.
+                    $"{p.CSharpType}{p.NullableSuffix} {p.ParamName} = {(p.NullableSuffix.Length == 0 ? "default" : "null")}"
                 )
             );
 

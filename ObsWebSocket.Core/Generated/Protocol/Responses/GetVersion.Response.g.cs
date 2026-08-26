@@ -82,7 +82,7 @@ public sealed partial record GetVersionResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetVersionResponseData(int rpcVersion, string? obsVersion = null, string? obsWebSocketVersion = null, System.Collections.Generic.List<string>? availableRequests = null, System.Collections.Generic.List<string>? supportedImageFormats = null, string? platform = null, string? platformDescription = null)
+    public GetVersionResponseData(int rpcVersion, string? obsVersion = null, string? obsWebSocketVersion = null, System.Collections.Generic.List<string>? availableRequests = default, System.Collections.Generic.List<string>? supportedImageFormats = default, string? platform = null, string? platformDescription = null)
     {
         this.ObsVersion = obsVersion;
         this.ObsWebSocketVersion = obsWebSocketVersion;

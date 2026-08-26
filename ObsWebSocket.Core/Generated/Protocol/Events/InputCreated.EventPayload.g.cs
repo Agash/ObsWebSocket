@@ -82,7 +82,7 @@ public sealed partial record InputCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputCreatedPayload(long inputKindCaps, string? inputName = null, string? inputUuid = null, string? inputKind = null, string? unversionedInputKind = null, System.Text.Json.JsonElement? inputSettings = null, System.Text.Json.JsonElement? defaultInputSettings = null)
+    public InputCreatedPayload(long inputKindCaps, string? inputName = null, string? inputUuid = null, string? inputKind = null, string? unversionedInputKind = null, System.Text.Json.JsonElement? inputSettings = default, System.Text.Json.JsonElement? defaultInputSettings = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

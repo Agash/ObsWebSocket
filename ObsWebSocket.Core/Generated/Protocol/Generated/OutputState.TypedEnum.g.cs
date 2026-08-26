@@ -86,3 +86,31 @@ public static class OutputStateExtensions
         _ => null,
     };
 }
+
+/// <summary>
+/// Reads and writes <see cref="OutputState"/> as the protocol string in JSON.
+/// </summary>
+public sealed class OutputStateJsonConverter : System.Text.Json.Serialization.JsonConverter<OutputState>
+{
+    /// <inheritdoc/>
+    public override OutputState Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>
+        OutputStateExtensions.FromWireValue(reader.GetString()) ?? OutputState.Unknown;
+
+    /// <inheritdoc/>
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, OutputState value, System.Text.Json.JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.ToWireValue());
+}
+
+/// <summary>
+/// Reads and writes <see cref="OutputState"/> as the protocol string in MessagePack.
+/// </summary>
+public sealed class OutputStateMessagePackFormatter : MessagePack.Formatters.IMessagePackFormatter<OutputState>
+{
+    /// <inheritdoc/>
+    public OutputState Deserialize(ref MessagePack.MessagePackReader reader, MessagePack.MessagePackSerializerOptions options) =>
+        OutputStateExtensions.FromWireValue(reader.ReadString()) ?? OutputState.Unknown;
+
+    /// <inheritdoc/>
+    public void Serialize(ref MessagePack.MessagePackWriter writer, OutputState value, MessagePack.MessagePackSerializerOptions options) =>
+        writer.Write(value.ToWireValue());
+}

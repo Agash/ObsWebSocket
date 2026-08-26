@@ -41,7 +41,7 @@ public sealed partial record GetTransitionKindListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetTransitionKindListResponseData(System.Collections.Generic.List<string>? transitionKinds = null)
+    public GetTransitionKindListResponseData(System.Collections.Generic.List<string>? transitionKinds = default)
     {
         this.TransitionKinds = transitionKinds;
     }

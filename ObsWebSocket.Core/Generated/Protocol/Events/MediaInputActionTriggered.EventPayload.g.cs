@@ -43,7 +43,9 @@ public sealed partial record MediaInputActionTriggeredPayload
     /// </summary>
     [JsonPropertyName("mediaAction")]
     [Key("mediaAction")]
-    public string? MediaAction { get; init; }
+    [JsonConverter(typeof(ObsWebSocket.Core.Protocol.Generated.MediaInputActionJsonConverter))]
+    [MessagePackFormatter(typeof(ObsWebSocket.Core.Protocol.Generated.MediaInputActionMessagePackFormatter))]
+    public ObsWebSocket.Core.Protocol.Generated.MediaInputAction MediaAction { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -53,7 +55,7 @@ public sealed partial record MediaInputActionTriggeredPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public MediaInputActionTriggeredPayload(string? inputName = null, string? inputUuid = null, string? mediaAction = null)
+    public MediaInputActionTriggeredPayload(string? inputName = null, string? inputUuid = null, ObsWebSocket.Core.Protocol.Generated.MediaInputAction mediaAction = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

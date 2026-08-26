@@ -41,7 +41,7 @@ public sealed partial record SceneListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneListChangedPayload(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = null)
+    public SceneListChangedPayload(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = default)
     {
         this.Scenes = scenes;
     }

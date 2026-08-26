@@ -41,7 +41,7 @@ public sealed partial record GetGroupListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetGroupListResponseData(System.Collections.Generic.List<string>? groups = null)
+    public GetGroupListResponseData(System.Collections.Generic.List<string>? groups = default)
     {
         this.Groups = groups;
     }

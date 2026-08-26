@@ -97,7 +97,7 @@ public sealed partial record CreateSourceFilterRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CreateSourceFilterRequestData(string filterName, string filterKind, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, System.Text.Json.JsonElement? filterSettings = null)
+    public CreateSourceFilterRequestData(string filterName, string filterKind, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, System.Text.Json.JsonElement? filterSettings = default)
     {
         this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;

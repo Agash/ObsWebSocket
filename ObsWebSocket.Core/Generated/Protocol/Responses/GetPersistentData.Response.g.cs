@@ -39,7 +39,7 @@ public sealed partial record GetPersistentDataResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetPersistentDataResponseData(System.Text.Json.JsonElement? slotValue = null)
+    public GetPersistentDataResponseData(System.Text.Json.JsonElement? slotValue = default)
     {
         this.SlotValue = slotValue;
     }

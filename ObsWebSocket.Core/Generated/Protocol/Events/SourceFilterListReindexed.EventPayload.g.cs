@@ -46,7 +46,7 @@ public sealed partial record SourceFilterListReindexedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SourceFilterListReindexedPayload(string? sourceName = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub>? filters = null)
+    public SourceFilterListReindexedPayload(string? sourceName = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub>? filters = default)
     {
         this.SourceName = sourceName;
         this.Filters = filters;

@@ -41,7 +41,7 @@ public sealed partial record GetSceneItemTransformResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneItemTransformResponseData(ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = null)
+    public GetSceneItemTransformResponseData(ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = default)
     {
         this.SceneItemTransform = sceneItemTransform;
     }

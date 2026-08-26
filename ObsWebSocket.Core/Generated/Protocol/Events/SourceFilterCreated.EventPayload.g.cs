@@ -75,7 +75,7 @@ public sealed partial record SourceFilterCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SourceFilterCreatedPayload(int filterIndex, string? sourceName = null, string? filterName = null, string? filterKind = null, System.Text.Json.JsonElement? filterSettings = null, System.Text.Json.JsonElement? defaultFilterSettings = null)
+    public SourceFilterCreatedPayload(int filterIndex, string? sourceName = null, string? filterName = null, string? filterKind = null, System.Text.Json.JsonElement? filterSettings = default, System.Text.Json.JsonElement? defaultFilterSettings = default)
     {
         this.SourceName = sourceName;
         this.FilterName = filterName;

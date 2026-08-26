@@ -41,7 +41,7 @@ public sealed partial record GetHotkeyListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetHotkeyListResponseData(System.Collections.Generic.List<string>? hotkeys = null)
+    public GetHotkeyListResponseData(System.Collections.Generic.List<string>? hotkeys = default)
     {
         this.Hotkeys = hotkeys;
     }

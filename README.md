@@ -88,6 +88,75 @@ protocol definition, so a refresh that recategorises a request moves it here too
 `WaitForEventAsync` and `CallBatchAsync` stay directly on the client, since neither belongs to one
 category.
 
+## The helper set
+
+Alongside the generated request per protocol request, each group carries conveniences for things
+that otherwise take several calls or a lookup. Every typed settings helper has two overloads: an
+implicit one for library-registered types, and an explicit one taking a `JsonTypeInfo<T>` for
+consumer-provided types. Use the explicit overload to stay AOT-safe.
+
+**Settings read and write**
+
+| Helper | Notes |
+|---|---|
+| `Inputs.GetInputSettingsAsync<T>` / `SetInputSettingsAsync<T>` | Input settings; Set supports `overlay` |
+| `Inputs.GetInputDefaultSettingsAsync<T>` | Defaults for a given input kind |
+| `Filters.GetSourceFilterSettingsAsync<T>` / `SetSourceFilterSettingsAsync<T>` | Filter settings; Set supports `overlay` |
+| `Filters.GetSourceFilterDefaultSettingsAsync<T>` | Defaults for a given filter kind |
+| `Transitions.GetCurrentSceneTransitionSettingsAsync<T>` / `SetCurrentSceneTransitionSettingsAsync<T>` | Transition settings |
+| `Outputs.GetOutputSettingsAsync<T>` / `SetOutputSettingsAsync<T>` | Output settings |
+| `Config.GetStreamServiceSettingsAsync<T>` / `SetStreamServiceSettingsAsync<T>` | Stream service settings |
+
+Most take optional parameters ahead of the cancellation token, so pass it as `cancellationToken: ct`.
+
+**Scenes and scene items**
+
+- `Scenes.SwitchProgramSceneAsync(scene, ct)` and `Scenes.SwitchPreviewSceneAsync(scene, ct)` switch
+  a scene. Optional `transitionName` and `transitionDurationMs` apply to that switch only.
+- `Scenes.SwitchProgramSceneAndWaitAsync` and `Scenes.SwitchPreviewSceneAndWaitAsync` do the same
+  and wait for the event confirming it.
+- `SceneItems.SetSceneItemEnabledAsync(scene, sourceName, isEnabled, ct)` returns the resulting
+  state. Leave `isEnabled` null to toggle. An overload takes the numeric item id instead.
+- `SceneItems.FindSceneItemIdAsync(scene, sourceName, ct)` returns `int?`, null rather than throwing
+  when the item is not in the scene.
+- `Sources.SourceExistsAsync(name, ct)` and `Scenes.SceneExistsAsync(name, ct)` check existence.
+
+**Inputs and filters**
+
+- `Inputs.SetInputTextAsync(name, text, ct)` is shorthand for updating text source content.
+- `Inputs.SetInputVolumeDbAsync(name, db, ct)` and `Inputs.SetInputVolumeMulAsync(name, mul, ct)`
+  each pick one unit. The underlying request accepts either and fails when given neither.
+- `Inputs.SetInputMutesAsync(inputMutes, ct)` sets many mute states in one batch and returns the
+  results, so a caller sees which inputs OBS rejected.
+- `Inputs.CreateInputAsync<T>(kind, name, settings, ...)` creates an input with typed settings.
+- `Filters.CreateSourceFilterAsync<T>(source, filterName, kind, settings, ct)` adds a typed filter.
+
+**Media**
+
+- `MediaInputs.PlayMediaAsync`, `PauseMediaAsync`, `StopMediaAsync` and `RestartMediaAsync` are
+  shorthands over `TriggerMediaActionAsync(name, MediaInputAction, ct)`.
+
+**Screenshots**
+
+- `Sources.GetSourceScreenshotBytesAsync(source, ...)` returns decoded image bytes.
+- `Sources.GetSourceScreenshotOnCanvasBytesAsync(source, ...)` does the same at canvas dimensions.
+- `Sources.SaveSourceScreenshotToFileAsync(source, filePath, ...)` writes straight to disk.
+
+**Outputs**
+
+- `Record.SetRecordActiveAndWaitAsync(activate, timeout, ct)`,
+  `Stream.SetStreamActiveAndWaitAsync(...)` and `Outputs.SetVirtualCamActiveAndWaitAsync(...)` start
+  or stop the output and wait for OBS to confirm, returning the resulting `OutputState`.
+- `Record.IsRecordActiveAsync(ct)`, `Stream.IsStreamActiveAsync(ct)` and
+  `Outputs.IsVirtualCamActiveAsync(ct)` read current state.
+
+**Application state**
+
+- `Config.EnsureProfileActiveAsync(name, ct)` and `Config.EnsureSceneCollectionActiveAsync(name, ct)`
+  switch only if needed, returning whether the target is active rather than throwing when it does
+  not exist.
+- `General.TriggerHotkeyAsync(hotkeyName, ct)` fires a hotkey by name.
+
 ## Observing events
 
 Every OBS event is exposed as an async sequence on its category group. The stream subscribes for the
@@ -250,42 +319,16 @@ batch.Add("SetInputSettings", myJsonElement);
 > so it cannot be corrected here; references refuse to resolve on such a batch and say why. See
 > [#16](https://github.com/Agash/ObsWebSocket/issues/16).
 
-## Typed protocol enums
+## Protocol types
 
-Protocol enums that travel as strings have a real C# enum, so states can be matched rather than
-compared against constants:
+The protocol definition is looser than C#: it has one numeric type because JSON does, and it types
+enum-valued fields as plain strings. The generated surface narrows both, so callers get the C# type
+rather than the wire representation.
 
-```csharp
-client.StreamStateChanged += (_, e) =>
-{
-    string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
-    {
-        OutputState.Started => "live",
-        OutputState.Starting or OutputState.Reconnecting => "coming up",
-        OutputState.Stopped or OutputState.Stopping => "going down",
-        null => $"unrecognised ({e.EventData.OutputState})",
-        _ => "in between",
-    };
-
-    Console.WriteLine($"Stream is {what}");
-};
-```
-
-Media transport works the same way, with shorthands for the common actions:
-
-```csharp
-await client.MediaInputs.PlayMediaAsync("Stinger", ct);
-await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
-```
-
-The wire constants remain available as `const` strings on `ObsOutputState` and `ObsMediaInputAction`,
-and `ToWireValue()` converts an enum back.
-
-## Numbers
-
-The protocol has a single `Number` type because JSON does, so a scene item id and a volume
-multiplier look identical in the definition. Fields that hold whole numbers are generated as `int`
-or `long` rather than `double`:
+**Numbers.** A scene item id and a volume multiplier are both `Number` with a `>= 0` restriction, so
+which ones are integral is not recoverable from the definition. Fields holding whole numbers are
+generated as `int` or `long`, from an explicit list in the generator rather than a rule over field
+names, so a volume can never be truncated by a naming coincidence:
 
 ```csharp
 int id = await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct) ?? throw new(...);
@@ -295,8 +338,44 @@ long bytes = (await client.Stream.GetStreamStatusAsync(ct)).OutputBytes;
 double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputVolumeMul;
 ```
 
-Which fields those are is an explicit list in the generator, not a rule over field names, so a
-volume can never be silently truncated by a naming coincidence.
+**Enums.** Fields carrying a protocol enum are that enum, on both the read and the write side, so
+there is nothing to convert at the call site:
+
+```csharp
+client.StreamStateChanged += (_, e) =>
+{
+    string what = e.EventData.OutputState switch
+    {
+        OutputState.Started => "live",
+        OutputState.Starting or OutputState.Reconnecting => "coming up",
+        OutputState.Stopped or OutputState.Stopping => "going down",
+        OutputState.Unknown => "in a state this build does not recognise",
+        _ => "in between",
+    };
+};
+
+await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+```
+
+A value OBS sends that this build does not know maps to the enum's zero member rather than throwing,
+so a state added by a newer OBS does not fail the whole message.
+
+This covers the enums the protocol declares. `mediaState`, `monitorType`, `sceneItemBlendMode` and
+`inputKind` carry fixed vocabularies too, but the protocol types them as strings and never lists
+their values, so they stay strings rather than being given an enum this library would have to keep
+correct by hand.
+
+**Dropping to the wire.** Nothing above is a wall. `ToWireValue()` and `FromWireValue()` convert
+either way, the wire values remain as `const` strings, and `CallAsync` sends a request the generated
+surface does not model at all:
+
+```csharp
+string wire = MediaInputAction.Restart.ToWireValue();   // OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART
+
+// CallAsync for a reference type response, CallAsyncValue for a value type such as JsonElement.
+JsonElement? raw = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", new { someField = 1 }, cancellationToken: ct);
+```
 
 ## Host integration
 
@@ -390,6 +469,15 @@ raises `ObsWebSocketException` rather than handing back null.
 Reconnect delays grow by `ReconnectBackoffMultiplier`, are capped at `MaxReconnectDelayMs`, and carry
 jitter so several clients recovering from one outage do not retry in lockstep. Authentication
 failures are never retried, since they cannot succeed on a second attempt.
+
+`WithReconnectPipeline()` registers the default pipeline explicitly, which is worth doing when a
+host has its own resilience configuration and you want this client's to be visible alongside it:
+
+```csharp
+builder.AddObsWebSocketClient("obs")
+       .WithAutoConnect()
+       .WithReconnectPipeline();
+```
 
 To replace the policy outright rather than tune those options, register your own pipeline under
 `ObsWebSocketResilience.ReconnectPipelineKey` after adding the client.

@@ -46,7 +46,7 @@ public sealed partial record GetProfileListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetProfileListResponseData(string? currentProfileName = null, System.Collections.Generic.List<string>? profiles = null)
+    public GetProfileListResponseData(string? currentProfileName = null, System.Collections.Generic.List<string>? profiles = default)
     {
         this.CurrentProfileName = currentProfileName;
         this.Profiles = profiles;

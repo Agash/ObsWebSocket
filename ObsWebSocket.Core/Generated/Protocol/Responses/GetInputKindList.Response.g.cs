@@ -39,7 +39,7 @@ public sealed partial record GetInputKindListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputKindListResponseData(System.Collections.Generic.List<string>? inputKinds = null)
+    public GetInputKindListResponseData(System.Collections.Generic.List<string>? inputKinds = default)
     {
         this.InputKinds = inputKinds;
     }

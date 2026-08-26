@@ -55,7 +55,7 @@ public sealed partial record InputSettingsChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public InputSettingsChangedPayload(string? inputName = null, string? inputUuid = null, System.Text.Json.JsonElement? inputSettings = null)
+    public InputSettingsChangedPayload(string? inputName = null, string? inputUuid = null, System.Text.Json.JsonElement? inputSettings = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

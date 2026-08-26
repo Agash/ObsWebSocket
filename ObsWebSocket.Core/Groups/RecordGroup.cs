@@ -59,7 +59,7 @@ public readonly partial struct RecordGroup
         try
         {
             RecordStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
-            return OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
+            return ev.EventData.OutputState;
         }
         catch (TimeoutException)
         {

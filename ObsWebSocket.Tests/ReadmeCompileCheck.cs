@@ -210,12 +210,12 @@ internal static class ReadmeCompileCheck
     {
         client.StreamStateChanged += (_, e) =>
         {
-            string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+            string what = e.EventData.OutputState switch
             {
                 OutputState.Started => "live",
                 OutputState.Starting or OutputState.Reconnecting => "coming up",
                 OutputState.Stopped or OutputState.Stopping => "going down",
-                null => $"unrecognised ({e.EventData.OutputState})",
+                OutputState.Unknown => "in an unrecognised state",
                 _ => "in between",
             };
 
@@ -307,11 +307,31 @@ internal static class ReadmeCompileCheck
         _ = $"{bytes} {volume}";
     }
 
+    internal static async Task DroppingToTheWireAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        string wire = MediaInputAction.Restart.ToWireValue();
+
+        System.Text.Json.JsonElement? raw =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                new { someField = 1 },
+                cancellationToken: ct
+            );
+        _ = $"{wire} {raw}";
+    }
+
     internal static void HostIntegration(
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )
     {
-        _ = builder.AddObsWebSocketClient("obs").WithAutoConnect().WithHealthCheck();
+        _ = builder
+            .AddObsWebSocketClient("obs")
+            .WithAutoConnect()
+            .WithHealthCheck()
+            .WithReconnectPipeline();
     }
 
     internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
