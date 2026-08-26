@@ -1320,7 +1320,7 @@ public static partial class ObsWebSocketClientOperations
         {
             client._logger.LogDebug("WaitForEventAsync<{EventType}> timed out after {Timeout}.", typeof(TEventArgs).Name, timeout);
             tcs.TrySetCanceled(linkedCts.Token);
-            throw new TimeoutException($"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.");
+            throw new ObsWebSocketTimeoutException($"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.");
         }
         catch (Exception ex)
         {

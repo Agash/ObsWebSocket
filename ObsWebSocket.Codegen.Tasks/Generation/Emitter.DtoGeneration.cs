@@ -511,11 +511,18 @@ internal static partial class Emitter
                     {
                         // Strings and arrays are always sent. A dictionary or a JsonElement is a
                         // settings bag that genuinely may not be there, so those stay nullable.
-                        // The array mapper bakes the "?" into the type it returns, so a list has
-                        // to have it stripped here rather than merely left off the suffix.
+                        // The array and stub mappers bake the "?" into the type they return, so
+                        // those have to have it stripped here rather than merely left off the
+                        // suffix. A stub is a concrete record for an object OBS always sends,
+                        // unlike a JsonElement settings bag.
                         bool isList = csharpType.Contains("List<");
-                        isConsideredRequired = csharpType == "string" || isList;
-                        if (isList && csharpType.EndsWith("?", StringComparison.Ordinal))
+                        bool isStub =
+                            csharpType.EndsWith("Stub?", StringComparison.Ordinal)
+                            || csharpType.EndsWith("Stub", StringComparison.Ordinal);
+                        isConsideredRequired = csharpType == "string" || isList || isStub;
+                        if (
+                            (isList || isStub) && csharpType.EndsWith("?", StringComparison.Ordinal)
+                        )
                         {
                             csharpType = csharpType.Substring(0, csharpType.Length - 1);
                         }

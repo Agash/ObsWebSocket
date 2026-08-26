@@ -410,6 +410,37 @@ internal static class ReadmeCompileCheck
         _ = $"{v?.ObsVersion} {raw}";
     }
 
+    internal static async Task GroupedSurfaceAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        await client.Scenes.GetSceneListAsync(new(), ct);
+        await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);
+        await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
+        await client.SceneItems.SetSceneItemEnabledAsync("Intro", "Logo", false, ct);
+
+        client.Scenes.CurrentProgramSceneChanged += (_, e) => { };
+        await foreach (
+            var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct)
+        )
+        {
+            break;
+        }
+    }
+
+    internal static async Task TimeoutTypeAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        try
+        {
+            _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+                TimeSpan.FromSeconds(5),
+                ct
+            );
+        }
+        catch (ObsWebSocketTimeoutException)
+        {
+            // One catch covers a request timeout and a wait timeout alike.
+        }
+    }
+
     internal static void HostIntegration(
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )

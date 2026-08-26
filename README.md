@@ -76,9 +76,11 @@ reach anything:
 ```csharp
 await client.Scenes.GetSceneListAsync(new(), ct);                                   // generated request
 await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
-await client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct);         // event stream
 await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
 await client.SceneItems.SetSceneItemEnabledAsync("Intro", "Logo", false, ct);
+
+client.Scenes.CurrentProgramSceneChanged += (_, e) => { };                           // classic event
+await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct)) { break; }
 ```
 
 The groups are `Canvases`, `Config`, `Filters`, `General`, `Inputs`, `MediaInputs`, `Outputs`,
@@ -200,7 +202,8 @@ var intro = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
 );
 ```
 
-It throws `TimeoutException` when the wait elapses.
+It throws `ObsWebSocketTimeoutException` when the wait elapses, the same type a request
+timeout raises, so one `catch (ObsWebSocketException)` covers both.
 
 ## Common use cases
 
@@ -557,7 +560,7 @@ try
 }
 catch (ObsWebSocketRequestException ex)
 {
-    Console.WriteLine($"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}");
+    Console.WriteLine($"{ex.RequestType} failed with {ex.StatusCode}: {ex.Comment}");
 }
 catch (ObsWebSocketTimeoutException)
 {
@@ -633,10 +636,13 @@ identically on either, and the validation suite exercises both.
 - **One-shot mode**: `ObsWebSocket.Example run-transport-tests`
 
 `run-transport-tests` creates its own scene and input, so it does not depend on a particular OBS
-layout, and removes them afterwards. On each transport it asserts real values for the settings modes,
-event streams and buffering, `WaitForEventAsync`, the typed batch builder including duplicate request
-types, partial failure and truncation, typed protocol enums, screenshots, and the scene, input,
-volume and output helpers.
+layout, and removes them afterwards. It runs the same checks on JSON and on MessagePack, asserting
+real values rather than that a call returned: the three settings modes, event streams and their
+buffering, `WaitForEventAsync`, the typed batch builder including duplicate request types, partial
+failure and truncation, a parallel batch and what survives its mispairing, concurrent requests
+keeping their own results, the low level `Add` and `CallAsync` path, typed protocol enums, integer
+fields round tripping in both directions, screenshots in memory and on disk, and the scene, preview,
+input, mute, volume, media, transition and output helpers.
 
 ## Native AOT
 

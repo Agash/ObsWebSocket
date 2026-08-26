@@ -253,7 +253,9 @@ internal static partial class Emitter
         );
         builder.AppendLine("            tcs.TrySetCanceled(linkedCts.Token);");
         builder.AppendLine(
-            "            throw new TimeoutException($\"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.\");"
+            // The library's own timeout type, so catching ObsWebSocketException covers a wait
+            // that timed out as well as a request that did.
+            "            throw new ObsWebSocketTimeoutException($\"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.\");"
         );
         builder.AppendLine("        }");
         builder.AppendLine("        catch (Exception ex)");
