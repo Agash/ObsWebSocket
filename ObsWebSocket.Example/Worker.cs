@@ -2042,18 +2042,18 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
-                        "FindSceneItemIdInt32Async",
+                        "FindSceneItemIdAsync",
                         async () =>
                         {
                             int? id = await client
-                                .SceneItems.FindSceneItemIdInt32Async(
+                                .SceneItems.FindSceneItemIdAsync(
                                     sceneName,
                                     inputName,
                                     cancellationToken
                                 )
                                 .ConfigureAwait(false);
                             int? miss = await client
-                                .SceneItems.FindSceneItemIdInt32Async(
+                                .SceneItems.FindSceneItemIdAsync(
                                     sceneName,
                                     "__absent__",
                                     cancellationToken

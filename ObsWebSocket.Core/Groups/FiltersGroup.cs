@@ -11,6 +11,7 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -54,13 +55,8 @@ public readonly partial struct FiltersGroup
                 )
                 .ConfigureAwait(false);
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-            )
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode is ObsRequestStatus.ResourceNotFound)
         {
             return null;
         }

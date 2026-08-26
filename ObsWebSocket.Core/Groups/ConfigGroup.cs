@@ -11,6 +11,7 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -165,15 +166,11 @@ public readonly partial struct ConfigGroup
                 .ConfigureAwait(false);
             return true; // Switch command sent successfully
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || // General not found
-                ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-                || // Specific code
-                ex.Message.Contains("InvalidParameter", StringComparison.OrdinalIgnoreCase) // Might be InvalidParameter if name doesn't exist
+        // OBS answers a name it does not know with either status, depending on the request.
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode
+                    is ObsRequestStatus.ResourceNotFound
+                        or ObsRequestStatus.InvalidRequestField
             )
         {
             client._logger.LogWarning(
@@ -227,15 +224,11 @@ public readonly partial struct ConfigGroup
                 .ConfigureAwait(false);
             return true; // Switch command sent successfully
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || // General not found
-                ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-                || // Specific code
-                ex.Message.Contains("InvalidParameter", StringComparison.OrdinalIgnoreCase) // Might be InvalidParameter if name doesn't exist
+        // OBS answers a name it does not know with either status, depending on the request.
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode
+                    is ObsRequestStatus.ResourceNotFound
+                        or ObsRequestStatus.InvalidRequestField
             )
         {
             client._logger.LogWarning(

@@ -11,6 +11,7 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -49,15 +50,18 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
-    /// Sets the mute state for multiple audio inputs using a single batch request.
+    /// Sets the mute state for several audio inputs in one batch.
     /// </summary>
-    /// <param name="inputMutes">An enumerable of tuples, where each tuple contains the input name (string) and desired mute state (bool: true=muted, false=unmuted).</param>
+    /// <param name="inputMutes">The inputs to change, each with the mute state to apply.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A Task representing the completion of the batch request submission. Inspect logs for individual item failures.</returns>
-    /// <exception cref="ObsWebSocketException">Thrown if the batch request itself fails (e.g., timeout).</exception>
+    /// <returns>
+    /// One result per input, in the order given, so a caller can see which inputs OBS rejected.
+    /// The batch does not halt on a failure, so one unknown input does not skip the rest.
+    /// </returns>
+    /// <exception cref="ObsWebSocketException">Thrown if the batch itself fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    /// <exception cref="ArgumentNullException">Thrown if inputMutes is null.</exception>
-    public async Task SetInputMutesAsync(
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="inputMutes"/> is null.</exception>
+    public async Task<BatchResults> SetInputMutesAsync(
         IEnumerable<(string InputName, bool IsMuted)> inputMutes,
         CancellationToken cancellationToken = default
     )
@@ -65,49 +69,47 @@ public readonly partial struct InputsGroup
         ArgumentNullException.ThrowIfNull(inputMutes);
         client.EnsureConnected();
 
-        List<BatchRequestItem> batchItems =
-        [
-            .. inputMutes.Select(im => new BatchRequestItem(
-                RequestType: "SetInputMute",
-                RequestData: new SetInputMuteRequestData(
-                    inputName: im.InputName,
-                    inputMuted: im.IsMuted
-                )
-            )),
-        ];
-
-        if (batchItems.Count == 0)
+        ObsBatchBuilder batch = new();
+        List<string> names = [];
+        foreach ((string inputName, bool isMuted) in inputMutes)
         {
-            client._logger.LogDebug("SetInputMutesAsync called with empty list, nothing to do.");
-            return; // Nothing to send
+            _ = batch.Inputs.SetInputMute(
+                new SetInputMuteRequestData(inputName: inputName, inputMuted: isMuted)
+            );
+            names.Add(inputName);
         }
 
-        // Send batch, don't halt on failure
-        List<RequestResponsePayload<object>> results = await client
+        if (names.Count == 0)
+        {
+            client._logger.LogDebug("SetInputMutesAsync called with an empty list, nothing to do.");
+            return new BatchResults([]);
+        }
+
+        BatchResults results = await client
             .CallBatchAsync(
-                requests: batchItems,
+                batch,
+                // Serial keeps each result paired with the input at the same position.
+                executionType: RequestBatchExecutionType.SerialRealtime,
                 haltOnFailure: false,
-                executionType: RequestBatchExecutionType.SerialRealtime, // Appropriate for simple state changes
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        // Optional: Log failures from results
-        foreach (RequestResponsePayload<object> result in results)
+        for (int i = 0; i < results.Count; i++)
         {
+            RequestResponsePayload<object> result = results[i];
             if (!result.RequestStatus.Result)
             {
-                // Attempt to find original input name (requires parsing RequestId or matching RequestData - complex)
-                // For now, log the failed request type and ID
                 client._logger.LogWarning(
-                    "Failed batch item in SetInputMutesAsync: RequestType={ReqType}, RequestId={ReqId}, Code={Code}, Comment={Comment}",
-                    result.RequestType,
-                    result.RequestId,
+                    "Failed to set mute state for input '{InputName}': code {Code}, {Comment}",
+                    names[i],
                     result.RequestStatus.Code,
-                    result.RequestStatus.Comment ?? "N/A"
+                    result.RequestStatus.Comment ?? "no comment"
                 );
             }
         }
+
+        return results;
     }
 
     /// <summary>
@@ -142,13 +144,8 @@ public readonly partial struct InputsGroup
                 )
                 .ConfigureAwait(false);
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-            )
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode is ObsRequestStatus.ResourceNotFound)
         {
             return null;
         }
