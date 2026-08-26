@@ -11,6 +11,13 @@ namespace ObsWebSocket.Core;
 /// <see cref="ObsWebSocketClient.CallBatchAsync(IEnumerable{BatchRequestItem}, Protocol.Generated.RequestBatchExecutionType?, bool?, int?, CancellationToken)"/>
 /// returns results whose payloads are transport-shaped, because a batch may mix request types.
 /// These helpers turn a result into the response record for its request.
+/// <para>
+/// They exist for that low level path. A batch built with <see cref="ObsBatchBuilder"/> comes back
+/// as <see cref="BatchResults"/>, which addresses results by the reference the builder handed out
+/// and carries its own <c>AllSucceeded</c> and <c>GetFailures</c>. Those members win over the
+/// extensions of the same name here, so reaching for a builder-built batch gets the typed path
+/// either way; prefer it, and use these when holding a raw result list.
+/// </para>
 /// </remarks>
 public static class BatchResultExtensions
 {

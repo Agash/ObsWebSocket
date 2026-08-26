@@ -250,7 +250,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )
@@ -323,7 +323,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )
@@ -412,7 +412,7 @@ public class TypedSettingsTests
                                 RequestId: msg.D.RequestId!,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -488,7 +488,7 @@ public class TypedSettingsTests
                                 RequestId: msg.D.RequestId!,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -562,7 +562,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )
@@ -634,7 +634,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )
@@ -715,7 +715,7 @@ public class TypedSettingsTests
                                 RequestId: msg.D.RequestId!,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -792,7 +792,7 @@ public class TypedSettingsTests
                                 RequestId: msg.D.RequestId!,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -866,7 +866,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -948,7 +948,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: rawPayload
                             )
@@ -1026,7 +1026,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )
@@ -1098,7 +1098,7 @@ public class TypedSettingsTests
                                 RequestId: id,
                                 RequestStatus: new RequestStatus(
                                     Result: true,
-                                    Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                    Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                                 ),
                                 ResponseData: null
                             )

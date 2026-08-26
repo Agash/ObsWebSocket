@@ -720,13 +720,20 @@ public class ObsWebSocketClientConnectionTests
     {
         // Arrange
         WebSocketException connectException = new("Server unavailable");
+        // The retry delay comes from the fake clock, so the client is definitively still waiting
+        // it out when DisconnectAsync is called. Racing a real delay makes the condition this
+        // test is about depend on how loaded the machine is.
+        FakeTimeProvider time = new();
         (ObsWebSocketClient? client, _, _, Mock<IWebSocketConnectionFactory>? mockFactory) =
-            BuildMockedInfrastructure(opts =>
-            {
-                opts.AutoReconnectEnabled = true;
-                opts.MaxReconnectAttempts = 5; // Allow multiple retries
-                opts.InitialReconnectDelayMs = 300; // Longer delay to allow disconnect call
-            });
+            BuildMockedInfrastructure(
+                opts =>
+                {
+                    opts.AutoReconnectEnabled = true;
+                    opts.MaxReconnectAttempts = 5; // Allow multiple retries
+                    opts.InitialReconnectDelayMs = 300;
+                },
+                time
+            );
 
         List<string> eventLog = [];
         Exception? disconnectedReason = new("Placeholder"); // Start non-null for check later (Simplified 'new')
@@ -776,20 +783,21 @@ public class ObsWebSocketClientConnectionTests
         // Act
         Task connectTask = client.ConnectAsync(); // Start connection attempts in background
 
-        // Wait for the first connection attempt to fail
-        bool firstFailed =
-            await Task.WhenAny(firstFailSignal.Task, Task.Delay(TimeSpan.FromSeconds(2)))
-            == firstFailSignal.Task;
-        Assert.IsTrue(firstFailed, "First connection attempt did not fail within timeout.");
+        // Wait for the first connection attempt to fail. The attempt itself does not wait on the
+        // clock, so this completes without advancing it.
+        await firstFailSignal
+            .Task.WaitAsync(TimeSpan.FromSeconds(2))
+            .ConfigureAwait(ConfigureAwaitOptions.None);
 
-        // Request disconnect *while* the client is likely in the retry delay
+        // The clock has not moved, so the client is still inside the retry delay here.
         await client.DisconnectAsync();
 
-        // Wait for the Disconnected event
-        bool disconnected =
-            await Task.WhenAny(disconnectedSignal.Task, Task.Delay(TimeSpan.FromSeconds(3)))
-            == disconnectedSignal.Task;
-        Assert.IsTrue(disconnected, "Disconnect event did not fire after calling DisconnectAsync.");
+        // Wait for the Disconnected event. Disconnecting cancels the delay rather than waiting
+        // it out, so this also needs no clock advance; a regression that waits shows up as the
+        // timeout below rather than as a pass.
+        await disconnectedSignal
+            .Task.WaitAsync(TimeSpan.FromSeconds(3))
+            .ConfigureAwait(ConfigureAwaitOptions.None);
 
         // Allow original ConnectAsync task to complete/be observed (it should have been cancelled by DisconnectAsync)
         await connectTask

@@ -1532,7 +1532,7 @@ internal sealed partial class Worker(
 
                             await Task.Delay(250, cancellationToken).ConfigureAwait(false);
                             await client
-                                .Scenes.SwitchSceneAsync(
+                                .Scenes.SwitchProgramSceneAsync(
                                     sceneName,
                                     cancellationToken: cancellationToken
                                 )
@@ -1541,7 +1541,7 @@ internal sealed partial class Worker(
                             if (!string.IsNullOrEmpty(originalScene))
                             {
                                 await client
-                                    .Scenes.SwitchSceneAsync(
+                                    .Scenes.SwitchProgramSceneAsync(
                                         originalScene,
                                         cancellationToken: cancellationToken
                                     )
@@ -2437,7 +2437,7 @@ internal sealed partial class Worker(
                 if (!string.IsNullOrEmpty(originalScene))
                 {
                     await client
-                        .Scenes.SwitchSceneAsync(
+                        .Scenes.SwitchProgramSceneAsync(
                             originalScene,
                             cancellationToken: CancellationToken.None
                         )

@@ -11,7 +11,6 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
-using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -120,7 +119,7 @@ public readonly partial struct SourcesGroup
                 .ConfigureAwait(false);
         }
         catch (ObsWebSocketRequestException ex)
-            when (ex.StatusCode is ObsRequestStatus.ResourceNotFound)
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             client._logger.LogWarning(
                 "Source '{SourceName}' not found for screenshot.",

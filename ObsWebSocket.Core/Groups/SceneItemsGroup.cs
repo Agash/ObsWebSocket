@@ -11,7 +11,6 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
-using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -149,7 +148,7 @@ public readonly partial struct SceneItemsGroup
             return response?.SceneItemId;
         }
         catch (ObsWebSocketRequestException ex)
-            when (ex.StatusCode is ObsRequestStatus.ResourceNotFound)
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             // Item or scene not found, which is the expected 'failure' for a 'TryGet' pattern
             return null;

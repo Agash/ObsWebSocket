@@ -87,7 +87,7 @@ public class ObsWebSocketClientRequestTests
                             RequestId: capturedRequestId,
                             RequestStatus: new RequestStatus(
                                 Result: true,
-                                Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                             ),
                             ResponseData: rawResponseData.Value // Pass the JsonElement payload
                         );
@@ -205,7 +205,7 @@ public class ObsWebSocketClientRequestTests
                             RequestId: capturedRequestId,
                             RequestStatus: new RequestStatus(
                                 Result: true,
-                                Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                             ),
                             ResponseData: rawResponseData // null
                         );
@@ -308,7 +308,7 @@ public class ObsWebSocketClientRequestTests
                             RequestId: capturedRequestId,
                             RequestStatus: new RequestStatus(
                                 Result: true,
-                                Code: (int)Core.Protocol.Generated.RequestStatus.Success
+                                Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
                             ),
                             ResponseData: rawResponseData.Value // Pass JsonElement payload
                         );
@@ -393,7 +393,7 @@ public class ObsWebSocketClientRequestTests
         string requestType = "GetVersion"; // Using GetVersion as an example request
         RequestStatus failureStatus = new(
             Result: false,
-            Code: (int)Core.Protocol.Generated.RequestStatus.ResourceNotFound,
+            Code: (int)Core.Protocol.Generated.RequestStatusCode.ResourceNotFound,
             Comment: "ResourceNotFound"
         );
         object? rawResponseData = null; // No data s_expectedFailNoRetryLog on failure

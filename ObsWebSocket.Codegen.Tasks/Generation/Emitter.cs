@@ -48,8 +48,12 @@ internal static partial class Emitter
                 {
                     string suffix =
                         valueKind == EnumValueKind.Numeric ? ".Enum.g.cs" : ".Class.g.cs";
+                    string fileStem =
+                        valueKind == EnumValueKind.Numeric
+                            ? MapEnumTypeName(SanitizeIdentifier(enumDef.EnumType))
+                            : SanitizeIdentifier(enumDef.EnumType);
                     context.AddSource(
-                        $"{SanitizeIdentifier(enumDef.EnumType)}{suffix}",
+                        $"{fileStem}{suffix}",
                         SourceText.From(source, Encoding.UTF8)
                     );
                 }
@@ -88,7 +92,7 @@ internal static partial class Emitter
     /// </summary>
     private static string? GenerateNumericEnumSource(EnumDefinition enumDef, string underlyingType)
     {
-        string enumName = SanitizeIdentifier(enumDef.EnumType);
+        string enumName = MapEnumTypeName(SanitizeIdentifier(enumDef.EnumType));
         StringBuilder builder = BuildSourceHeader($"// Type: Numeric Enum ({underlyingType})");
         builder.AppendLine($"namespace {GeneratedEnumsNamespace};");
         builder.AppendLine();
@@ -221,6 +225,19 @@ internal static partial class Emitter
         builder.AppendLine("}");
         return builder.ToString();
     }
+
+    /// <summary>
+    /// Renames protocol enums whose name already belongs to a message type, so a caller writing a
+    /// catch filter does not have to disambiguate two types called <c>RequestStatus</c> in
+    /// neighbouring namespaces.
+    /// </summary>
+    private static string MapEnumTypeName(string enumTypeName) =>
+        enumTypeName switch
+        {
+            // Protocol.RequestStatus is the record carried on a response; this is the code on it.
+            "RequestStatus" => "RequestStatusCode",
+            _ => enumTypeName,
+        };
 
     /// <summary>
     /// Drops the leading <c>Obs</c> from a protocol enum type name, so <c>ObsMediaInputAction</c>

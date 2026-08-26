@@ -11,7 +11,6 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
-using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
 
 namespace ObsWebSocket.Core;
 
@@ -169,8 +168,8 @@ public readonly partial struct ConfigGroup
         // OBS answers a name it does not know with either status, depending on the request.
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode
-                    is ObsRequestStatus.ResourceNotFound
-                        or ObsRequestStatus.InvalidRequestField
+                    is RequestStatusCode.ResourceNotFound
+                        or RequestStatusCode.InvalidRequestField
             )
         {
             client._logger.LogWarning(
@@ -227,8 +226,8 @@ public readonly partial struct ConfigGroup
         // OBS answers a name it does not know with either status, depending on the request.
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode
-                    is ObsRequestStatus.ResourceNotFound
-                        or ObsRequestStatus.InvalidRequestField
+                    is RequestStatusCode.ResourceNotFound
+                        or RequestStatusCode.InvalidRequestField
             )
         {
             client._logger.LogWarning(

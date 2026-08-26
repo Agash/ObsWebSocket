@@ -30,7 +30,7 @@ public readonly partial struct ScenesGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to perform any step (e.g., scene/transition not found).</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SwitchSceneAsync(
+    private async Task SwitchSceneCoreAsync(
         string sceneName,
         string? transitionName = null,
         int? transitionDurationMs = null,
@@ -107,7 +107,7 @@ public readonly partial struct ScenesGroup
     /// <exception cref="TimeoutException">Thrown if the expected event confirming the switch completion is not received within the timeout period.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected, or if trying to switch Preview scene when Studio Mode is disabled.</exception>
     /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the cancellationToken.</exception>
-    public async Task SwitchSceneAndWaitAsync(
+    private async Task SwitchSceneAndWaitCoreAsync(
         string sceneName,
         string? transitionName = null,
         int? transitionDurationMs = null,
@@ -158,8 +158,7 @@ public readonly partial struct ScenesGroup
         {
             // Trigger the scene switch using the non-waiting helper
             // This call happens *after* WaitForEventAsync has set up its subscription
-            await client
-                .Scenes.SwitchSceneAsync(
+            await SwitchSceneCoreAsync(
                     sceneName: sceneName,
                     transitionName: switchToProgram ? transitionName : null,
                     transitionDurationMs: switchToProgram ? transitionDurationMs : null,
@@ -247,7 +246,7 @@ public readonly partial struct ScenesGroup
         int? transitionDurationMs = null,
         CancellationToken cancellationToken = default
     ) =>
-        client.Scenes.SwitchSceneAsync(
+        SwitchSceneCoreAsync(
             sceneName,
             transitionName,
             transitionDurationMs,
@@ -262,7 +261,7 @@ public readonly partial struct ScenesGroup
         string sceneName,
         CancellationToken cancellationToken = default
     ) =>
-        client.Scenes.SwitchSceneAsync(
+        SwitchSceneCoreAsync(
             sceneName,
             switchToProgram: false,
             cancellationToken: cancellationToken
@@ -278,10 +277,81 @@ public readonly partial struct ScenesGroup
         TimeSpan? timeout = null,
         CancellationToken cancellationToken = default
     ) =>
-        client.Scenes.SwitchSceneAndWaitAsync(
+        SwitchSceneAndWaitCoreAsync(
             sceneName,
             switchToProgram: true,
             timeout: timeout,
             cancellationToken: cancellationToken
+        );
+
+    /// <summary>Switches the Preview scene and waits for OBS to confirm it. Requires Studio Mode.</summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="timeout">How long to wait for confirmation.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task SwitchPreviewSceneAndWaitAsync(
+        string sceneName,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default
+    ) =>
+        SwitchSceneAndWaitCoreAsync(
+            sceneName,
+            switchToProgram: false,
+            timeout: timeout,
+            cancellationToken: cancellationToken
+        );
+
+    /// <summary>
+    /// Switches the Program or Preview scene, depending on <paramref name="switchToProgram"/>.
+    /// </summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="transitionName">Optional transition to use for this switch only.</param>
+    /// <param name="transitionDurationMs">Optional transition duration for this switch only.</param>
+    /// <param name="switchToProgram">Program when true, Preview when false.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    [Obsolete(
+        "Call SwitchProgramSceneAsync or SwitchPreviewSceneAsync, which say which scene they switch. This forwarder will be removed in a future release."
+    )]
+    public Task SwitchSceneAsync(
+        string sceneName,
+        string? transitionName = null,
+        int? transitionDurationMs = null,
+        bool switchToProgram = true,
+        CancellationToken cancellationToken = default
+    ) =>
+        SwitchSceneCoreAsync(
+            sceneName,
+            transitionName,
+            transitionDurationMs,
+            switchToProgram,
+            cancellationToken
+        );
+
+    /// <summary>
+    /// Switches the Program or Preview scene and waits for OBS to confirm it.
+    /// </summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="transitionName">Optional transition to use for this switch only.</param>
+    /// <param name="transitionDurationMs">Optional transition duration for this switch only.</param>
+    /// <param name="switchToProgram">Program when true, Preview when false.</param>
+    /// <param name="timeout">How long to wait for confirmation.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    [Obsolete(
+        "Call SwitchProgramSceneAndWaitAsync or SwitchPreviewSceneAndWaitAsync, which say which scene they switch. This forwarder will be removed in a future release."
+    )]
+    public Task SwitchSceneAndWaitAsync(
+        string sceneName,
+        string? transitionName = null,
+        int? transitionDurationMs = null,
+        bool switchToProgram = true,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default
+    ) =>
+        SwitchSceneAndWaitCoreAsync(
+            sceneName,
+            transitionName,
+            transitionDurationMs,
+            switchToProgram,
+            timeout,
+            cancellationToken
         );
 }

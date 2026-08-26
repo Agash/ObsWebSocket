@@ -1,5 +1,5 @@
 using ObsWebSocket.Core.Protocol;
-using ObsRequestStatus = ObsWebSocket.Core.Protocol.Generated.RequestStatus;
+using ObsWebSocket.Core.Protocol.Generated;
 
 namespace ObsWebSocket.Core;
 
@@ -56,18 +56,17 @@ public class ObsWebSocketRequestException : ObsWebSocketException
     public string? Comment { get; }
 
     /// <summary>
-    /// The status OBS reported as <see cref="ObsWebSocket.Core.Protocol.Generated.RequestStatus"/>,
-    /// so a handler can match on the reason rather than on the text of
-    /// <see cref="Exception.Message"/>. Note that the enum and the <see cref="Status"/> record
-    /// share the name <c>RequestStatus</c> in different namespaces.
+    /// The status OBS reported as
+    /// <see cref="ObsWebSocket.Core.Protocol.Generated.RequestStatusCode"/>, so a handler can
+    /// match on the reason rather than on the text of <see cref="Exception.Message"/>.
     /// </summary>
     /// <example>
     /// <code>
     /// catch (ObsWebSocketRequestException ex)
-    ///     when (ex.StatusCode is RequestStatus.ResourceNotFound) { }
+    ///     when (ex.StatusCode is RequestStatusCode.ResourceNotFound) { }
     /// </code>
     /// </example>
-    public ObsRequestStatus? StatusCode => Status is null ? null : (ObsRequestStatus)Status.Code;
+    public RequestStatusCode? StatusCode => Status is null ? null : (RequestStatusCode)Status.Code;
 }
 
 /// <summary>

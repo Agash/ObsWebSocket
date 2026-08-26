@@ -67,7 +67,7 @@ internal static class ReadmeCompileCheck
 
     internal static async Task UtilitiesAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        await client.Scenes.SwitchSceneAndWaitAsync("Scene", cancellationToken: ct);
+        await client.Scenes.SwitchProgramSceneAndWaitAsync("Scene", cancellationToken: ct);
         _ = await client.Sources.SourceExistsAsync("Source", ct);
         await client.Filters.CreateSourceFilterAsync(
             "Source",
@@ -126,7 +126,7 @@ internal static class ReadmeCompileCheck
         CancellationToken ct
     )
     {
-        await client.Scenes.SwitchSceneAsync("Scene", cancellationToken: ct);
+        await client.Scenes.SwitchProgramSceneAsync("Scene", cancellationToken: ct);
         _ = await client.SceneItems.SetSceneItemEnabledAsync("Scene", "Source", null, ct);
         _ = await client.SceneItems.FindSceneItemIdAsync("Scene", "Source", ct);
         await client.Inputs.SetInputMutesAsync([("Mic", false), ("Desktop Audio", true)], ct);
@@ -287,7 +287,7 @@ internal static class ReadmeCompileCheck
         }
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode
-                is ObsWebSocket.Core.Protocol.Generated.RequestStatus.ResourceNotFound
+                is ObsWebSocket.Core.Protocol.Generated.RequestStatusCode.ResourceNotFound
             )
         {
             // The scene, input or filter does not exist.
