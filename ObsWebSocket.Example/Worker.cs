@@ -2745,18 +2745,164 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Scene item list reindexed",
+                        async () =>
+                        {
+                            // Reindexing asks OBS for the basic scene item list, a different shape
+                            // from every other sceneItems array, so the event needs its own stub.
+                            GetSceneItemListResponseData items = await client
+                                .SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: sceneName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            if (items.SceneItems.Count == 0)
+                            {
+                                return (false, "no scene items to reindex");
+                            }
+
+                            int id = items.SceneItems[0].SceneItemId;
+                            int index = items.SceneItems[0].SceneItemIndex;
+
+                            Task<SceneItemListReindexedEventArgs> reindexed =
+                                client.WaitForEventAsync<SceneItemListReindexedEventArgs>(
+                                    timeout: TimeSpan.FromSeconds(5),
+                                    cancellationToken: cancellationToken
+                                );
+
+                            await client
+                                .SceneItems.SetSceneItemIndexAsync(
+                                    new SetSceneItemIndexRequestData(
+                                        sceneItemId: id,
+                                        sceneItemIndex: index,
+                                        sceneName: sceneName
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            SceneItemListReindexedEventArgs args = await reindexed.ConfigureAwait(
+                                false
+                            );
+
+                            SceneItemOrderStub? moved = args.EventData.SceneItems.Find(i =>
+                                i.SceneItemId == id
+                            );
+
+                            return (
+                                moved is not null
+                                    && string.Equals(
+                                        args.EventData.SceneName,
+                                        sceneName,
+                                        StringComparison.Ordinal
+                                    ),
+                                $"{args.EventData.SceneItems.Count} item(s) reindexed, "
+                                    + $"item {id} at index {moved?.SceneItemIndex}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Input volume meters",
+                        async () =>
+                        {
+                            // High rate event with its own stub. It was read as an InputStub and
+                            // failed on the kind fields it never sends, so it never fired at all.
+                            EventSubscription? before = client.CurrentEventSubscriptions;
+                            await client
+                                .ReidentifyAsync(
+                                    (uint)(
+                                        (before ?? EventSubscription.All)
+                                        | EventSubscription.InputVolumeMeters
+                                    ),
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            try
+                            {
+                                InputVolumeMetersEventArgs meters = await client
+                                    .WaitForEventAsync<InputVolumeMetersEventArgs>(
+                                        timeout: TimeSpan.FromSeconds(5),
+                                        cancellationToken: cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+
+                                InputVolumeMeterStub? first =
+                                    meters.EventData.Inputs.Count > 0
+                                        ? meters.EventData.Inputs[0]
+                                        : null;
+
+                                // An input with no audio channels reports an empty level list, so
+                                // the levels are checked where they exist rather than required.
+                                bool levelsWellFormed = meters.EventData.Inputs.TrueForAll(i =>
+                                    i.InputLevelsMul.TrueForAll(channel => channel.Count == 3)
+                                );
+                                int channels = meters.EventData.Inputs.Sum(i =>
+                                    i.InputLevelsMul.Count
+                                );
+
+                                bool ok =
+                                    first is not null
+                                    && !string.IsNullOrEmpty(first.InputName)
+                                    && Guid.TryParse(first.InputUuid, out _)
+                                    && levelsWellFormed;
+
+                                return (
+                                    ok,
+                                    $"{meters.EventData.Inputs.Count} input(s), first '{first?.InputName}', "
+                                        + $"{channels} channel(s) total, three levels each = "
+                                        + $"{levelsWellFormed}"
+                                );
+                            }
+                            finally
+                            {
+                                if (before is not null)
+                                {
+                                    await client
+                                        .ReidentifyAsync(
+                                            (uint)before.Value,
+                                            cancellationToken: CancellationToken.None
+                                        )
+                                        .ConfigureAwait(false);
+                                }
+                            }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Canvases category",
                         async () =>
                         {
-                            // The only request in its category, and the one stub type nothing
-                            // else reaches.
+                            // The only request in its category. Its array carries no item type in
+                            // the protocol definition, so the stub is taken from the request
+                            // handler and has to be checked against a real OBS on both transports.
                             GetCanvasListResponseData canvases = await client
                                 .Canvases.GetCanvasListAsync(cancellationToken)
                                 .ConfigureAwait(false);
 
+                            CanvasStub? main = canvases.Canvases.Find(c => c.CanvasFlags.Main);
+                            bool ok =
+                                canvases.Canvases.Count > 0
+                                && main is not null
+                                && !string.IsNullOrEmpty(main.CanvasName)
+                                && Guid.TryParse(main.CanvasUuid, out _)
+                                && main.CanvasVideoSettings.BaseWidth > 0
+                                && main.CanvasVideoSettings.BaseHeight > 0
+                                && main.CanvasVideoSettings.FpsNumerator > 0;
+
                             return (
-                                canvases.Canvases.Count > 0,
-                                $"{canvases.Canvases.Count} canvas(es)"
+                                ok,
+                                $"{canvases.Canvases.Count} canvas(es), main '{main?.CanvasName}' "
+                                    + $"{main?.CanvasVideoSettings.BaseWidth}x{main?.CanvasVideoSettings.BaseHeight} "
+                                    + $"@ {main?.CanvasVideoSettings.FpsNumerator}/{main?.CanvasVideoSettings.FpsDenominator}, "
+                                    + $"flags MAIN={main?.CanvasFlags.Main} MIX_AUDIO={main?.CanvasFlags.MixAudio}"
                             );
                         }
                     )

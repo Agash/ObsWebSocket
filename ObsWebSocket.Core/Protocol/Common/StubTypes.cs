@@ -37,6 +37,205 @@ public sealed class SceneStub
 }
 
 /// <summary>
+/// A scene item's identity and position, as carried by the <c>SceneItemListReindexed</c> event.
+/// </summary>
+/// <remarks>
+/// Not a <see cref="SceneItemStub"/>: the reindex event asks OBS for the list in its basic form,
+/// which carries only the id and the index. Reading it as a full scene item fails on the source
+/// and transform fields it never sends.
+/// </remarks>
+[MessagePackObject]
+public sealed class SceneItemOrderStub
+{
+    /// <summary>Numeric ID of the scene item.</summary>
+    [JsonPropertyName("sceneItemId")]
+    [Key("sceneItemId")]
+    public required int SceneItemId { get; init; }
+
+    /// <summary>Index of the scene item, counted from the bottom of the list.</summary>
+    [JsonPropertyName("sceneItemIndex")]
+    [Key("sceneItemIndex")]
+    public required int SceneItemIndex { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public SceneItemOrderStub() { }
+}
+
+/// <summary>
+/// One input's audio levels, as carried by the <c>InputVolumeMeters</c> event.
+/// </summary>
+/// <remarks>
+/// Not an <see cref="InputStub"/>: the meter payload carries only the name, the uuid and the
+/// levels, so reading it as one fails on the input kind it never sends.
+/// </remarks>
+[MessagePackObject]
+public sealed class InputVolumeMeterStub
+{
+    /// <summary>Input name.</summary>
+    [JsonPropertyName("inputName")]
+    [Key("inputName")]
+    public required string InputName { get; init; }
+
+    /// <summary>Input UUID.</summary>
+    [JsonPropertyName("inputUuid")]
+    [Key("inputUuid")]
+    public required string InputUuid { get; init; }
+
+    /// <summary>
+    /// Per channel levels as multipliers, each entry being magnitude, peak and input peak.
+    /// </summary>
+    [JsonPropertyName("inputLevelsMul")]
+    [Key("inputLevelsMul")]
+    public required List<List<double>> InputLevelsMul { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public InputVolumeMeterStub() { }
+}
+
+/// <summary>
+/// A canvas, as returned by <c>GetCanvasList</c>. Resilient to missing fields.
+/// </summary>
+/// <remarks>
+/// The protocol definition types the array as <c>Array&lt;Object&gt;</c> and says no more, so the
+/// shape is taken from the request handler: name, uuid, flags and video settings.
+/// </remarks>
+[MessagePackObject]
+public sealed class CanvasStub
+{
+    /// <summary>Canvas name. No request accepts it; it is for display and for looking up a uuid.</summary>
+    [JsonPropertyName("canvasName")]
+    [Key("canvasName")]
+    public required string CanvasName { get; init; }
+
+    /// <summary>Canvas UUID. This is what every canvas-scoped request takes.</summary>
+    [JsonPropertyName("canvasUuid")]
+    [Key("canvasUuid")]
+    public required string CanvasUuid { get; init; }
+
+    /// <summary>Canvas capability flags.</summary>
+    [JsonPropertyName("canvasFlags")]
+    [Key("canvasFlags")]
+    public required CanvasFlagsStub CanvasFlags { get; init; }
+
+    /// <summary>Video settings for this canvas.</summary>
+    [JsonPropertyName("canvasVideoSettings")]
+    [Key("canvasVideoSettings")]
+    public required CanvasVideoSettingsStub CanvasVideoSettings { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public CanvasStub() { }
+}
+
+/// <summary>
+/// The capability flags reported for a canvas.
+/// </summary>
+[MessagePackObject]
+public sealed class CanvasFlagsStub
+{
+    /// <summary>The main canvas, the one every request addresses when <c>canvasUuid</c> is omitted.</summary>
+    [JsonPropertyName("MAIN")]
+    [Key("MAIN")]
+    public required bool Main { get; init; }
+
+    /// <summary>Sources on this canvas are activated.</summary>
+    [JsonPropertyName("ACTIVATE")]
+    [Key("ACTIVATE")]
+    public required bool Activate { get; init; }
+
+    /// <summary>Audio from this canvas is mixed into the main output.</summary>
+    [JsonPropertyName("MIX_AUDIO")]
+    [Key("MIX_AUDIO")]
+    public required bool MixAudio { get; init; }
+
+    /// <summary>The canvas holds references to its scenes.</summary>
+    [JsonPropertyName("SCENE_REF")]
+    [Key("SCENE_REF")]
+    public required bool SceneRef { get; init; }
+
+    /// <summary>The canvas is not saved with the scene collection.</summary>
+    [JsonPropertyName("EPHEMERAL")]
+    [Key("EPHEMERAL")]
+    public required bool Ephemeral { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public CanvasFlagsStub() { }
+}
+
+/// <summary>
+/// Video settings for a canvas.
+/// </summary>
+/// <remarks>
+/// Every field is nullable because OBS sends the whole object as nulls when it cannot read the
+/// canvas video info, rather than omitting it.
+/// </remarks>
+[MessagePackObject]
+public sealed class CanvasVideoSettingsStub
+{
+    /// <summary>Numerator of the frame rate.</summary>
+    [JsonPropertyName("fpsNumerator")]
+    [Key("fpsNumerator")]
+    public int? FpsNumerator { get; init; }
+
+    /// <summary>Denominator of the frame rate.</summary>
+    [JsonPropertyName("fpsDenominator")]
+    [Key("fpsDenominator")]
+    public int? FpsDenominator { get; init; }
+
+    /// <summary>Base (canvas) width, in pixels.</summary>
+    [JsonPropertyName("baseWidth")]
+    [Key("baseWidth")]
+    public int? BaseWidth { get; init; }
+
+    /// <summary>Base (canvas) height, in pixels.</summary>
+    [JsonPropertyName("baseHeight")]
+    [Key("baseHeight")]
+    public int? BaseHeight { get; init; }
+
+    /// <summary>Output (scaled) width, in pixels.</summary>
+    [JsonPropertyName("outputWidth")]
+    [Key("outputWidth")]
+    public int? OutputWidth { get; init; }
+
+    /// <summary>Output (scaled) height, in pixels.</summary>
+    [JsonPropertyName("outputHeight")]
+    [Key("outputHeight")]
+    public int? OutputHeight { get; init; }
+
+    /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
+    [IgnoreMember]
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
+    [JsonConstructor]
+    public CanvasVideoSettingsStub() { }
+}
+
+/// <summary>
 /// Represents a common structure for scene item transform data. Resilient to missing fields.
 /// </summary>
 /// <remarks>Generated from heuristics based on obs-websocket protocol.</remarks>

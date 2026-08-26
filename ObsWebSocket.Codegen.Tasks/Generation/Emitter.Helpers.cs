@@ -324,14 +324,18 @@ internal static partial class Emitter
                 // Use fully qualified names for stub types to avoid ambiguity
                 string? stubType = fieldName switch
                 {
+                    // The reindex event asks OBS for the basic list, which is id and index only.
+                    "sceneItems" when parentDtoName == "SceneItemListReindexedPayload" =>
+                        $"{GeneratedCommonNamespace}.SceneItemOrderStub",
                     "sceneItems" => $"{GeneratedCommonNamespace}.SceneItemStub",
                     "filters" => $"{GeneratedCommonNamespace}.FilterStub",
-                    // Need to check fully qualified parent name to exclude InputVolumeMetersPayload
-                    "inputs"
-                        when parentDtoName
-                            != $"{GeneratedEventsNamespace}.InputVolumeMetersPayload" =>
-                        $"{GeneratedCommonNamespace}.InputStub",
+                    // The meter payload carries only name, uuid and levels, so it is not an
+                    // InputStub. parentDtoName arrives unqualified.
+                    "inputs" when parentDtoName == "InputVolumeMetersPayload" =>
+                        $"{GeneratedCommonNamespace}.InputVolumeMeterStub",
+                    "inputs" => $"{GeneratedCommonNamespace}.InputStub",
                     "scenes" => $"{GeneratedCommonNamespace}.SceneStub",
+                    "canvases" => $"{GeneratedCommonNamespace}.CanvasStub",
                     "outputs" => $"{GeneratedCommonNamespace}.OutputStub",
                     "transitions" => $"{GeneratedCommonNamespace}.TransitionStub",
                     "monitors" => $"{GeneratedCommonNamespace}.MonitorStub",
@@ -344,24 +348,17 @@ internal static partial class Emitter
                     // Use fully qualified List<T>
                     return ($"System.Collections.Generic.List<{stubType}>?", false); // List of specific stub type
                 }
-                else // Fallback for unknown or explicitly excluded Array<Object>
+                else // Fallback for an array whose item type is not mapped to a stub.
                 {
-                    // Only warn if it's truly unknown, not the handled InputVolumeMeters case
-                    if (
-                        fieldName != "inputs"
-                        || parentDtoName != $"{GeneratedEventsNamespace}.InputVolumeMetersPayload"
-                    )
-                    {
-                        context.ReportDiagnostic(
-                            Diagnostic.Create(
-                                Diagnostics.ArrayItemTypeUnknownWarning,
-                                Location.None,
-                                fieldName,
-                                parentDtoName,
-                                obsType
-                            )
-                        );
-                    }
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            Diagnostics.ArrayItemTypeUnknownWarning,
+                            Location.None,
+                            fieldName,
+                            parentDtoName,
+                            obsType
+                        )
+                    );
                     // Fallback to List<JsonElement> for InputVolumeMetersPayload.inputs and any other unmapped Array<Object>
                     return (
                         "System.Collections.Generic.List<System.Text.Json.JsonElement>?",

@@ -29,7 +29,7 @@ public sealed partial record SceneItemListReindexedPayload
     /// </summary>
     [JsonPropertyName("sceneItems")]
     [Key("sceneItems")]
-    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub> SceneItems { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemOrderStub> SceneItems { get; init; }
 
     /// <summary>
     /// Name of the scene
@@ -54,7 +54,7 @@ public sealed partial record SceneItemListReindexedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemListReindexedPayload(string sceneName, string sceneUuid, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub> sceneItems)
+    public SceneItemListReindexedPayload(string sceneName, string sceneUuid, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemOrderStub> sceneItems)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;
