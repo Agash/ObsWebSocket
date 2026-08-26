@@ -223,7 +223,7 @@ public class SerializerBehaviorTests
     }
 
     [TestMethod]
-    public void JsonSerializer_DeserializePayload_InvalidGeneratedShape_ReturnsDefault()
+    public void JsonSerializer_DeserializePayload_InvalidGeneratedShape_Throws()
     {
         JsonMessageSerializer serializer = CreateJsonSerializer();
         JsonElement payload = JsonDocument
@@ -236,9 +236,32 @@ public class SerializerBehaviorTests
             )
             .RootElement.Clone();
 
-        CreateSceneRequestData? data = serializer.DeserializePayload<CreateSceneRequestData>(
-            payload
-        );
+        ObsWebSocketSerializationException ex =
+            Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+                serializer.DeserializePayload<CreateSceneRequestData>(payload)
+            );
+
+        StringAssert.Contains(ex.Message, nameof(CreateSceneRequestData));
+        Assert.IsNotNull(ex.InnerException);
+    }
+
+    [TestMethod]
+    public void JsonSerializer_TryDeserializePayload_InvalidGeneratedShape_ReturnsFalse()
+    {
+        JsonMessageSerializer serializer = CreateJsonSerializer();
+        JsonElement payload = JsonDocument
+            .Parse(
+                """
+                {
+                  "sceneName": 12345
+                }
+                """
+            )
+            .RootElement.Clone();
+
+        bool read = serializer.TryDeserializePayload(payload, out CreateSceneRequestData? data);
+
+        Assert.IsFalse(read);
         Assert.IsNull(data);
     }
 
@@ -395,17 +418,58 @@ public class SerializerBehaviorTests
     }
 
     [TestMethod]
-    public void MsgPackSerializer_DeserializePayload_InvalidGeneratedShape_ReturnsDefault()
+    public void MsgPackSerializer_DeserializePayload_InvalidGeneratedShape_Throws()
     {
         MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
         byte[] bytes = BuildInvalidFilterListPayloadBytes();
 
-        GetSourceFilterListResponseData? payload =
-            serializer.DeserializePayload<GetSourceFilterListResponseData>(
-                new ReadOnlyMemory<byte>(bytes)
+        ObsWebSocketSerializationException ex =
+            Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+                serializer.DeserializePayload<GetSourceFilterListResponseData>(
+                    new ReadOnlyMemory<byte>(bytes)
+                )
             );
 
+        StringAssert.Contains(ex.Message, nameof(GetSourceFilterListResponseData));
+        Assert.IsNotNull(ex.InnerException);
+    }
+
+    [TestMethod]
+    public void MsgPackSerializer_TryDeserializePayload_InvalidGeneratedShape_ReturnsFalse()
+    {
+        MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
+        byte[] bytes = BuildInvalidFilterListPayloadBytes();
+
+        bool read = serializer.TryDeserializePayload(
+            new ReadOnlyMemory<byte>(bytes),
+            out GetSourceFilterListResponseData? payload
+        );
+
+        Assert.IsFalse(read);
         Assert.IsNull(payload);
+    }
+
+    /// <summary>
+    /// The failure this split exists for: a payload with no registered formatter used to come back
+    /// as null, and the caller was told OBS had returned nothing.
+    /// </summary>
+    [TestMethod]
+    public void MsgPackSerializer_DeserializePayload_UnregisteredFormatter_ThrowsNamingTheType()
+    {
+        MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
+        byte[] bytes = MessagePack.MessagePackSerializer.Serialize(new Dictionary<string, int>());
+
+        ObsWebSocketSerializationException ex =
+            Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+                serializer.DeserializePayload<UnmodelledPayload>(new ReadOnlyMemory<byte>(bytes))
+            );
+
+        StringAssert.Contains(ex.Message, nameof(UnmodelledPayload));
+    }
+
+    private sealed class UnmodelledPayload
+    {
+        public string? Whatever { get; set; }
     }
 
     [TestMethod]

@@ -152,6 +152,89 @@ public class ObsWebSocketClientRequestTests
         );
     }
 
+    /// <summary>
+    /// A response payload that arrives but cannot be read has to reach the awaiting caller as a
+    /// serialization failure. Returning null instead reported it as "OBS returned no payload",
+    /// which sent people looking at the wrong machine.
+    /// </summary>
+    [TestMethod]
+    [Timeout(TestTimeout)]
+    public async Task GetVersionAsync_ResponsePayloadUnreadable_ThrowsSerializationException()
+    {
+        // Arrange
+        (
+            ObsWebSocketClient? client,
+            Mock<IWebSocketMessageSerializer>? mockSerializer,
+            Mock<IWebSocketConnection>? mockWebSocket
+        ) = TestUtils.SetupConnectedClientForceState();
+
+        JsonElement? rawResponseData = TestUtils.ToJsonElement(new { obsVersion = "32.2.2" });
+        Assert.IsNotNull(rawResponseData);
+
+        _ = mockWebSocket
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType msgType,
+                    bool endOfMsg,
+                    CancellationToken ct
+                ) =>
+                {
+                    OutgoingMessage<RequestPayload>? requestMsg = JsonSerializer.Deserialize<
+                        OutgoingMessage<RequestPayload>
+                    >(buffer.Span, TestUtils.s_jsonSerializerOptions);
+                    if (requestMsg?.D?.RequestType != "GetVersion")
+                    {
+                        return;
+                    }
+
+                    RequestResponsePayload<object> response = new(
+                        RequestType: "GetVersion",
+                        RequestId: requestMsg.D.RequestId,
+                        RequestStatus: new RequestStatus(
+                            Result: true,
+                            Code: (int)Core.Protocol.Generated.RequestStatusCode.Success
+                        ),
+                        ResponseData: rawResponseData.Value
+                    );
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestMsg.D.RequestId,
+                        response
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        ObsWebSocketSerializationException simulated = new(
+            "no formatter for GetVersionResponseData"
+        );
+        _ = mockSerializer
+            .Setup(s => s.DeserializePayload<GetVersionResponseData>(It.IsAny<object>()))
+            .Throws(simulated);
+
+        // Act / Assert
+        ObsWebSocketSerializationException thrown =
+            await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(async () =>
+                await client.General.GetVersionAsync()
+            );
+
+        Assert.AreSame(simulated, thrown);
+
+        ConcurrentDictionary<string, TaskCompletionSource<object>>? pendingRequests =
+            TestUtils.GetPendingRequests(client);
+        Assert.IsNotNull(pendingRequests);
+        Assert.AreEqual(0, pendingRequests.Count, "Pending request should have been removed.");
+    }
+
     // --- Test Request WITH Request Data and NO Response Data ---
 
     /// <summary>

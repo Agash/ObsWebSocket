@@ -245,27 +245,26 @@ public class ObsWebSocketClientEventTests
         _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
+        EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
+            "SceneListChanged",
+            (int)EventSubscription.Scenes,
+            innerEventDataJsonElement
+        );
+        _ = mockSerializer
+            .Setup(s => s.TryDeserializePayload(It.Is<object>(o => o is JsonElement), out envelope))
+            .Returns(true);
+        SceneListChangedPayload? scenePayload = expectedPayloadDto;
         _ = mockSerializer
             .Setup(s =>
-                s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
-            )
-            .Returns(
-                new EventPayloadBase<object>(
-                    "SceneListChanged",
-                    (int)EventSubscription.Scenes,
-                    innerEventDataJsonElement
-                )
-            );
-        _ = mockSerializer
-            .Setup(s =>
-                s.DeserializePayload<SceneListChangedPayload>(
+                s.TryDeserializePayload(
                     It.Is<object>(o =>
                         o is JsonElement
                         && ((JsonElement)o).GetRawText() == innerEventDataJsonElement.GetRawText()
-                    )
+                    ),
+                    out scenePayload
                 )
             )
-            .Returns(expectedPayloadDto);
+            .Returns(true);
 
         // Mock WebSocket
         mockWebSocket.Reset(); // Reset setups from helper
@@ -292,15 +291,11 @@ public class ObsWebSocketClientEventTests
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<EventPayloadBase<object>>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out envelope),
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<SceneListChangedPayload>(It.Is<object>(o => o is JsonElement)),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out scenePayload),
             Times.Once
         );
         mockWebSocket.Verify(
@@ -356,27 +351,26 @@ public class ObsWebSocketClientEventTests
         _ = mockSerializer
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
+        EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
+            "StudioModeStateChanged",
+            (int)EventSubscription.Ui,
+            innerEventDataJsonElement
+        );
+        _ = mockSerializer
+            .Setup(s => s.TryDeserializePayload(It.Is<object>(o => o is JsonElement), out envelope))
+            .Returns(true);
+        StudioModeStateChangedPayload? studioPayload = expectedPayloadDto;
         _ = mockSerializer
             .Setup(s =>
-                s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
-            )
-            .Returns(
-                new EventPayloadBase<object>(
-                    "StudioModeStateChanged",
-                    (int)EventSubscription.Ui,
-                    innerEventDataJsonElement
-                )
-            );
-        _ = mockSerializer
-            .Setup(s =>
-                s.DeserializePayload<StudioModeStateChangedPayload>(
+                s.TryDeserializePayload(
                     It.Is<object>(o =>
                         o is JsonElement
                         && ((JsonElement)o).GetRawText() == innerEventDataJsonElement.GetRawText()
-                    )
+                    ),
+                    out studioPayload
                 )
             )
-            .Returns(expectedPayloadDto);
+            .Returns(true);
 
         // Mock WebSocket
         mockWebSocket.Reset();
@@ -407,17 +401,11 @@ public class ObsWebSocketClientEventTests
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<EventPayloadBase<object>>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out envelope),
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<StudioModeStateChangedPayload>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out studioPayload),
             Times.Once
         );
 
@@ -469,13 +457,14 @@ public class ObsWebSocketClientEventTests
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Mock only the base deserialization, as EventData is null
+        EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
+            "ExitStarted",
+            (int)EventSubscription.General,
+            null
+        );
         _ = mockSerializer
-            .Setup(s =>
-                s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
-            )
-            .Returns(
-                new EventPayloadBase<object>("ExitStarted", (int)EventSubscription.General, null)
-            );
+            .Setup(s => s.TryDeserializePayload(It.Is<object>(o => o is JsonElement), out envelope))
+            .Returns(true);
 
         // Mock WebSocket
         mockWebSocket.Reset();
@@ -502,17 +491,14 @@ public class ObsWebSocketClientEventTests
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<EventPayloadBase<object>>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out envelope),
             Times.Once
         );
-        // Verify no *specific* payload deserialization happened
+        // Only the envelope was read; the event carries no data to deserialize.
         mockSerializer.Verify(
-            s => s.DeserializePayload<It.IsSubtype<object>>(It.IsAny<object>()),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out It.Ref<object?>.IsAny),
             Times.Exactly(1)
-        ); // Only the base deserialize was called
+        );
 
         // Cleanup
         await StopReceiveLoopAsync(client, receiveLoopTask);
@@ -559,11 +545,14 @@ public class ObsWebSocketClientEventTests
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Mock ONLY the base deserialization
+        EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
+            unhandledEventType,
+            1,
+            innerEventData
+        );
         _ = mockSerializer
-            .Setup(s =>
-                s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
-            )
-            .Returns(new EventPayloadBase<object>(unhandledEventType, 1, innerEventData));
+            .Setup(s => s.TryDeserializePayload(It.Is<object>(o => o is JsonElement), out envelope))
+            .Returns(true);
 
         // --- Mock WebSocket ---
         mockWebSocket.Reset();
@@ -602,15 +591,12 @@ public class ObsWebSocketClientEventTests
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<EventPayloadBase<object>>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out envelope),
             Times.Once
         );
-        // Ensure NO specific payload deserialization was attempted
+        // Only the envelope was read; the unknown event type has no handler to deserialize for.
         mockSerializer.Verify(
-            s => s.DeserializePayload<It.IsSubtype<object>>(It.IsAny<object>()),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out It.Ref<object?>.IsAny),
             Times.Exactly(1)
         );
 
@@ -665,22 +651,21 @@ public class ObsWebSocketClientEventTests
             .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(incomingMessage);
         // Base deserialization succeeds
+        EventPayloadBase<object>? envelope = new(
+            eventType,
+            (int)EventSubscription.Ui,
+            innerEventDataJsonElement
+        );
+        _ = mockSerializer
+            .Setup(s => s.TryDeserializePayload(It.Is<object>(o => o is JsonElement), out envelope))
+            .Returns(true);
+        // The serializer itself faults, which the tolerant path is not supposed to do. The event
+        // handler still has to survive it rather than tearing the receive loop down.
         _ = mockSerializer
             .Setup(s =>
-                s.DeserializePayload<EventPayloadBase<object>>(It.Is<object>(o => o is JsonElement))
-            )
-            .Returns(
-                new EventPayloadBase<object>(
-                    eventType,
-                    (int)EventSubscription.Ui,
-                    innerEventDataJsonElement
-                )
-            );
-        // Specific payload deserialization *throws*
-        _ = mockSerializer
-            .Setup(s =>
-                s.DeserializePayload<StudioModeStateChangedPayload>(
-                    It.Is<object>(o => o is JsonElement)
+                s.TryDeserializePayload(
+                    It.Is<object>(o => o is JsonElement),
+                    out It.Ref<StudioModeStateChangedPayload?>.IsAny
                 )
             )
             .Throws(simulatedException);
@@ -722,17 +707,15 @@ public class ObsWebSocketClientEventTests
             Times.Once
         );
         mockSerializer.Verify(
-            s =>
-                s.DeserializePayload<EventPayloadBase<object>>(
-                    It.Is<object>(o => o is JsonElement)
-                ),
+            s => s.TryDeserializePayload(It.IsAny<object>(), out envelope),
             Times.Once
         );
         // Verify the failing call was made
         mockSerializer.Verify(
             s =>
-                s.DeserializePayload<StudioModeStateChangedPayload>(
-                    It.Is<object>(o => o is JsonElement)
+                s.TryDeserializePayload(
+                    It.IsAny<object>(),
+                    out It.Ref<StudioModeStateChangedPayload?>.IsAny
                 ),
             Times.Once
         );

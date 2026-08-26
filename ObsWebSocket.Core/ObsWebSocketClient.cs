@@ -1577,10 +1577,15 @@ public sealed partial class ObsWebSocketClient(
 
         try
         {
-            RequestResponsePayload<object>? response = _serializer.DeserializePayload<
-                RequestResponsePayload<object>
-            >(payloadData);
-            if (response is null)
+            // Tolerant on purpose: the requestId lives inside the payload that failed to parse,
+            // so there is no pending request to fault. The awaiting caller times out instead,
+            // and this log is the only record of why.
+            if (
+                !_serializer.TryDeserializePayload(
+                    payloadData,
+                    out RequestResponsePayload<object>? response
+                ) || response is null
+            )
             {
                 LogEventDataDeserializationError("RequestResponse wrapper", payloadData);
                 return;
@@ -1623,10 +1628,12 @@ public sealed partial class ObsWebSocketClient(
 
         try
         {
-            RequestBatchResponsePayload<object>? response = _serializer.DeserializePayload<
-                RequestBatchResponsePayload<object>
-            >(payloadData);
-            if (response is null)
+            if (
+                !_serializer.TryDeserializePayload(
+                    payloadData,
+                    out RequestBatchResponsePayload<object>? response
+                ) || response is null
+            )
             {
                 LogEventDataDeserializationError("RequestBatchResponse wrapper", payloadData);
                 return;
@@ -1670,10 +1677,12 @@ public sealed partial class ObsWebSocketClient(
         EventPayloadBase<object>? eventPayloadBase = null;
         try
         {
-            eventPayloadBase = _serializer.DeserializePayload<EventPayloadBase<object>>(
-                payloadData
-            );
-            if (eventPayloadBase is null)
+            // Tolerant on purpose: a newer OBS sending an event this build cannot model must not
+            // tear the connection down.
+            if (
+                !_serializer.TryDeserializePayload(payloadData, out eventPayloadBase)
+                || eventPayloadBase is null
+            )
             {
                 LogEventDataDeserializationError("base event structure", payloadData);
                 return;
@@ -1730,8 +1739,10 @@ public sealed partial class ObsWebSocketClient(
     {
         try
         {
-            JsonElement? broadcastData = _serializer.DeserializeValuePayload<JsonElement>(rawData);
-            if (broadcastData is null)
+            if (
+                !_serializer.TryDeserializeValuePayload(rawData, out JsonElement? broadcastData)
+                || broadcastData is null
+            )
             {
                 LogEventDataDeserializationError("CustomEvent payload", rawData);
                 return;
@@ -1756,7 +1767,7 @@ public sealed partial class ObsWebSocketClient(
     {
         try
         {
-            TPayload? payload = _serializer.DeserializePayload<TPayload>(rawData);
+            _ = _serializer.TryDeserializePayload(rawData, out TPayload? payload);
             if (payload is not null)
             {
                 _metrics.EventsReceived.Add(1, new TagList { { "obsws.event_type", eventType } });
