@@ -4277,14 +4277,14 @@ internal sealed partial class Worker(
     {
         List<string> unreadable = [];
         List<string> untested = [];
-        int read = 0;
+        HashSet<string> read = new(StringComparer.Ordinal);
 
         async Task Probe(string name, Func<Task> call)
         {
             try
             {
                 await call().ConfigureAwait(false);
-                read++;
+                _ = read.Add(name);
             }
             catch (ObsWebSocketSerializationException ex)
             {
@@ -4335,8 +4335,18 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         string? groupName = groups.Groups.Count > 0 ? groups.Groups[0] : null;
 
-        // The nine discovery calls above are themselves read requests.
-        read += 9;
+        // The discovery calls above are read requests too, and naming them here rather than
+        // counting them keeps the total honest when the discovery changes.
+        read.UnionWith([
+            "GetSceneList",
+            "GetInputList",
+            "GetSceneItemList",
+            "GetInputKindList",
+            "GetSourceFilterKindList",
+            "GetOutputList",
+            "GetGroupList",
+            "GetStudioModeEnabled",
+        ]);
 
         // Four of these requests need OBS to be in a particular state, not just to be asked
         // nicely. Without the fixture they answer InvalidResourceState and the response shape is
@@ -4446,6 +4456,15 @@ internal sealed partial class Worker(
                     () =>
                         client.Filters.GetSourceFilterDefaultSettingsAsync(
                             new(filterKind: filterKind),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSourceFilterList",
+                    () =>
+                        client.Filters.GetSourceFilterListAsync(
+                            new(sourceName: mediaInput),
                             cancellationToken
                         )
                 )
@@ -4592,11 +4611,17 @@ internal sealed partial class Worker(
                     () => client.Outputs.GetReplayBufferStatusAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
+            // GetLastReplayBufferReplay is left untested rather than prepared for. Starting and
+            // stopping the replay buffer to save a clip crashed OBS: the dump lands in
+            // GetOutputList, on obs_encoder_get_width against the encoder the buffer had just
+            // freed. Enumerating outputs while one is being torn down is not something a client
+            // can make safe, and this sweep is not worth an OBS restart per run.
             await Probe(
                     "GetLastReplayBufferReplay",
                     () => client.Outputs.GetLastReplayBufferReplayAsync(cancellationToken)
                 )
                 .ConfigureAwait(false);
+
             await Probe(
                     "GetOutputStatus",
                     () =>
@@ -4811,10 +4836,12 @@ internal sealed partial class Worker(
         [
             (
                 "Every read request deserializes",
-                unreadable.Count == 0,
-                unreadable.Count == 0
-                    ? $"{read} of 60 read; untested: {string.Join(", ", untested)}"
-                    : string.Join(" | ", unreadable.Take(3))
+                unreadable.Count == 0 && read.Count + untested.Count >= 60,
+                unreadable.Count > 0 ? string.Join(" | ", unreadable.Take(3))
+                : read.Count + untested.Count < 60
+                    ? $"only {read.Count + untested.Count} of 60 accounted for; a probe is missing"
+                : untested.Count == 0 ? $"all {read.Count} of 60 read"
+                : $"{read.Count} of 60 read; untested: {string.Join(", ", untested)}"
             ),
         ];
     }
@@ -5628,8 +5655,10 @@ internal sealed partial class Worker(
                 "Every write request serializes",
                 unsendable.Count == 0,
                 unsendable.Count == 0
-                    ? $"{sent} sent and accepted, {declined.Count} declined: "
-                        + string.Join(", ", declined)
+                    // A decline still proves the request serialized and reached OBS, which is
+                    // what this sweep covers; only unsendable is a defect.
+                    ? $"{sent + declined.Count} serialized ({sent} accepted, {declined.Count} "
+                        + $"declined for machine state): {string.Join(", ", declined)}"
                     : string.Join(" | ", unsendable.Take(3))
             ),
         ];
