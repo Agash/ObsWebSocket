@@ -95,5 +95,4 @@ public sealed partial class ObsBatchBuilder
     /// Returns the accumulated items as the list <see cref="ObsWebSocketClient.CallBatchAsync"/> takes.
     /// </summary>
     public List<BatchRequestItem> Build() => [.. _items];
-
 }

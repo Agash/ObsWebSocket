@@ -179,5 +179,6 @@ internal record RequestBatchPayload(
 [MessagePackObject(AllowPrivate = true, SuppressSourceGeneration = true)]
 internal record RequestBatchResponsePayload<TData>(
     [property: JsonPropertyName("requestId"), Key("requestId")] string RequestId,
-    [property: JsonPropertyName("results"), Key("results")] List<RequestResponsePayload<TData>> Results
+    [property: JsonPropertyName("results"), Key("results")]
+        List<RequestResponsePayload<TData>> Results
 );

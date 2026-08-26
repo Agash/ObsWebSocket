@@ -25,7 +25,9 @@ internal sealed class ObsWebSocketClientOptionsValidator
         }
         else if (options.ServerUri.Scheme is not ("ws" or "wss"))
         {
-            failures.Add($"ServerUri scheme must be ws or wss, but was '{options.ServerUri.Scheme}'.");
+            failures.Add(
+                $"ServerUri scheme must be ws or wss, but was '{options.ServerUri.Scheme}'."
+            );
         }
 
         if (options.HandshakeTimeoutMs <= 0)

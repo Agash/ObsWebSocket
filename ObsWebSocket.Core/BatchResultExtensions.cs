@@ -84,7 +84,8 @@ public static class BatchResultExtensions
             );
 #endif
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
+        catch (Exception ex)
+            when (ex is JsonException or InvalidOperationException or NotSupportedException)
         {
             throw new ObsWebSocketSerializationException(
                 $"Failed to read batch result for '{result.RequestType}' as {typeof(TResponse).Name}.",

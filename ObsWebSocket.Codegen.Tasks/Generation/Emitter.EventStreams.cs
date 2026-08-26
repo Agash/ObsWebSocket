@@ -60,9 +60,7 @@ internal static partial class Emitter
             builder.AppendLine(
                 "/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes"
             );
-            builder.AppendLine(
-                "/// when it ends, so the caller never manages handlers."
-            );
+            builder.AppendLine("/// when it ends, so the caller never manages handlers.");
             builder.AppendLine("/// </summary>");
 
             // A category with events but no requests has no group declared elsewhere, so this
@@ -93,10 +91,13 @@ internal static partial class Emitter
                         continue;
                     }
 
-                    string eventArgsTypeName = $"{GeneratedEventArgsNamespace}.{eventName}EventArgs";
+                    string eventArgsTypeName =
+                        $"{GeneratedEventArgsNamespace}.{eventName}EventArgs";
 
                     builder.AppendLine("    /// <summary>");
-                    builder.AppendLine($"    /// Streams <c>{eventName}</c> events as they arrive.");
+                    builder.AppendLine(
+                        $"    /// Streams <c>{eventName}</c> events as they arrive."
+                    );
                     if (!string.IsNullOrWhiteSpace(eventDef.Description))
                     {
                         builder.AppendLine(

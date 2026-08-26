@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -27,7 +27,8 @@ public readonly partial struct SourcesGroup
     /// <returns>True if a source (input or scene) with the specified name exists, false otherwise.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if an unexpected error occurs during API calls.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<bool> SourceExistsAsync(string sourceName,
+    public async Task<bool> SourceExistsAsync(
+        string sourceName,
         CancellationToken cancellationToken = default
     )
     {
@@ -46,7 +47,8 @@ public readonly partial struct SourcesGroup
             if (
                 inputListResponse?.Inputs?.Any(i =>
                     string.Equals(i.InputName, sourceName, StringComparison.Ordinal)
-                ) ?? false
+                )
+                ?? false
             )
             {
                 return true;
@@ -59,7 +61,8 @@ public readonly partial struct SourcesGroup
                     .ConfigureAwait(false);
             return sceneListResponse?.Scenes?.Any(s =>
                     string.Equals(s.SceneName, sourceName, StringComparison.Ordinal)
-                ) ?? false;
+                )
+                ?? false;
         }
         catch (ObsWebSocketException ex)
         {
@@ -86,7 +89,8 @@ public readonly partial struct SourcesGroup
     /// <returns>A byte array containing the image data, or null if the source was not found or an error occurred.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound' or Base64 decoding errors.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<byte[]?> GetSourceScreenshotBytesAsync(string sourceName,
+    public async Task<byte[]?> GetSourceScreenshotBytesAsync(
+        string sourceName,
         string imageFormat = "png", // Common default
         int? width = null,
         int? height = null,
@@ -175,27 +179,32 @@ public readonly partial struct SourcesGroup
     /// <returns>The decoded image bytes, or an empty array if OBS returned no data.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<byte[]> GetSourceScreenshotOnCanvasBytesAsync(string sourceName,
+    public async Task<byte[]> GetSourceScreenshotOnCanvasBytesAsync(
+        string sourceName,
         string imageFormat = "png",
         int? width = null,
         int? height = null,
         int compressionQuality = -1,
         string? sourceUuid = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         client.EnsureConnected();
 
-        GetSourceScreenshotResponseData? response = await client.Sources.GetSourceScreenshotAsync(
-            new GetSourceScreenshotRequestData(
-                imageFormat: imageFormat,
-                sourceName: sourceName,
-                sourceUuid: sourceUuid,
-                imageWidth: width,
-                imageHeight: height,
-                imageCompressionQuality: compressionQuality
-            ),
-            cancellationToken).ConfigureAwait(false);
+        GetSourceScreenshotResponseData? response = await client
+            .Sources.GetSourceScreenshotAsync(
+                new GetSourceScreenshotRequestData(
+                    imageFormat: imageFormat,
+                    sourceName: sourceName,
+                    sourceUuid: sourceUuid,
+                    imageWidth: width,
+                    imageHeight: height,
+                    imageCompressionQuality: compressionQuality
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         string? b64 = response?.ImageData;
         if (string.IsNullOrEmpty(b64))
@@ -226,30 +235,35 @@ public readonly partial struct SourcesGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SaveSourceScreenshotToFileAsync(string sourceName,
+    public async Task SaveSourceScreenshotToFileAsync(
+        string sourceName,
         string filePath,
         string imageFormat = "png",
         int? width = null,
         int? height = null,
         int compressionQuality = -1,
         string? sourceUuid = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         client.EnsureConnected();
 
-        await client.Sources.SaveSourceScreenshotAsync(
-            new SaveSourceScreenshotRequestData(
-                imageFormat: imageFormat,
-                imageFilePath: filePath,
-                sourceName: sourceName,
-                sourceUuid: sourceUuid,
-                imageWidth: width,
-                imageHeight: height,
-                imageCompressionQuality: compressionQuality
-            ),
-            cancellationToken).ConfigureAwait(false);
+        await client
+            .Sources.SaveSourceScreenshotAsync(
+                new SaveSourceScreenshotRequestData(
+                    imageFormat: imageFormat,
+                    imageFilePath: filePath,
+                    sourceName: sourceName,
+                    sourceUuid: sourceUuid,
+                    imageWidth: width,
+                    imageHeight: height,
+                    imageCompressionQuality: compressionQuality
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 
     /// <summary>

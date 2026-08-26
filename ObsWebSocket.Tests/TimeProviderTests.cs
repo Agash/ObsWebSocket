@@ -36,7 +36,11 @@ public sealed class TimeProviderTests
             )
             .Returns(ValueTask.CompletedTask);
 
-        Task<GetVersionResponseData?> pending = client.CallAsync<GetVersionResponseData>("GetVersion", null, timeoutMs: 5000);
+        Task<GetVersionResponseData?> pending = client.CallAsync<GetVersionResponseData>(
+            "GetVersion",
+            null,
+            timeoutMs: 5000
+        );
 
         await Task.Delay(50, TestContext.CancellationTokenSource.Token);
         Assert.IsFalse(pending.IsCompleted, "wall-clock time must not advance the timeout");
@@ -47,9 +51,10 @@ public sealed class TimeProviderTests
 
         time.Advance(TimeSpan.FromMilliseconds(2));
 
-        ObsWebSocketTimeoutException ex = await Assert.ThrowsExactlyAsync<ObsWebSocketTimeoutException>(
-            async () => await pending
-        );
+        ObsWebSocketTimeoutException ex =
+            await Assert.ThrowsExactlyAsync<ObsWebSocketTimeoutException>(async () =>
+                await pending
+            );
         StringAssert.Contains(ex.Message, "timed out");
 
         await client.DisposeAsync();

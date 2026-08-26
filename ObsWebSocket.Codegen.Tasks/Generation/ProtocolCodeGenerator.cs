@@ -12,15 +12,27 @@ internal static class ProtocolCodeGenerator
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
-    public static (IReadOnlyDictionary<string, string> Sources, IReadOnlyList<Diagnostic> Diagnostics) Generate(string protocolJson)
+    public static (
+        IReadOnlyDictionary<string, string> Sources,
+        IReadOnlyList<Diagnostic> Diagnostics
+    ) Generate(string protocolJson)
     {
         ArgumentException.ThrowIfNullOrEmpty(protocolJson);
 
         GenerationContext context = new();
-        ProtocolDefinition? protocol = JsonSerializer.Deserialize<ProtocolDefinition>(protocolJson, s_jsonOptions);
+        ProtocolDefinition? protocol = JsonSerializer.Deserialize<ProtocolDefinition>(
+            protocolJson,
+            s_jsonOptions
+        );
         if (protocol is null)
         {
-            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.ProtocolJsonParseError, Location.None, "Deserialization returned null."));
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    Diagnostics.ProtocolJsonParseError,
+                    Location.None,
+                    "Deserialization returned null."
+                )
+            );
             return (context.Sources, context.Diagnostics);
         }
 

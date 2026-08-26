@@ -47,8 +47,10 @@ public sealed record SlideshowSettings(
     {
         /// <summary>Always play regardless of scene visibility.</summary>
         public const string AlwaysPlay = "always_play";
+
         /// <summary>Pause when invisible, unpause when visible.</summary>
         public const string PauseUnpause = "pause_unpause";
+
         /// <summary>Stop and restart from the beginning when made visible.</summary>
         public const string StopRestart = "stop_restart";
     }
@@ -58,8 +60,10 @@ public sealed record SlideshowSettings(
     {
         /// <summary>Loop through slides continuously.</summary>
         public const string Loop = "loop";
+
         /// <summary>Bounce back and forth through slides.</summary>
         public const string Bounce = "bounce";
+
         /// <summary>Manual advance only.</summary>
         public const string Manual = "manual";
     }
@@ -129,8 +133,10 @@ public sealed record TextGdiPlusInputSettings(
     {
         /// <summary>Left-align text.</summary>
         public const string Left = "left";
+
         /// <summary>Center-align text.</summary>
         public const string Center = "center";
+
         /// <summary>Right-align text.</summary>
         public const string Right = "right";
     }
@@ -140,8 +146,10 @@ public sealed record TextGdiPlusInputSettings(
     {
         /// <summary>Align text to the top.</summary>
         public const string Top = "top";
+
         /// <summary>Align text to the center.</summary>
         public const string Center = "center";
+
         /// <summary>Align text to the bottom.</summary>
         public const string Bottom = "bottom";
     }
@@ -179,8 +187,10 @@ public sealed record VlcSourceSettings(
     {
         /// <summary>Stop and restart from the beginning when made visible.</summary>
         public const string StopRestart = "stop_restart";
+
         /// <summary>Pause when invisible, unpause when visible.</summary>
         public const string PauseUnpause = "pause_unpause";
+
         /// <summary>Always play regardless of scene visibility.</summary>
         public const string AlwaysPlay = "always_play";
     }
@@ -231,8 +241,10 @@ public sealed record GameCaptureSettings(
     {
         /// <summary>Capture any fullscreen application.</summary>
         public const string AnyFullscreen = "any_fullscreen";
+
         /// <summary>Capture a specific window.</summary>
         public const string Window = "window";
+
         /// <summary>Toggle capture with a hotkey.</summary>
         public const string Hotkey = "hotkey";
     }

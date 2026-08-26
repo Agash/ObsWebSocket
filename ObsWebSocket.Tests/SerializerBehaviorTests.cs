@@ -50,9 +50,8 @@ public class SerializerBehaviorTests
             )
             .RootElement.Clone();
 
-        SceneListChangedPayload? result = CreateJsonSerializer().DeserializePayload<SceneListChangedPayload>(
-            payload
-        );
+        SceneListChangedPayload? result = CreateJsonSerializer()
+            .DeserializePayload<SceneListChangedPayload>(payload);
 
         Assert.IsNotNull(result);
         Assert.IsNotNull(result.Scenes);
@@ -102,10 +101,7 @@ public class SerializerBehaviorTests
         Assert.AreEqual("scene-uuid-1", scenes[0].SceneUuid);
         Dictionary<string, JsonElement>? extensionData = scenes[0].ExtensionData;
         Assert.IsNotNull(extensionData);
-        Assert.AreEqual(
-            "extension-data-like-field",
-            extensionData["extraTag"].GetString()
-        );
+        Assert.AreEqual("extension-data-like-field", extensionData["extraTag"].GetString());
     }
 
     [TestMethod]
@@ -129,22 +125,11 @@ public class SerializerBehaviorTests
         Assert.IsTrue(filters[0].FilterEnabled ?? false);
         Assert.IsTrue(filters[0].FilterSettings.HasValue);
         JsonElement filterSettings = filters[0].FilterSettings.GetValueOrDefault();
-        Assert.AreEqual(
-            0.8d,
-            filterSettings.GetProperty("opacity").GetDouble(),
-            0.0001d
-        );
-        Assert.AreEqual(
-            1.2d,
-            filterSettings.GetProperty("gamma").GetDouble(),
-            0.0001d
-        );
+        Assert.AreEqual(0.8d, filterSettings.GetProperty("opacity").GetDouble(), 0.0001d);
+        Assert.AreEqual(1.2d, filterSettings.GetProperty("gamma").GetDouble(), 0.0001d);
         Dictionary<string, JsonElement>? extensionData = filters[0].ExtensionData;
         Assert.IsNotNull(extensionData);
-        Assert.AreEqual(
-            "present",
-            extensionData["customExtensionField"].GetString()
-        );
+        Assert.AreEqual("present", extensionData["customExtensionField"].GetString());
         JsonElement listExtension = extensionData["listExtension"];
         Assert.AreEqual(JsonValueKind.Array, listExtension.ValueKind);
         Assert.AreEqual(2, listExtension.GetArrayLength());
@@ -251,7 +236,9 @@ public class SerializerBehaviorTests
             )
             .RootElement.Clone();
 
-        CreateSceneRequestData? data = serializer.DeserializePayload<CreateSceneRequestData>(payload);
+        CreateSceneRequestData? data = serializer.DeserializePayload<CreateSceneRequestData>(
+            payload
+        );
         Assert.IsNull(data);
     }
 
@@ -275,7 +262,8 @@ public class SerializerBehaviorTests
         object? envelope = await serializer.DeserializeAsync(stream);
 
         _ = Assert.IsInstanceOfType<IncomingMessage<ReadOnlyMemory<byte>>>(envelope);
-        IncomingMessage<ReadOnlyMemory<byte>> incoming = (IncomingMessage<ReadOnlyMemory<byte>>)envelope;
+        IncomingMessage<ReadOnlyMemory<byte>> incoming =
+            (IncomingMessage<ReadOnlyMemory<byte>>)envelope;
         Assert.AreEqual(WebSocketOpCode.Hello, incoming.Op);
         Assert.IsTrue(incoming.D.Length > 0);
 
@@ -387,7 +375,9 @@ public class SerializerBehaviorTests
         byte[] bytes = BuildSceneItemListPayloadBytes();
 
         GetSceneItemListResponseData? payload =
-            serializer.DeserializePayload<GetSceneItemListResponseData>(new ReadOnlyMemory<byte>(bytes));
+            serializer.DeserializePayload<GetSceneItemListResponseData>(
+                new ReadOnlyMemory<byte>(bytes)
+            );
 
         Assert.IsNotNull(payload);
         List<Core.Protocol.Common.SceneItemStub>? sceneItems = payload.SceneItems;
@@ -411,7 +401,9 @@ public class SerializerBehaviorTests
         byte[] bytes = BuildInvalidFilterListPayloadBytes();
 
         GetSourceFilterListResponseData? payload =
-            serializer.DeserializePayload<GetSourceFilterListResponseData>(new ReadOnlyMemory<byte>(bytes));
+            serializer.DeserializePayload<GetSourceFilterListResponseData>(
+                new ReadOnlyMemory<byte>(bytes)
+            );
 
         Assert.IsNull(payload);
     }
@@ -420,29 +412,28 @@ public class SerializerBehaviorTests
     public void MsgPackSerializer_SerializeThenDeserialize_FilterPayload_RoundTripsWithValues()
     {
         MsgPackMessageSerializer serializer = CreateMsgPackSerializer();
-        GetSourceFilterListResponseData payload = new(
-            [
-                new Core.Protocol.Common.FilterStub
-                {
-                    FilterName = "Color Correction",
-                    FilterKind = "color_filter_v2",
-                    FilterIndex = 0,
-                    FilterEnabled = true,
-                },
-                new Core.Protocol.Common.FilterStub
-                {
-                    FilterName = "Limiter",
-                    FilterKind = "limiter_filter_v2",
-                    FilterIndex = 1,
-                    FilterEnabled = false,
-                },
-            ]
-        );
+        GetSourceFilterListResponseData payload = new([
+            new Core.Protocol.Common.FilterStub
+            {
+                FilterName = "Color Correction",
+                FilterKind = "color_filter_v2",
+                FilterIndex = 0,
+                FilterEnabled = true,
+            },
+            new Core.Protocol.Common.FilterStub
+            {
+                FilterName = "Limiter",
+                FilterKind = "limiter_filter_v2",
+                FilterIndex = 1,
+                FilterEnabled = false,
+            },
+        ]);
 
         byte[] bytes = MessagePack.MessagePackSerializer.Serialize(payload);
-        GetSourceFilterListResponseData? roundTrip = serializer.DeserializePayload<
-            GetSourceFilterListResponseData
-        >(new ReadOnlyMemory<byte>(bytes));
+        GetSourceFilterListResponseData? roundTrip =
+            serializer.DeserializePayload<GetSourceFilterListResponseData>(
+                new ReadOnlyMemory<byte>(bytes)
+            );
 
         Assert.IsNotNull(roundTrip);
         Assert.IsNotNull(roundTrip.Filters);
@@ -498,27 +489,13 @@ public class SerializerBehaviorTests
             )
         );
 
-        requiredTypes.Add(
-            typeof(HelloPayload)
-        );
-        requiredTypes.Add(
-            typeof(AuthenticationData)
-        );
-        requiredTypes.Add(
-            typeof(IdentifyPayload)
-        );
-        requiredTypes.Add(
-            typeof(IdentifiedPayload)
-        );
-        requiredTypes.Add(
-            typeof(ReidentifyPayload)
-        );
-        requiredTypes.Add(
-            typeof(RequestPayload)
-        );
-        requiredTypes.Add(
-            typeof(RequestBatchPayload)
-        );
+        requiredTypes.Add(typeof(HelloPayload));
+        requiredTypes.Add(typeof(AuthenticationData));
+        requiredTypes.Add(typeof(IdentifyPayload));
+        requiredTypes.Add(typeof(IdentifiedPayload));
+        requiredTypes.Add(typeof(ReidentifyPayload));
+        requiredTypes.Add(typeof(RequestPayload));
+        requiredTypes.Add(typeof(RequestBatchPayload));
         requiredTypes.Add(typeof(ObsWebSocket.Core.Protocol.RequestStatus));
 
         List<string> missing = [];
@@ -729,7 +706,9 @@ public class SerializerBehaviorTests
 
     private static bool HasFormatter(IFormatterResolver resolver, Type targetType)
     {
-        MethodInfo? method = typeof(IFormatterResolver).GetMethod(nameof(IFormatterResolver.GetFormatter));
+        MethodInfo? method = typeof(IFormatterResolver).GetMethod(
+            nameof(IFormatterResolver.GetFormatter)
+        );
         Assert.IsNotNull(method, "Could not locate IFormatterResolver.GetFormatter<T>.");
         object? formatter = method.MakeGenericMethod(targetType).Invoke(resolver, null);
         return formatter is not null;

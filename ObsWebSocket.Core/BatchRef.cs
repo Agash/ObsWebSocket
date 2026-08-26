@@ -18,8 +18,7 @@ public readonly record struct BatchRef<TResponse>(int Index)
 {
     /// <summary>Drops the response type, leaving a plain reference.</summary>
     /// <param name="reference">The reference to convert.</param>
-    public static implicit operator BatchRef(BatchRef<TResponse> reference) =>
-        new(reference.Index);
+    public static implicit operator BatchRef(BatchRef<TResponse> reference) => new(reference.Index);
 
     /// <summary>Drops the response type, leaving a plain reference.</summary>
     public BatchRef ToBatchRef() => new(Index);

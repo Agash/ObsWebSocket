@@ -86,11 +86,8 @@ public partial class ObsWebSocketClientTests
     public async Task CallBatchAsync_AnonymousRequestData_ThrowsObsWebSocketException()
     {
         // Arrange
-        (
-            ObsWebSocketClient client,
-            _,
-            Mock<IWebSocketConnection> mockWebSocket
-        ) = TestUtils.SetupConnectedClientForceState();
+        (ObsWebSocketClient client, _, Mock<IWebSocketConnection> mockWebSocket) =
+            TestUtils.SetupConnectedClientForceState();
 
         List<BatchRequestItem> requests =
         [
@@ -107,10 +104,11 @@ public partial class ObsWebSocketClientTests
             "Failed to serialize request data",
             StringComparison.Ordinal
         );
-        bool innerHasExpectedMessage = ex.InnerException?.Message.Contains(
-            "Failed to serialize request data",
-            StringComparison.Ordinal
-        ) == true;
+        bool innerHasExpectedMessage =
+            ex.InnerException?.Message.Contains(
+                "Failed to serialize request data",
+                StringComparison.Ordinal
+            ) == true;
         Assert.IsTrue(
             outerHasExpectedMessage || innerHasExpectedMessage,
             "Exception chain should indicate request data serialization failure."
@@ -367,8 +365,8 @@ public partial class ObsWebSocketClientTests
             .Returns(ValueTask.CompletedTask);
 
         // Act & Assert
-        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(
-            async () => await client.CallBatchAsync(requests, timeoutMs: timeoutMs) // Use the timeout override
+        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(async () =>
+            await client.CallBatchAsync(requests, timeoutMs: timeoutMs) // Use the timeout override
         );
 
         // Verify exception details
@@ -427,4 +425,3 @@ public partial class ObsWebSocketClientTests
         } // Ignore deserialization errors
     }
 }
-

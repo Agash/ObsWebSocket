@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -28,7 +28,8 @@ public readonly partial struct ConfigGroup
     /// <returns>The deserialized stream service settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetStreamServiceSettingsAsync<T>(JsonTypeInfo<T> typeInfo,
+    public async Task<T?> GetStreamServiceSettingsAsync<T>(
+        JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -40,7 +41,9 @@ public readonly partial struct ConfigGroup
             .Config.GetStreamServiceSettingsAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return response?.StreamServiceSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.StreamServiceSettings is not { } element
+            ? null
+            : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -51,8 +54,7 @@ public readonly partial struct ConfigGroup
     /// <returns>The deserialized stream service settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetStreamServiceSettingsAsync<T>(CancellationToken cancellationToken = default
-    )
+    public Task<T?> GetStreamServiceSettingsAsync<T>(CancellationToken cancellationToken = default)
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
@@ -69,7 +71,8 @@ public readonly partial struct ConfigGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetStreamServiceSettingsAsync<T>(string streamServiceType,
+    public async Task SetStreamServiceSettingsAsync<T>(
+        string streamServiceType,
         T settings,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
@@ -83,7 +86,8 @@ public readonly partial struct ConfigGroup
         JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
 
         await client
-            .Config.SetStreamServiceSettingsAsync(new SetStreamServiceSettingsRequestData(
+            .Config.SetStreamServiceSettingsAsync(
+                new SetStreamServiceSettingsRequestData(
                     streamServiceType: streamServiceType,
                     streamServiceSettings: settingsElement
                 ),
@@ -101,14 +105,20 @@ public readonly partial struct ConfigGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task SetStreamServiceSettingsAsync<T>(string streamServiceType,
+    public Task SetStreamServiceSettingsAsync<T>(
+        string streamServiceType,
         T settings,
         CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Config.SetStreamServiceSettingsAsync(streamServiceType, settings, typeInfo, cancellationToken);
+        return client.Config.SetStreamServiceSettingsAsync(
+            streamServiceType,
+            settings,
+            typeInfo,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -119,7 +129,8 @@ public readonly partial struct ConfigGroup
     /// <returns>True if the target scene collection is active after the call; false if the switch failed (e.g., not found).</returns>
     /// <exception cref="ObsWebSocketException">Thrown for unexpected OBS errors during the process.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<bool> EnsureSceneCollectionActiveAsync(string targetSceneCollectionName,
+    public async Task<bool> EnsureSceneCollectionActiveAsync(
+        string targetSceneCollectionName,
         CancellationToken cancellationToken = default
     )
     {
@@ -146,7 +157,9 @@ public readonly partial struct ConfigGroup
         {
             await client
                 .Config.SetCurrentSceneCollectionAsync(
-                    new SetCurrentSceneCollectionRequestData(sceneCollectionName: targetSceneCollectionName),
+                    new SetCurrentSceneCollectionRequestData(
+                        sceneCollectionName: targetSceneCollectionName
+                    ),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -180,7 +193,8 @@ public readonly partial struct ConfigGroup
     /// <returns>True if the target profile is active after the call; false if the switch failed (e.g., not found).</returns>
     /// <exception cref="ObsWebSocketException">Thrown for unexpected OBS errors during the process.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<bool> EnsureProfileActiveAsync(string targetProfileName,
+    public async Task<bool> EnsureProfileActiveAsync(
+        string targetProfileName,
         CancellationToken cancellationToken = default
     )
     {

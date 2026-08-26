@@ -105,12 +105,18 @@ internal static partial class Emitter
 
             context.AddSource(
                 "ObsWebSocketMsgPackResolver.RequestTypes.g.cs",
-                SourceText.From(BuildKnownTypeSource("IsRequestType", requestTypeNames), Encoding.UTF8)
+                SourceText.From(
+                    BuildKnownTypeSource("IsRequestType", requestTypeNames),
+                    Encoding.UTF8
+                )
             );
 
             context.AddSource(
                 "ObsWebSocketMsgPackResolver.ResponseTypes.g.cs",
-                SourceText.From(BuildKnownTypeSource("IsResponseType", responseTypeNames), Encoding.UTF8)
+                SourceText.From(
+                    BuildKnownTypeSource("IsResponseType", responseTypeNames),
+                    Encoding.UTF8
+                )
             );
 
             context.AddSource(
@@ -120,7 +126,10 @@ internal static partial class Emitter
 
             context.AddSource(
                 "ObsWebSocketMsgPackResolver.NestedTypes.g.cs",
-                SourceText.From(BuildKnownTypeSource("IsNestedType", nestedTypeNames), Encoding.UTF8)
+                SourceText.From(
+                    BuildKnownTypeSource("IsNestedType", nestedTypeNames),
+                    Encoding.UTF8
+                )
             );
         }
         catch (Exception ex)
@@ -139,7 +148,9 @@ internal static partial class Emitter
 
     private static string BuildResolverRootSource()
     {
-        StringBuilder builder = BuildSourceHeader("// Serialization Resolver: ObsWebSocketMsgPackResolver");
+        StringBuilder builder = BuildSourceHeader(
+            "// Serialization Resolver: ObsWebSocketMsgPackResolver"
+        );
         builder.AppendLine("using System;");
         builder.AppendLine("using MessagePack;");
         builder.AppendLine("using MessagePack.Formatters;");
@@ -162,7 +173,9 @@ internal static partial class Emitter
         builder.AppendLine("    private ObsWebSocketMsgPackResolver() { }");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine("    /// Gets a formatter for <typeparamref name=\"T\"/> when this resolver supports it.");
+        builder.AppendLine(
+            "    /// Gets a formatter for <typeparamref name=\"T\"/> when this resolver supports it."
+        );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
             "    public IMessagePackFormatter<T>? GetFormatter<T>() => ObsWebSocketMsgPackResolverCore.GetFormatter<T>();"
@@ -179,7 +192,9 @@ internal static partial class Emitter
         builder.AppendLine("            return null;");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        return SourceGeneratedFormatterResolver.Instance.GetFormatter<T>();");
+        builder.AppendLine(
+            "        return SourceGeneratedFormatterResolver.Instance.GetFormatter<T>();"
+        );
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    private static bool IsKnownType(Type type)");

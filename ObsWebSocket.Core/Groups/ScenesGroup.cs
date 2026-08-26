@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -30,7 +30,8 @@ public readonly partial struct ScenesGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to perform any step (e.g., scene/transition not found).</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SwitchSceneAsync(string sceneName,
+    public async Task SwitchSceneAsync(
+        string sceneName,
         string? transitionName = null,
         int? transitionDurationMs = null,
         bool switchToProgram = true,
@@ -106,7 +107,8 @@ public readonly partial struct ScenesGroup
     /// <exception cref="TimeoutException">Thrown if the expected event confirming the switch completion is not received within the timeout period.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected, or if trying to switch Preview scene when Studio Mode is disabled.</exception>
     /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the cancellationToken.</exception>
-    public async Task SwitchSceneAndWaitAsync(string sceneName,
+    public async Task SwitchSceneAndWaitAsync(
+        string sceneName,
         string? transitionName = null,
         int? transitionDurationMs = null,
         bool switchToProgram = true,
@@ -210,75 +212,76 @@ public readonly partial struct ScenesGroup
         // The finally block within WaitForEventAsync handles unsubscribing the temporary event handler.
     }
 
-        /// <summary>
-        /// Checks whether a scene with the given name exists.
-        /// </summary>
-        /// <param name="sceneName">The scene name to look for.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-        public async Task<bool> SceneExistsAsync(
-            string sceneName,
-            CancellationToken cancellationToken = default
-        )
-        {
-            ArgumentException.ThrowIfNullOrEmpty(sceneName);
-            client.EnsureConnected();
+    /// <summary>
+    /// Checks whether a scene with the given name exists.
+    /// </summary>
+    /// <param name="sceneName">The scene name to look for.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task<bool> SceneExistsAsync(
+        string sceneName,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sceneName);
+        client.EnsureConnected();
 
-            GetSceneListResponseData? scenes = await client
-                .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
-                .ConfigureAwait(false);
+        GetSceneListResponseData? scenes = await client
+            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .ConfigureAwait(false);
 
-            return scenes?.Scenes?.Any(s =>
+        return scenes?.Scenes?.Any(s =>
                 string.Equals(s.SceneName, sceneName, StringComparison.Ordinal)
-            ) ?? false;
-        }
+            )
+            ?? false;
+    }
 
-        /// <summary>Switches the Program scene.</summary>
-        /// <param name="sceneName">The scene to switch to.</param>
-        /// <param name="transitionName">Optional transition to use for this switch only.</param>
-        /// <param name="transitionDurationMs">Optional transition duration for this switch only.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        public Task SwitchProgramSceneAsync(
-            string sceneName,
-            string? transitionName = null,
-            int? transitionDurationMs = null,
-            CancellationToken cancellationToken = default
-        ) =>
-            client.Scenes.SwitchSceneAsync(
-                sceneName,
-                transitionName,
-                transitionDurationMs,
-                switchToProgram: true,
-                cancellationToken
-            );
+    /// <summary>Switches the Program scene.</summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="transitionName">Optional transition to use for this switch only.</param>
+    /// <param name="transitionDurationMs">Optional transition duration for this switch only.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task SwitchProgramSceneAsync(
+        string sceneName,
+        string? transitionName = null,
+        int? transitionDurationMs = null,
+        CancellationToken cancellationToken = default
+    ) =>
+        client.Scenes.SwitchSceneAsync(
+            sceneName,
+            transitionName,
+            transitionDurationMs,
+            switchToProgram: true,
+            cancellationToken
+        );
 
-        /// <summary>Switches the Preview scene. Requires Studio Mode.</summary>
-        /// <param name="sceneName">The scene to switch to.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        public Task SwitchPreviewSceneAsync(
-            string sceneName,
-            CancellationToken cancellationToken = default
-        ) =>
-            client.Scenes.SwitchSceneAsync(
-                sceneName,
-                switchToProgram: false,
-                cancellationToken: cancellationToken
-            );
+    /// <summary>Switches the Preview scene. Requires Studio Mode.</summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task SwitchPreviewSceneAsync(
+        string sceneName,
+        CancellationToken cancellationToken = default
+    ) =>
+        client.Scenes.SwitchSceneAsync(
+            sceneName,
+            switchToProgram: false,
+            cancellationToken: cancellationToken
+        );
 
-        /// <summary>Switches the Program scene and waits for OBS to confirm it.</summary>
-        /// <param name="sceneName">The scene to switch to.</param>
-        /// <param name="timeout">How long to wait for confirmation.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        /// <exception cref="TimeoutException">Thrown if the confirmation does not arrive in time.</exception>
-        public Task SwitchProgramSceneAndWaitAsync(
-            string sceneName,
-            TimeSpan? timeout = null,
-            CancellationToken cancellationToken = default
-        ) =>
-            client.Scenes.SwitchSceneAndWaitAsync(
-                sceneName,
-                switchToProgram: true,
-                timeout: timeout,
-                cancellationToken: cancellationToken
-            );
+    /// <summary>Switches the Program scene and waits for OBS to confirm it.</summary>
+    /// <param name="sceneName">The scene to switch to.</param>
+    /// <param name="timeout">How long to wait for confirmation.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="TimeoutException">Thrown if the confirmation does not arrive in time.</exception>
+    public Task SwitchProgramSceneAndWaitAsync(
+        string sceneName,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default
+    ) =>
+        client.Scenes.SwitchSceneAndWaitAsync(
+            sceneName,
+            switchToProgram: true,
+            timeout: timeout,
+            cancellationToken: cancellationToken
+        );
 }

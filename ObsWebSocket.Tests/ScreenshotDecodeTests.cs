@@ -10,8 +10,7 @@ namespace ObsWebSocket.Tests;
 public sealed class ScreenshotDecodeTests
 {
     // The eight byte PNG signature, which is what a caller checks to know it got an image.
-    private static readonly byte[] PngSignature =
-        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     [TestMethod]
     public void DecodeImageData_WithDataUriPrefix_ReturnsTheImageBytes()
@@ -26,9 +25,7 @@ public sealed class ScreenshotDecodeTests
     [TestMethod]
     public void DecodeImageData_WithBareBase64_StillDecodes()
     {
-        byte[] decoded = SourcesGroup.DecodeImageData(
-            Convert.ToBase64String(PngSignature)
-        );
+        byte[] decoded = SourcesGroup.DecodeImageData(Convert.ToBase64String(PngSignature));
 
         CollectionAssert.AreEqual(PngSignature, decoded);
     }

@@ -332,7 +332,9 @@ public class ObsWebSocketClientRequestTests
             .Returns(responseDto);
 
         // Act
-        GetInputMuteResponseData? actualResponseDto = await client.Inputs.GetInputMuteAsync(requestDto);
+        GetInputMuteResponseData? actualResponseDto = await client.Inputs.GetInputMuteAsync(
+            requestDto
+        );
 
         // Assert
         Assert.IsNotNull(actualResponseDto, "Response DTO should not be null.");
@@ -442,8 +444,8 @@ public class ObsWebSocketClientRequestTests
 
         // Act & Assert
         // Verify that calling the client method throws the correct exception
-        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(
-            async () => await client.General.GetVersionAsync() // Call the specific extension method
+        ObsWebSocketException ex = await Assert.ThrowsAsync<ObsWebSocketException>(async () =>
+            await client.General.GetVersionAsync() // Call the specific extension method
         );
 
         // Check the exception details
@@ -626,4 +628,3 @@ public class ObsWebSocketClientRequestTests
         } // Ignore errors
     }
 }
-

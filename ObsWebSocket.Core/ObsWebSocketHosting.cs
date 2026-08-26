@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -95,7 +95,9 @@ internal sealed class ObsWebSocketConnectionService(
     {
         if (client.IsConnected)
         {
-            await client.DisconnectAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            await client
+                .DisconnectAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

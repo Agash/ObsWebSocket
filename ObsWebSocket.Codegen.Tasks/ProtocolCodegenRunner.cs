@@ -6,7 +6,8 @@ namespace ObsWebSocket.Codegen.Tasks;
 
 internal static class ProtocolCodegenRunner
 {
-    private const string ProtocolUrl = "https://raw.githubusercontent.com/obsproject/obs-websocket/master/docs/generated/protocol.json";
+    private const string ProtocolUrl =
+        "https://raw.githubusercontent.com/obsproject/obs-websocket/master/docs/generated/protocol.json";
 
     public static async Task<int> GenerateAsync(
         string protocolPath,
@@ -34,15 +35,24 @@ internal static class ProtocolCodegenRunner
                     return 2;
                 }
 
-                await DownloadProtocolAsync(fullProtocolPath, cancellationToken).ConfigureAwait(false);
+                await DownloadProtocolAsync(fullProtocolPath, cancellationToken)
+                    .ConfigureAwait(false);
                 logInfo?.Invoke($"Downloaded protocol.json to '{fullProtocolPath}'.");
             }
 
-            string protocolJson = await File.ReadAllTextAsync(fullProtocolPath, cancellationToken).ConfigureAwait(false);
-            (IReadOnlyDictionary<string, string> sources, IReadOnlyList<Diagnostic> diagnostics) = ProtocolCodeGenerator.Generate(protocolJson);
+            string protocolJson = await File.ReadAllTextAsync(fullProtocolPath, cancellationToken)
+                .ConfigureAwait(false);
+            (IReadOnlyDictionary<string, string> sources, IReadOnlyList<Diagnostic> diagnostics) =
+                ProtocolCodeGenerator.Generate(protocolJson);
 
-            Diagnostic[] errors = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)];
-            Diagnostic[] warnings = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning)];
+            Diagnostic[] errors =
+            [
+                .. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error),
+            ];
+            Diagnostic[] warnings =
+            [
+                .. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning),
+            ];
             Diagnostic[] infos = [.. diagnostics.Where(d => d.Severity == DiagnosticSeverity.Info)];
             if (errors.Length > 0)
             {
@@ -79,27 +89,50 @@ internal static class ProtocolCodegenRunner
         }
     }
 
-    private static async Task DownloadProtocolAsync(string protocolPath, CancellationToken cancellationToken)
+    private static async Task DownloadProtocolAsync(
+        string protocolPath,
+        CancellationToken cancellationToken
+    )
     {
         _ = Directory.CreateDirectory(Path.GetDirectoryName(protocolPath)!);
         using HttpClient http = new();
-        using HttpResponseMessage response = await http.GetAsync(ProtocolUrl, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await http.GetAsync(ProtocolUrl, cancellationToken)
+            .ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
-        string protocolJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        await File.WriteAllTextAsync(protocolPath, protocolJson, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+        string protocolJson = await response
+            .Content.ReadAsStringAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await File.WriteAllTextAsync(
+                protocolPath,
+                protocolJson,
+                new UTF8Encoding(false),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 
-    private static void WriteSources(string outputDirectory, IReadOnlyDictionary<string, string> sources)
+    private static void WriteSources(
+        string outputDirectory,
+        IReadOnlyDictionary<string, string> sources
+    )
     {
         _ = Directory.CreateDirectory(outputDirectory);
 
-        HashSet<string> generatedRelativePaths = sources.Keys
-            .Select(NormalizeRelativePath)
+        HashSet<string> generatedRelativePaths = sources
+            .Keys.Select(NormalizeRelativePath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string existingFile in Directory.GetFiles(outputDirectory, "*.g.cs", SearchOption.AllDirectories))
+        foreach (
+            string existingFile in Directory.GetFiles(
+                outputDirectory,
+                "*.g.cs",
+                SearchOption.AllDirectories
+            )
+        )
         {
-            string relativePath = NormalizeRelativePath(Path.GetRelativePath(outputDirectory, existingFile));
+            string relativePath = NormalizeRelativePath(
+                Path.GetRelativePath(outputDirectory, existingFile)
+            );
             if (!generatedRelativePaths.Contains(relativePath))
             {
                 File.Delete(existingFile);
@@ -115,7 +148,7 @@ internal static class ProtocolCodegenRunner
         }
     }
 
-    private static string NormalizeRelativePath(string path) => path
-            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
+    private static string NormalizeRelativePath(string path) =>
+        path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
             .TrimStart(Path.DirectorySeparatorChar);
 }

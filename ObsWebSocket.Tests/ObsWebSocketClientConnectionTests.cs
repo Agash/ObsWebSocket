@@ -213,7 +213,8 @@ public class ObsWebSocketClientConnectionTests
         // Mock WebSocket Connection
         _ = mockConnection
             .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
-            .Callback(() => mockConnection.SetupGet(conn => conn.State).Returns(WebSocketState.Open)
+            .Callback(() =>
+                mockConnection.SetupGet(conn => conn.State).Returns(WebSocketState.Open)
             )
             .Returns(Task.CompletedTask);
 
@@ -665,7 +666,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
@@ -677,14 +680,16 @@ public class ObsWebSocketClientConnectionTests
 
         // Act & Assert
         ObsWebSocketException thrownException =
-            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
-                () => PumpAsync(client.ConnectAsync(), time)
+            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+                PumpAsync(client.ConnectAsync(), time)
             );
 
         Assert.IsTrue(
             thrownException.Message.Contains($"Failed to connect after {maxAttempts} attempts")
         );
-        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(thrownException.InnerException);
+        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(
+            thrownException.InnerException
+        );
         Assert.AreEqual(connectException, thrownException.InnerException!.InnerException);
 
         _ = await Task.WhenAny(disconnectedSignal.Task, Task.Delay(1000))
@@ -756,7 +761,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
@@ -839,7 +846,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))

@@ -22,14 +22,18 @@ public sealed class ObsWebSocketMetrics : IDisposable
         ArgumentNullException.ThrowIfNull(meterFactory);
         _meter = meterFactory.Create(ObsWebSocketDiagnostics.MeterName);
         _ownsMeter = false;
-        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(_meter);
+        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(
+            _meter
+        );
     }
 
     private ObsWebSocketMetrics()
     {
         _meter = new Meter(ObsWebSocketDiagnostics.MeterName);
         _ownsMeter = true;
-        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(_meter);
+        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(
+            _meter
+        );
     }
 
     /// <summary>Instruments for a client built outside dependency injection.</summary>

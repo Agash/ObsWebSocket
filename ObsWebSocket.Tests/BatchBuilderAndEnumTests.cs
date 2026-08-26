@@ -123,7 +123,11 @@ public sealed class ProtocolEnumTests
         foreach (OutputState value in Enum.GetValues<OutputState>())
         {
             string wire = value.ToWireValue();
-            Assert.AreEqual(value, OutputStateExtensions.FromWireValue(wire), $"round trip for {value}");
+            Assert.AreEqual(
+                value,
+                OutputStateExtensions.FromWireValue(wire),
+                $"round trip for {value}"
+            );
         }
     }
 
@@ -133,14 +137,21 @@ public sealed class ProtocolEnumTests
         foreach (MediaInputAction value in Enum.GetValues<MediaInputAction>())
         {
             string wire = value.ToWireValue();
-            Assert.AreEqual(value, MediaInputActionExtensions.FromWireValue(wire), $"round trip for {value}");
+            Assert.AreEqual(
+                value,
+                MediaInputActionExtensions.FromWireValue(wire),
+                $"round trip for {value}"
+            );
         }
     }
 
     [TestMethod]
     public void ToWireValue_MatchesTheProtocolConstants()
     {
-        Assert.AreEqual(ObsOutputState.OBS_WEBSOCKET_OUTPUT_STARTED, OutputState.Started.ToWireValue());
+        Assert.AreEqual(
+            ObsOutputState.OBS_WEBSOCKET_OUTPUT_STARTED,
+            OutputState.Started.ToWireValue()
+        );
         Assert.AreEqual(
             ObsMediaInputAction.OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY,
             MediaInputAction.Play.ToWireValue()

@@ -18,10 +18,12 @@ namespace ObsWebSocket.Tests;
 public sealed class FalsyRequestFieldTests
 {
     private static string Json(object data) =>
-        JsonSerializer.SerializeToElement(
-            data,
-            ObsWebSocketJsonContext.Default.Options.GetTypeInfo(data.GetType())
-        ).GetRawText();
+        JsonSerializer
+            .SerializeToElement(
+                data,
+                ObsWebSocketJsonContext.Default.Options.GetTypeInfo(data.GetType())
+            )
+            .GetRawText();
 
     [TestMethod]
     public void Serialize_RequiredFalseBool_KeepsField()

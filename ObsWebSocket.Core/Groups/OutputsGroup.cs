@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -29,7 +29,8 @@ public readonly partial struct OutputsGroup
     /// <returns>The deserialized output settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetOutputSettingsAsync<T>(string outputName,
+    public async Task<T?> GetOutputSettingsAsync<T>(
+        string outputName,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
@@ -40,12 +41,15 @@ public readonly partial struct OutputsGroup
         client.EnsureConnected();
 
         GetOutputSettingsResponseData? response = await client
-            .Outputs.GetOutputSettingsAsync(new GetOutputSettingsRequestData(outputName: outputName),
+            .Outputs.GetOutputSettingsAsync(
+                new GetOutputSettingsRequestData(outputName: outputName),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response?.OutputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.OutputSettings is not { } element
+            ? null
+            : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -57,7 +61,8 @@ public readonly partial struct OutputsGroup
     /// <returns>The deserialized output settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetOutputSettingsAsync<T>(string outputName,
+    public Task<T?> GetOutputSettingsAsync<T>(
+        string outputName,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -76,7 +81,8 @@ public readonly partial struct OutputsGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetOutputSettingsAsync<T>(string outputName,
+    public async Task SetOutputSettingsAsync<T>(
+        string outputName,
         T settings,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
@@ -90,7 +96,8 @@ public readonly partial struct OutputsGroup
         JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
 
         await client
-            .Outputs.SetOutputSettingsAsync(new SetOutputSettingsRequestData(
+            .Outputs.SetOutputSettingsAsync(
+                new SetOutputSettingsRequestData(
                     outputName: outputName,
                     outputSettings: settingsElement
                 ),
@@ -108,14 +115,20 @@ public readonly partial struct OutputsGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task SetOutputSettingsAsync<T>(string outputName,
+    public Task SetOutputSettingsAsync<T>(
+        string outputName,
         T settings,
         CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Outputs.SetOutputSettingsAsync(outputName, settings, typeInfo, cancellationToken);
+        return client.Outputs.SetOutputSettingsAsync(
+            outputName,
+            settings,
+            typeInfo,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -148,19 +161,23 @@ public readonly partial struct OutputsGroup
     /// or <see langword="null"/> if the timeout elapsed before the event arrived.
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<bool?> SetVirtualCamActiveAndWaitAsync(bool activate,
+    public async Task<bool?> SetVirtualCamActiveAndWaitAsync(
+        bool activate,
         TimeSpan? timeout = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         client.EnsureConnected();
 
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromSeconds(10);
 
         // Set up the wait before issuing the command to avoid missing the event.
-        Task<VirtualcamStateChangedEventArgs> waitTask = client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
-            predicate: _ => true,
-            timeout: effectiveTimeout,
-            cancellationToken: cancellationToken);
+        Task<VirtualcamStateChangedEventArgs> waitTask =
+            client.WaitForEventAsync<VirtualcamStateChangedEventArgs>(
+                predicate: _ => true,
+                timeout: effectiveTimeout,
+                cancellationToken: cancellationToken
+            );
 
         if (activate)
         {

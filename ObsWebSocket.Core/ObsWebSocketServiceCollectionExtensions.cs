@@ -63,8 +63,10 @@ public static class ObsWebSocketServiceCollectionExtensions
 
         // Resolve options through the monitor, so a configuration change is picked up rather
         // than the values captured when the container was built.
-        _ = services.AddSingleton<IOptions<ObsWebSocketClientOptions>>(sp =>
-            new MonitorBackedOptions(sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>())
+        _ = services.AddSingleton<IOptions<ObsWebSocketClientOptions>>(
+            sp => new MonitorBackedOptions(
+                sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>()
+            )
         );
         _ = services.AddMetrics();
         services.TryAddSingleton<ObsWebSocketMetrics>();
@@ -143,11 +145,13 @@ public static class ObsWebSocketServiceCollectionExtensions
             {
                 ObsWebSocketClientOptions options = sp.GetRequiredService<
                     IOptionsMonitor<ObsWebSocketClientOptions>
-                >().Get((string)key!);
+                >()
+                    .Get((string)key!);
 
                 IWebSocketMessageSerializer serializer = options.Format switch
                 {
-                    SerializationFormat.MsgPack => sp.GetRequiredService<MsgPackMessageSerializer>(),
+                    SerializationFormat.MsgPack =>
+                        sp.GetRequiredService<MsgPackMessageSerializer>(),
                     SerializationFormat.Json or _ => sp.GetRequiredService<JsonMessageSerializer>(),
                 };
 

@@ -26,13 +26,19 @@ internal sealed class GenerationContext
     private static string ResolveOutputPath(string hintName, string source)
     {
         string fileName = Path.GetFileName(hintName);
-        string namespaceLine = source
-            .Split('\n')
-            .Select(line => line.Trim())
-            .FirstOrDefault(line => line.StartsWith("namespace ", StringComparison.Ordinal))
+        string namespaceLine =
+            source
+                .Split('\n')
+                .Select(line => line.Trim())
+                .FirstOrDefault(line => line.StartsWith("namespace ", StringComparison.Ordinal))
             ?? string.Empty;
 
-        if (namespaceLine.Contains("ObsWebSocket.Core.Protocol.Common.NestedTypes", StringComparison.Ordinal))
+        if (
+            namespaceLine.Contains(
+                "ObsWebSocket.Core.Protocol.Common.NestedTypes",
+                StringComparison.Ordinal
+            )
+        )
         {
             return Path.Combine("Protocol", "Common", "NestedTypes", fileName);
         }
@@ -42,7 +48,9 @@ internal sealed class GenerationContext
             return Path.Combine("Protocol", "Requests", fileName);
         }
 
-        if (namespaceLine.Contains("ObsWebSocket.Core.Protocol.Responses", StringComparison.Ordinal))
+        if (
+            namespaceLine.Contains("ObsWebSocket.Core.Protocol.Responses", StringComparison.Ordinal)
+        )
         {
             return Path.Combine("Protocol", "Responses", fileName);
         }
@@ -52,15 +60,20 @@ internal sealed class GenerationContext
             return Path.Combine("Protocol", "Events", fileName);
         }
 
-        if (namespaceLine.Contains("ObsWebSocket.Core.Protocol.Generated", StringComparison.Ordinal))
+        if (
+            namespaceLine.Contains("ObsWebSocket.Core.Protocol.Generated", StringComparison.Ordinal)
+        )
         {
             return Path.Combine("Protocol", "Generated", fileName);
         }
 
-        return namespaceLine.Contains("ObsWebSocket.Core.Events.Generated", StringComparison.Ordinal)
-            ? Path.Combine("Events", "Generated", fileName)
+        return namespaceLine.Contains(
+                "ObsWebSocket.Core.Events.Generated",
+                StringComparison.Ordinal
+            )
+                ? Path.Combine("Events", "Generated", fileName)
             : namespaceLine.Contains("ObsWebSocket.Core.Serialization", StringComparison.Ordinal)
-            ? Path.Combine("Serialization", fileName)
+                ? Path.Combine("Serialization", fileName)
             : Path.Combine("Client", fileName);
     }
 }
