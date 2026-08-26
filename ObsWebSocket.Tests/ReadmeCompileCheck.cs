@@ -11,7 +11,12 @@ using ObsWebSocket.Core.Protocol.Responses;
 namespace ObsWebSocket.Tests;
 
 [JsonSerializable(typeof(OverlaySettings))]
+[JsonSerializable(typeof(MyRequest))]
 internal partial class MyContext : JsonSerializerContext { }
+
+/// <summary>A request payload the library does not model, described by the consumer's context.</summary>
+/// <param name="SomeField">An arbitrary field.</param>
+internal sealed record MyRequest([property: JsonPropertyName("someField")] int SomeField);
 
 internal sealed record OverlaySettings(
     [property: JsonPropertyName("url")] string? Url = null,
@@ -439,6 +444,35 @@ internal static class ReadmeCompileCheck
         {
             // One catch covers a request timeout and a wait timeout alike.
         }
+    }
+
+    internal static async Task ConsumerContextPayloadAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        // The preferred way to send a payload the library does not model: your own type and your
+        // own context, which is AOT safe and needs nothing hand built.
+        System.Text.Json.JsonElement? answer =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                new MyRequest(1),
+                MyContext.Default.MyRequest,
+                cancellationToken: ct
+            );
+
+        // The alternative, for a one-off payload that does not deserve a type.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
+        System.Text.Json.JsonElement? viaElement =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                body.RootElement,
+                cancellationToken: ct
+            );
+
+        _ = $"{answer} {viaElement}";
     }
 
     internal static void HostIntegration(
