@@ -172,12 +172,20 @@ await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellat
 Streams buffer a bounded number of events and drop the oldest when a consumer falls behind, so a
 slow loop cannot stall the receive loop. Pass `capacity` to change that.
 
-The classic events still work, including alongside a stream over the same event:
+The classic handler sits on the same group, so subscribing and streaming read alike and there is no
+second place to look:
 
 ```csharp
-client.CurrentProgramSceneChanged += (_, e) =>
+client.Scenes.CurrentProgramSceneChanged += (_, e) =>
     Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
 ```
+
+Both work over the same event at once. The group's event is the client's event, so a handler added
+through one can be removed through the other; `client.CurrentProgramSceneChanged` remains for the
+low-level path, the way `CallAsync` remains alongside the generated requests.
+
+Connection lifecycle events stay on the client, since `Connected`, `Disconnected`,
+`ConnectionFailed` and `AuthenticationFailure` belong to no protocol category.
 
 To wait for a single occurrence, use `WaitForEventAsync`. It subscribes before returning, so you can
 start the wait and then trigger the action without racing it:
@@ -342,7 +350,7 @@ double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputV
 there is nothing to convert at the call site:
 
 ```csharp
-client.StreamStateChanged += (_, e) =>
+client.Outputs.StreamStateChanged += (_, e) =>
 {
     string what = e.EventData.OutputState switch
     {

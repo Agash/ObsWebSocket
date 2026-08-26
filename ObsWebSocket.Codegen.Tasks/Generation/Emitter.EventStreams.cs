@@ -94,15 +94,48 @@ internal static partial class Emitter
                     string eventArgsTypeName =
                         $"{GeneratedEventArgsNamespace}.{eventName}EventArgs";
 
+                    string subscriptionRemark = string.IsNullOrWhiteSpace(
+                        eventDef.EventSubscription
+                    )
+                        ? string.Empty
+                        : $"    /// <remarks>Requires the <c>{System.Security.SecurityElement.Escape(eventDef.EventSubscription)}</c> subscription.</remarks>";
+
+                    string descriptionLine = string.IsNullOrWhiteSpace(eventDef.Description)
+                        ? string.Empty
+                        : $"    /// <para>{FlattenDescription(eventDef.Description)}</para>";
+
+                    // The classic handler, on the group rather than only on the client. Explicit
+                    // accessors are what make this work: the group is a struct the property hands
+                    // out fresh, so a field-like event would add to a temporary and lose it.
+                    builder.AppendLine("    /// <summary>");
+                    builder.AppendLine($"    /// Occurs when OBS raises <c>{eventName}</c>.");
+                    if (descriptionLine.Length > 0)
+                    {
+                        builder.AppendLine(descriptionLine);
+                    }
+
+                    builder.AppendLine("    /// </summary>");
+                    if (subscriptionRemark.Length > 0)
+                    {
+                        builder.AppendLine(subscriptionRemark);
+                    }
+
+                    builder.AppendLine(
+                        $"    public event EventHandler<{eventArgsTypeName}>? {eventName}"
+                    );
+                    builder.AppendLine("    {");
+                    builder.AppendLine($"        add => client.{eventName} += value;");
+                    builder.AppendLine($"        remove => client.{eventName} -= value;");
+                    builder.AppendLine("    }");
+                    builder.AppendLine();
+
                     builder.AppendLine("    /// <summary>");
                     builder.AppendLine(
                         $"    /// Streams <c>{eventName}</c> events as they arrive."
                     );
-                    if (!string.IsNullOrWhiteSpace(eventDef.Description))
+                    if (descriptionLine.Length > 0)
                     {
-                        builder.AppendLine(
-                            $"    /// <para>{FlattenDescription(eventDef.Description)}</para>"
-                        );
+                        builder.AppendLine(descriptionLine);
                     }
 
                     builder.AppendLine("    /// </summary>");
@@ -112,11 +145,9 @@ internal static partial class Emitter
                     builder.AppendLine(
                         "    /// <param name=\"cancellationToken\">Ends the enumeration and unsubscribes.</param>"
                     );
-                    if (!string.IsNullOrWhiteSpace(eventDef.EventSubscription))
+                    if (subscriptionRemark.Length > 0)
                     {
-                        builder.AppendLine(
-                            $"    /// <remarks>Requires the <c>{System.Security.SecurityElement.Escape(eventDef.EventSubscription)}</c> subscription.</remarks>"
-                        );
+                        builder.AppendLine(subscriptionRemark);
                     }
 
                     builder.AppendLine(

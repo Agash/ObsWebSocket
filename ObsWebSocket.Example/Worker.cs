@@ -58,13 +58,13 @@ internal sealed partial class Worker(
         _obsClient.AuthenticationFailure += OnObsAuthenticationFailure;
 
         // --- Subscribe to Specific OBS Events ---
-        _obsClient.CurrentProgramSceneChanged += OnCurrentProgramSceneChanged;
-        _obsClient.InputMuteStateChanged += OnInputMuteStateChanged;
-        _obsClient.StudioModeStateChanged += OnStudioModeStateChanged;
-        _obsClient.InputCreated += OnInputCreated;
-        _obsClient.StreamStateChanged += OnStreamStateChanged;
-        _obsClient.SceneCreated += OnSceneCreated;
-        _obsClient.SourceFilterCreated += OnSourceFilterCreated;
+        _obsClient.Scenes.CurrentProgramSceneChanged += OnCurrentProgramSceneChanged;
+        _obsClient.Inputs.InputMuteStateChanged += OnInputMuteStateChanged;
+        _obsClient.Ui.StudioModeStateChanged += OnStudioModeStateChanged;
+        _obsClient.Inputs.InputCreated += OnInputCreated;
+        _obsClient.Outputs.StreamStateChanged += OnStreamStateChanged;
+        _obsClient.Scenes.SceneCreated += OnSceneCreated;
+        _obsClient.Filters.SourceFilterCreated += OnSourceFilterCreated;
 
         _logger.LogInformation("Example Worker running.");
         _logger.LogInformation(
@@ -150,14 +150,14 @@ internal sealed partial class Worker(
             _obsClient.Disconnected -= OnObsDisconnected;
             _obsClient.ConnectionFailed -= OnObsConnectionFailed;
             _obsClient.AuthenticationFailure -= OnObsAuthenticationFailure;
-            _obsClient.CurrentProgramSceneChanged -= OnCurrentProgramSceneChanged;
-            _obsClient.InputMuteStateChanged -= OnInputMuteStateChanged;
-            _obsClient.StudioModeStateChanged -= OnStudioModeStateChanged;
+            _obsClient.Scenes.CurrentProgramSceneChanged -= OnCurrentProgramSceneChanged;
+            _obsClient.Inputs.InputMuteStateChanged -= OnInputMuteStateChanged;
+            _obsClient.Ui.StudioModeStateChanged -= OnStudioModeStateChanged;
             // Unsubscribe new handlers
-            _obsClient.InputCreated -= OnInputCreated;
-            _obsClient.StreamStateChanged -= OnStreamStateChanged;
-            _obsClient.SceneCreated -= OnSceneCreated;
-            _obsClient.SourceFilterCreated -= OnSourceFilterCreated;
+            _obsClient.Inputs.InputCreated -= OnInputCreated;
+            _obsClient.Outputs.StreamStateChanged -= OnStreamStateChanged;
+            _obsClient.Scenes.SceneCreated -= OnSceneCreated;
+            _obsClient.Filters.SourceFilterCreated -= OnSourceFilterCreated;
 
             // Ensure disconnection on exit
             if (_obsClient.IsConnected)

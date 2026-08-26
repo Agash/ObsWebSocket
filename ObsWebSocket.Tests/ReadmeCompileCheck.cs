@@ -164,7 +164,7 @@ internal static class ReadmeCompileCheck
             break;
         }
 
-        client.CurrentProgramSceneChanged += (_, e) => _ = e.EventData.SceneName;
+        client.Scenes.CurrentProgramSceneChanged += (_, e) => _ = e.EventData.SceneName;
 
         _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(ct);
         _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
@@ -208,7 +208,7 @@ internal static class ReadmeCompileCheck
 
     internal static void TypedEnums(ObsWebSocketClient client)
     {
-        client.StreamStateChanged += (_, e) =>
+        client.Outputs.StreamStateChanged += (_, e) =>
         {
             string what = e.EventData.OutputState switch
             {

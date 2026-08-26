@@ -19,6 +19,17 @@ namespace ObsWebSocket.Core;
 public readonly partial struct CanvasesGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>CanvasCreated</c>.
+    /// <para>A new canvas has been created.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs>? CanvasCreated
+    {
+        add => client.CanvasCreated += value;
+        remove => client.CanvasCreated -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CanvasCreated</c> events as they arrive.
     /// <para>A new canvas has been created.</para>
     /// </summary>
@@ -38,6 +49,17 @@ public readonly partial struct CanvasesGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>CanvasRemoved</c>.
+    /// <para>A canvas has been removed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs>? CanvasRemoved
+    {
+        add => client.CanvasRemoved += value;
+        remove => client.CanvasRemoved -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CanvasRemoved</c> events as they arrive.
     /// <para>A canvas has been removed.</para>
     /// </summary>
@@ -54,6 +76,17 @@ public readonly partial struct CanvasesGroup
             handler => source.CanvasRemoved -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CanvasNameChanged</c>.
+    /// <para>The name of a canvas has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs>? CanvasNameChanged
+    {
+        add => client.CanvasNameChanged += value;
+        remove => client.CanvasNameChanged -= value;
     }
 
     /// <summary>
@@ -85,6 +118,17 @@ public readonly partial struct CanvasesGroup
 public readonly partial struct ConfigGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>CurrentSceneCollectionChanging</c>.
+    /// <para>The current scene collection has begun changing. Note: We recommend using this event to trigger a pause of all polling requests, as performing any requests during a scene collection change is considered undefined behavior and can cause crashes!</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs>? CurrentSceneCollectionChanging
+    {
+        add => client.CurrentSceneCollectionChanging += value;
+        remove => client.CurrentSceneCollectionChanging -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CurrentSceneCollectionChanging</c> events as they arrive.
     /// <para>The current scene collection has begun changing. Note: We recommend using this event to trigger a pause of all polling requests, as performing any requests during a scene collection change is considered undefined behavior and can cause crashes!</para>
     /// </summary>
@@ -101,6 +145,17 @@ public readonly partial struct ConfigGroup
             handler => source.CurrentSceneCollectionChanging -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CurrentSceneCollectionChanged</c>.
+    /// <para>The current scene collection has changed. Note: If polling has been paused during `CurrentSceneCollectionChanging`, this is the que to restart polling.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangedEventArgs>? CurrentSceneCollectionChanged
+    {
+        add => client.CurrentSceneCollectionChanged += value;
+        remove => client.CurrentSceneCollectionChanged -= value;
     }
 
     /// <summary>
@@ -123,6 +178,17 @@ public readonly partial struct ConfigGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneCollectionListChanged</c>.
+    /// <para>The scene collection list has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneCollectionListChangedEventArgs>? SceneCollectionListChanged
+    {
+        add => client.SceneCollectionListChanged += value;
+        remove => client.SceneCollectionListChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneCollectionListChanged</c> events as they arrive.
     /// <para>The scene collection list has changed.</para>
     /// </summary>
@@ -139,6 +205,17 @@ public readonly partial struct ConfigGroup
             handler => source.SceneCollectionListChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CurrentProfileChanging</c>.
+    /// <para>The current profile has begun changing.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentProfileChangingEventArgs>? CurrentProfileChanging
+    {
+        add => client.CurrentProfileChanging += value;
+        remove => client.CurrentProfileChanging -= value;
     }
 
     /// <summary>
@@ -161,6 +238,17 @@ public readonly partial struct ConfigGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>CurrentProfileChanged</c>.
+    /// <para>The current profile has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentProfileChangedEventArgs>? CurrentProfileChanged
+    {
+        add => client.CurrentProfileChanged += value;
+        remove => client.CurrentProfileChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CurrentProfileChanged</c> events as they arrive.
     /// <para>The current profile has changed.</para>
     /// </summary>
@@ -177,6 +265,17 @@ public readonly partial struct ConfigGroup
             handler => source.CurrentProfileChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>ProfileListChanged</c>.
+    /// <para>The profile list has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Config</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.ProfileListChangedEventArgs>? ProfileListChanged
+    {
+        add => client.ProfileListChanged += value;
+        remove => client.ProfileListChanged -= value;
     }
 
     /// <summary>
@@ -208,6 +307,17 @@ public readonly partial struct ConfigGroup
 public readonly partial struct FiltersGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterListReindexed</c>.
+    /// <para>A source&apos;s filter list has been reindexed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterListReindexedEventArgs>? SourceFilterListReindexed
+    {
+        add => client.SourceFilterListReindexed += value;
+        remove => client.SourceFilterListReindexed -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SourceFilterListReindexed</c> events as they arrive.
     /// <para>A source&apos;s filter list has been reindexed.</para>
     /// </summary>
@@ -224,6 +334,17 @@ public readonly partial struct FiltersGroup
             handler => source.SourceFilterListReindexed -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterCreated</c>.
+    /// <para>A filter has been added to a source.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterCreatedEventArgs>? SourceFilterCreated
+    {
+        add => client.SourceFilterCreated += value;
+        remove => client.SourceFilterCreated -= value;
     }
 
     /// <summary>
@@ -246,6 +367,17 @@ public readonly partial struct FiltersGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterRemoved</c>.
+    /// <para>A filter has been removed from a source.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterRemovedEventArgs>? SourceFilterRemoved
+    {
+        add => client.SourceFilterRemoved += value;
+        remove => client.SourceFilterRemoved -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SourceFilterRemoved</c> events as they arrive.
     /// <para>A filter has been removed from a source.</para>
     /// </summary>
@@ -262,6 +394,17 @@ public readonly partial struct FiltersGroup
             handler => source.SourceFilterRemoved -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterNameChanged</c>.
+    /// <para>The name of a source filter has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterNameChangedEventArgs>? SourceFilterNameChanged
+    {
+        add => client.SourceFilterNameChanged += value;
+        remove => client.SourceFilterNameChanged -= value;
     }
 
     /// <summary>
@@ -284,6 +427,17 @@ public readonly partial struct FiltersGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterSettingsChanged</c>.
+    /// <para>An source filter&apos;s settings have changed (been updated).</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterSettingsChangedEventArgs>? SourceFilterSettingsChanged
+    {
+        add => client.SourceFilterSettingsChanged += value;
+        remove => client.SourceFilterSettingsChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SourceFilterSettingsChanged</c> events as they arrive.
     /// <para>An source filter&apos;s settings have changed (been updated).</para>
     /// </summary>
@@ -300,6 +454,17 @@ public readonly partial struct FiltersGroup
             handler => source.SourceFilterSettingsChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SourceFilterEnableStateChanged</c>.
+    /// <para>A source filter&apos;s enable state has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SourceFilterEnableStateChangedEventArgs>? SourceFilterEnableStateChanged
+    {
+        add => client.SourceFilterEnableStateChanged += value;
+        remove => client.SourceFilterEnableStateChanged -= value;
     }
 
     /// <summary>
@@ -331,6 +496,17 @@ public readonly partial struct FiltersGroup
 public readonly partial struct GeneralGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>ExitStarted</c>.
+    /// <para>OBS has begun the shutdown process.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>General</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.ExitStartedEventArgs>? ExitStarted
+    {
+        add => client.ExitStarted += value;
+        remove => client.ExitStarted -= value;
+    }
+
+    /// <summary>
     /// Streams <c>ExitStarted</c> events as they arrive.
     /// <para>OBS has begun the shutdown process.</para>
     /// </summary>
@@ -350,6 +526,17 @@ public readonly partial struct GeneralGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>VendorEvent</c>.
+    /// <para>An event has been emitted from a vendor. A vendor is a unique name registered by a third-party plugin or script, which allows for custom requests and events to be added to obs-websocket. If a plugin or script implements vendor requests or events, documentation is expected to be provided with them.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Vendors</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.VendorEventEventArgs>? VendorEvent
+    {
+        add => client.VendorEvent += value;
+        remove => client.VendorEvent -= value;
+    }
+
+    /// <summary>
     /// Streams <c>VendorEvent</c> events as they arrive.
     /// <para>An event has been emitted from a vendor. A vendor is a unique name registered by a third-party plugin or script, which allows for custom requests and events to be added to obs-websocket. If a plugin or script implements vendor requests or events, documentation is expected to be provided with them.</para>
     /// </summary>
@@ -366,6 +553,17 @@ public readonly partial struct GeneralGroup
             handler => source.VendorEvent -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CustomEvent</c>.
+    /// <para>Custom event emitted by `BroadcastCustomEvent`.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>General</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CustomEventEventArgs>? CustomEvent
+    {
+        add => client.CustomEvent += value;
+        remove => client.CustomEvent -= value;
     }
 
     /// <summary>
@@ -397,6 +595,17 @@ public readonly partial struct GeneralGroup
 public readonly partial struct InputsGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>InputCreated</c>.
+    /// <para>An input has been created.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputCreatedEventArgs>? InputCreated
+    {
+        add => client.InputCreated += value;
+        remove => client.InputCreated -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputCreated</c> events as they arrive.
     /// <para>An input has been created.</para>
     /// </summary>
@@ -413,6 +622,17 @@ public readonly partial struct InputsGroup
             handler => source.InputCreated -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputRemoved</c>.
+    /// <para>An input has been removed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputRemovedEventArgs>? InputRemoved
+    {
+        add => client.InputRemoved += value;
+        remove => client.InputRemoved -= value;
     }
 
     /// <summary>
@@ -435,6 +655,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputNameChanged</c>.
+    /// <para>The name of an input has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputNameChangedEventArgs>? InputNameChanged
+    {
+        add => client.InputNameChanged += value;
+        remove => client.InputNameChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputNameChanged</c> events as they arrive.
     /// <para>The name of an input has changed.</para>
     /// </summary>
@@ -451,6 +682,17 @@ public readonly partial struct InputsGroup
             handler => source.InputNameChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputSettingsChanged</c>.
+    /// <para>An input&apos;s settings have changed (been updated). Note: On some inputs, changing values in the properties dialog will cause an immediate update. Pressing the &quot;Cancel&quot; button will revert the settings, resulting in another event being fired.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputSettingsChangedEventArgs>? InputSettingsChanged
+    {
+        add => client.InputSettingsChanged += value;
+        remove => client.InputSettingsChanged -= value;
     }
 
     /// <summary>
@@ -473,6 +715,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputActiveStateChanged</c>.
+    /// <para>An input&apos;s active state has changed. When an input is active, it means it&apos;s being shown by the program feed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>InputActiveStateChanged</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputActiveStateChangedEventArgs>? InputActiveStateChanged
+    {
+        add => client.InputActiveStateChanged += value;
+        remove => client.InputActiveStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputActiveStateChanged</c> events as they arrive.
     /// <para>An input&apos;s active state has changed. When an input is active, it means it&apos;s being shown by the program feed.</para>
     /// </summary>
@@ -489,6 +742,17 @@ public readonly partial struct InputsGroup
             handler => source.InputActiveStateChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputShowStateChanged</c>.
+    /// <para>An input&apos;s show state has changed. When an input is showing, it means it&apos;s being shown by the preview or a dialog.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>InputShowStateChanged</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputShowStateChangedEventArgs>? InputShowStateChanged
+    {
+        add => client.InputShowStateChanged += value;
+        remove => client.InputShowStateChanged -= value;
     }
 
     /// <summary>
@@ -511,6 +775,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputMuteStateChanged</c>.
+    /// <para>An input&apos;s mute state has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputMuteStateChangedEventArgs>? InputMuteStateChanged
+    {
+        add => client.InputMuteStateChanged += value;
+        remove => client.InputMuteStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputMuteStateChanged</c> events as they arrive.
     /// <para>An input&apos;s mute state has changed.</para>
     /// </summary>
@@ -527,6 +802,17 @@ public readonly partial struct InputsGroup
             handler => source.InputMuteStateChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputVolumeChanged</c>.
+    /// <para>An input&apos;s volume level has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputVolumeChangedEventArgs>? InputVolumeChanged
+    {
+        add => client.InputVolumeChanged += value;
+        remove => client.InputVolumeChanged -= value;
     }
 
     /// <summary>
@@ -549,6 +835,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputAudioBalanceChanged</c>.
+    /// <para>The audio balance value of an input has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputAudioBalanceChangedEventArgs>? InputAudioBalanceChanged
+    {
+        add => client.InputAudioBalanceChanged += value;
+        remove => client.InputAudioBalanceChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputAudioBalanceChanged</c> events as they arrive.
     /// <para>The audio balance value of an input has changed.</para>
     /// </summary>
@@ -565,6 +862,17 @@ public readonly partial struct InputsGroup
             handler => source.InputAudioBalanceChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputAudioSyncOffsetChanged</c>.
+    /// <para>The sync offset of an input has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputAudioSyncOffsetChangedEventArgs>? InputAudioSyncOffsetChanged
+    {
+        add => client.InputAudioSyncOffsetChanged += value;
+        remove => client.InputAudioSyncOffsetChanged -= value;
     }
 
     /// <summary>
@@ -587,6 +895,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputAudioTracksChanged</c>.
+    /// <para>The audio tracks of an input have changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputAudioTracksChangedEventArgs>? InputAudioTracksChanged
+    {
+        add => client.InputAudioTracksChanged += value;
+        remove => client.InputAudioTracksChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputAudioTracksChanged</c> events as they arrive.
     /// <para>The audio tracks of an input have changed.</para>
     /// </summary>
@@ -606,6 +925,17 @@ public readonly partial struct InputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>InputAudioMonitorTypeChanged</c>.
+    /// <para>The monitor type of an input has changed. Available types are: - `OBS_MONITORING_TYPE_NONE` - `OBS_MONITORING_TYPE_MONITOR_ONLY` - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputAudioMonitorTypeChangedEventArgs>? InputAudioMonitorTypeChanged
+    {
+        add => client.InputAudioMonitorTypeChanged += value;
+        remove => client.InputAudioMonitorTypeChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>InputAudioMonitorTypeChanged</c> events as they arrive.
     /// <para>The monitor type of an input has changed. Available types are: - `OBS_MONITORING_TYPE_NONE` - `OBS_MONITORING_TYPE_MONITOR_ONLY` - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`</para>
     /// </summary>
@@ -622,6 +952,17 @@ public readonly partial struct InputsGroup
             handler => source.InputAudioMonitorTypeChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>InputVolumeMeters</c>.
+    /// <para>A high-volume event providing volume levels of all active inputs every 50 milliseconds.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>InputVolumeMeters</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.InputVolumeMetersEventArgs>? InputVolumeMeters
+    {
+        add => client.InputVolumeMeters += value;
+        remove => client.InputVolumeMeters -= value;
     }
 
     /// <summary>
@@ -653,6 +994,17 @@ public readonly partial struct InputsGroup
 public readonly partial struct MediaInputsGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>MediaInputPlaybackStarted</c>.
+    /// <para>A media input has started playing.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackStartedEventArgs>? MediaInputPlaybackStarted
+    {
+        add => client.MediaInputPlaybackStarted += value;
+        remove => client.MediaInputPlaybackStarted -= value;
+    }
+
+    /// <summary>
     /// Streams <c>MediaInputPlaybackStarted</c> events as they arrive.
     /// <para>A media input has started playing.</para>
     /// </summary>
@@ -672,6 +1024,17 @@ public readonly partial struct MediaInputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>MediaInputPlaybackEnded</c>.
+    /// <para>A media input has finished playing.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackEndedEventArgs>? MediaInputPlaybackEnded
+    {
+        add => client.MediaInputPlaybackEnded += value;
+        remove => client.MediaInputPlaybackEnded -= value;
+    }
+
+    /// <summary>
     /// Streams <c>MediaInputPlaybackEnded</c> events as they arrive.
     /// <para>A media input has finished playing.</para>
     /// </summary>
@@ -688,6 +1051,17 @@ public readonly partial struct MediaInputsGroup
             handler => source.MediaInputPlaybackEnded -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>MediaInputActionTriggered</c>.
+    /// <para>An action has been performed on an input.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.MediaInputActionTriggeredEventArgs>? MediaInputActionTriggered
+    {
+        add => client.MediaInputActionTriggered += value;
+        remove => client.MediaInputActionTriggered -= value;
     }
 
     /// <summary>
@@ -719,6 +1093,17 @@ public readonly partial struct MediaInputsGroup
 public readonly partial struct OutputsGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>StreamStateChanged</c>.
+    /// <para>The state of the stream output has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.StreamStateChangedEventArgs>? StreamStateChanged
+    {
+        add => client.StreamStateChanged += value;
+        remove => client.StreamStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>StreamStateChanged</c> events as they arrive.
     /// <para>The state of the stream output has changed.</para>
     /// </summary>
@@ -735,6 +1120,17 @@ public readonly partial struct OutputsGroup
             handler => source.StreamStateChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>RecordStateChanged</c>.
+    /// <para>The state of the record output has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.RecordStateChangedEventArgs>? RecordStateChanged
+    {
+        add => client.RecordStateChanged += value;
+        remove => client.RecordStateChanged -= value;
     }
 
     /// <summary>
@@ -757,6 +1153,17 @@ public readonly partial struct OutputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>RecordFileChanged</c>.
+    /// <para>The record output has started writing to a new file. For example, when a file split happens.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.RecordFileChangedEventArgs>? RecordFileChanged
+    {
+        add => client.RecordFileChanged += value;
+        remove => client.RecordFileChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>RecordFileChanged</c> events as they arrive.
     /// <para>The record output has started writing to a new file. For example, when a file split happens.</para>
     /// </summary>
@@ -773,6 +1180,17 @@ public readonly partial struct OutputsGroup
             handler => source.RecordFileChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>ReplayBufferStateChanged</c>.
+    /// <para>The state of the replay buffer output has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.ReplayBufferStateChangedEventArgs>? ReplayBufferStateChanged
+    {
+        add => client.ReplayBufferStateChanged += value;
+        remove => client.ReplayBufferStateChanged -= value;
     }
 
     /// <summary>
@@ -795,6 +1213,17 @@ public readonly partial struct OutputsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>VirtualcamStateChanged</c>.
+    /// <para>The state of the virtualcam output has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.VirtualcamStateChangedEventArgs>? VirtualcamStateChanged
+    {
+        add => client.VirtualcamStateChanged += value;
+        remove => client.VirtualcamStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>VirtualcamStateChanged</c> events as they arrive.
     /// <para>The state of the virtualcam output has changed.</para>
     /// </summary>
@@ -811,6 +1240,17 @@ public readonly partial struct OutputsGroup
             handler => source.VirtualcamStateChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>ReplayBufferSaved</c>.
+    /// <para>The replay buffer has been saved.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.ReplayBufferSavedEventArgs>? ReplayBufferSaved
+    {
+        add => client.ReplayBufferSaved += value;
+        remove => client.ReplayBufferSaved -= value;
     }
 
     /// <summary>
@@ -842,6 +1282,17 @@ public readonly partial struct OutputsGroup
 public readonly partial struct SceneItemsGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>SceneItemCreated</c>.
+    /// <para>A scene item has been created.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemCreatedEventArgs>? SceneItemCreated
+    {
+        add => client.SceneItemCreated += value;
+        remove => client.SceneItemCreated -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneItemCreated</c> events as they arrive.
     /// <para>A scene item has been created.</para>
     /// </summary>
@@ -858,6 +1309,17 @@ public readonly partial struct SceneItemsGroup
             handler => source.SceneItemCreated -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneItemRemoved</c>.
+    /// <para>A scene item has been removed. This event is not emitted when the scene the item is in is removed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemRemovedEventArgs>? SceneItemRemoved
+    {
+        add => client.SceneItemRemoved += value;
+        remove => client.SceneItemRemoved -= value;
     }
 
     /// <summary>
@@ -880,6 +1342,17 @@ public readonly partial struct SceneItemsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneItemListReindexed</c>.
+    /// <para>A scene&apos;s item list has been reindexed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemListReindexedEventArgs>? SceneItemListReindexed
+    {
+        add => client.SceneItemListReindexed += value;
+        remove => client.SceneItemListReindexed -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneItemListReindexed</c> events as they arrive.
     /// <para>A scene&apos;s item list has been reindexed.</para>
     /// </summary>
@@ -896,6 +1369,17 @@ public readonly partial struct SceneItemsGroup
             handler => source.SceneItemListReindexed -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneItemEnableStateChanged</c>.
+    /// <para>A scene item&apos;s enable state has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemEnableStateChangedEventArgs>? SceneItemEnableStateChanged
+    {
+        add => client.SceneItemEnableStateChanged += value;
+        remove => client.SceneItemEnableStateChanged -= value;
     }
 
     /// <summary>
@@ -918,6 +1402,17 @@ public readonly partial struct SceneItemsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneItemLockStateChanged</c>.
+    /// <para>A scene item&apos;s lock state has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemLockStateChangedEventArgs>? SceneItemLockStateChanged
+    {
+        add => client.SceneItemLockStateChanged += value;
+        remove => client.SceneItemLockStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneItemLockStateChanged</c> events as they arrive.
     /// <para>A scene item&apos;s lock state has changed.</para>
     /// </summary>
@@ -937,6 +1432,17 @@ public readonly partial struct SceneItemsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneItemSelected</c>.
+    /// <para>A scene item has been selected in the Ui.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemSelectedEventArgs>? SceneItemSelected
+    {
+        add => client.SceneItemSelected += value;
+        remove => client.SceneItemSelected -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneItemSelected</c> events as they arrive.
     /// <para>A scene item has been selected in the Ui.</para>
     /// </summary>
@@ -953,6 +1459,17 @@ public readonly partial struct SceneItemsGroup
             handler => source.SceneItemSelected -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneItemTransformChanged</c>.
+    /// <para>The transform/crop of a scene item has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>SceneItemTransformChanged</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneItemTransformChangedEventArgs>? SceneItemTransformChanged
+    {
+        add => client.SceneItemTransformChanged += value;
+        remove => client.SceneItemTransformChanged -= value;
     }
 
     /// <summary>
@@ -984,6 +1501,17 @@ public readonly partial struct SceneItemsGroup
 public readonly partial struct ScenesGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>SceneCreated</c>.
+    /// <para>A new scene has been created.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneCreatedEventArgs>? SceneCreated
+    {
+        add => client.SceneCreated += value;
+        remove => client.SceneCreated -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneCreated</c> events as they arrive.
     /// <para>A new scene has been created.</para>
     /// </summary>
@@ -1000,6 +1528,17 @@ public readonly partial struct ScenesGroup
             handler => source.SceneCreated -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneRemoved</c>.
+    /// <para>A scene has been removed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneRemovedEventArgs>? SceneRemoved
+    {
+        add => client.SceneRemoved += value;
+        remove => client.SceneRemoved -= value;
     }
 
     /// <summary>
@@ -1022,6 +1561,17 @@ public readonly partial struct ScenesGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneNameChanged</c>.
+    /// <para>The name of a scene has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneNameChangedEventArgs>? SceneNameChanged
+    {
+        add => client.SceneNameChanged += value;
+        remove => client.SceneNameChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneNameChanged</c> events as they arrive.
     /// <para>The name of a scene has changed.</para>
     /// </summary>
@@ -1038,6 +1588,17 @@ public readonly partial struct ScenesGroup
             handler => source.SceneNameChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CurrentProgramSceneChanged</c>.
+    /// <para>The current program scene has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentProgramSceneChangedEventArgs>? CurrentProgramSceneChanged
+    {
+        add => client.CurrentProgramSceneChanged += value;
+        remove => client.CurrentProgramSceneChanged -= value;
     }
 
     /// <summary>
@@ -1060,6 +1621,17 @@ public readonly partial struct ScenesGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>CurrentPreviewSceneChanged</c>.
+    /// <para>The current preview scene has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentPreviewSceneChangedEventArgs>? CurrentPreviewSceneChanged
+    {
+        add => client.CurrentPreviewSceneChanged += value;
+        remove => client.CurrentPreviewSceneChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CurrentPreviewSceneChanged</c> events as they arrive.
     /// <para>The current preview scene has changed.</para>
     /// </summary>
@@ -1076,6 +1648,17 @@ public readonly partial struct ScenesGroup
             handler => source.CurrentPreviewSceneChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneListChanged</c>.
+    /// <para>The list of scenes has changed. TODO: Make OBS fire this event when scenes are reordered.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneListChangedEventArgs>? SceneListChanged
+    {
+        add => client.SceneListChanged += value;
+        remove => client.SceneListChanged -= value;
     }
 
     /// <summary>
@@ -1107,6 +1690,17 @@ public readonly partial struct ScenesGroup
 public readonly partial struct TransitionsGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>CurrentSceneTransitionChanged</c>.
+    /// <para>The current scene transition has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionChangedEventArgs>? CurrentSceneTransitionChanged
+    {
+        add => client.CurrentSceneTransitionChanged += value;
+        remove => client.CurrentSceneTransitionChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>CurrentSceneTransitionChanged</c> events as they arrive.
     /// <para>The current scene transition has changed.</para>
     /// </summary>
@@ -1123,6 +1717,17 @@ public readonly partial struct TransitionsGroup
             handler => source.CurrentSceneTransitionChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>CurrentSceneTransitionDurationChanged</c>.
+    /// <para>The current scene transition duration has changed.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionDurationChangedEventArgs>? CurrentSceneTransitionDurationChanged
+    {
+        add => client.CurrentSceneTransitionDurationChanged += value;
+        remove => client.CurrentSceneTransitionDurationChanged -= value;
     }
 
     /// <summary>
@@ -1145,6 +1750,17 @@ public readonly partial struct TransitionsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneTransitionStarted</c>.
+    /// <para>A scene transition has started.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneTransitionStartedEventArgs>? SceneTransitionStarted
+    {
+        add => client.SceneTransitionStarted += value;
+        remove => client.SceneTransitionStarted -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneTransitionStarted</c> events as they arrive.
     /// <para>A scene transition has started.</para>
     /// </summary>
@@ -1164,6 +1780,17 @@ public readonly partial struct TransitionsGroup
     }
 
     /// <summary>
+    /// Occurs when OBS raises <c>SceneTransitionEnded</c>.
+    /// <para>A scene transition has completed fully. Note: Does not appear to trigger when the transition is interrupted by the user.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneTransitionEndedEventArgs>? SceneTransitionEnded
+    {
+        add => client.SceneTransitionEnded += value;
+        remove => client.SceneTransitionEnded -= value;
+    }
+
+    /// <summary>
     /// Streams <c>SceneTransitionEnded</c> events as they arrive.
     /// <para>A scene transition has completed fully. Note: Does not appear to trigger when the transition is interrupted by the user.</para>
     /// </summary>
@@ -1180,6 +1807,17 @@ public readonly partial struct TransitionsGroup
             handler => source.SceneTransitionEnded -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>SceneTransitionVideoEnded</c>.
+    /// <para>A scene transition&apos;s video has completed fully. Useful for stinger transitions to tell when the video *actually* ends. `SceneTransitionEnded` only signifies the cut point, not the completion of transition playback. Note: Appears to be called by every transition, regardless of relevance.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.SceneTransitionVideoEndedEventArgs>? SceneTransitionVideoEnded
+    {
+        add => client.SceneTransitionVideoEnded += value;
+        remove => client.SceneTransitionVideoEnded -= value;
     }
 
     /// <summary>
@@ -1211,6 +1849,17 @@ public readonly partial struct TransitionsGroup
 public readonly partial struct UiGroup
 {
     /// <summary>
+    /// Occurs when OBS raises <c>StudioModeStateChanged</c>.
+    /// <para>Studio mode has been enabled or disabled.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.StudioModeStateChangedEventArgs>? StudioModeStateChanged
+    {
+        add => client.StudioModeStateChanged += value;
+        remove => client.StudioModeStateChanged -= value;
+    }
+
+    /// <summary>
     /// Streams <c>StudioModeStateChanged</c> events as they arrive.
     /// <para>Studio mode has been enabled or disabled.</para>
     /// </summary>
@@ -1227,6 +1876,17 @@ public readonly partial struct UiGroup
             handler => source.StudioModeStateChanged -= handler,
             capacity,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Occurs when OBS raises <c>ScreenshotSaved</c>.
+    /// <para>A screenshot has been saved. Note: Triggered for the screenshot feature available in `Settings -&gt; Hotkeys -&gt; Screenshot Output` ONLY. Applications using `Get/SaveSourceScreenshot` should implement a `CustomEvent` if this kind of inter-client communication is desired.</para>
+    /// </summary>
+    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
+    public event EventHandler<ObsWebSocket.Core.Events.Generated.ScreenshotSavedEventArgs>? ScreenshotSaved
+    {
+        add => client.ScreenshotSaved += value;
+        remove => client.ScreenshotSaved -= value;
     }
 
     /// <summary>
