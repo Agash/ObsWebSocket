@@ -219,10 +219,15 @@ internal static partial class Emitter
     [System.Text.RegularExpressions.GeneratedRegex(@"\d\.\d")]
     private static partial System.Text.RegularExpressions.Regex FractionalRestriction();
 
+    /// <param name="reportDiagnostics">
+    /// False when a second emitter is asking about a field the DTO emitter has already reported
+    /// on, so the same finding is not raised twice for one field.
+    /// </param>
     private static (string? CSharpType, bool IsValueType) MapProtocolTypeToCSharp(
         SourceProductionContext context,
         FieldDefinition field,
-        string parentDtoName
+        string parentDtoName,
+        bool reportDiagnostics = true
     )
     {
         string obsType = field.ValueType;
@@ -266,7 +271,9 @@ internal static partial class Emitter
                 && FractionalRestriction().IsMatch(restrictions)
             )
             {
-                context.ReportDiagnostic(
+                ReportIf(
+                    reportDiagnostics,
+                    context,
                     Diagnostic.Create(
                         Diagnostics.FractionalFieldClassifiedAsWhole,
                         Location.None,
@@ -278,7 +285,9 @@ internal static partial class Emitter
 
             if (!classified)
             {
-                context.ReportDiagnostic(
+                ReportIf(
+                    reportDiagnostics,
+                    context,
                     Diagnostic.Create(
                         Diagnostics.UnclassifiedNumberField,
                         Location.None,
@@ -310,7 +319,9 @@ internal static partial class Emitter
             // Only warn if it fell back to JsonElement and wasn't handled by specific rules above
             if (mappedType == "System.Text.Json.JsonElement?")
             {
-                context.ReportDiagnostic(
+                ReportIf(
+                    reportDiagnostics,
+                    context,
                     Diagnostic.Create(
                         Diagnostics.NestedObjectNotSupportedWarning,
                         Location.None,
@@ -325,7 +336,9 @@ internal static partial class Emitter
             if (isOptional && IsValueType(mappedType) && !mappedType.EndsWith("?"))
             {
                 // Report diagnostic for optional value types that need nullable annotation
-                context.ReportDiagnostic(
+                ReportIf(
+                    reportDiagnostics,
+                    context,
                     Diagnostic.Create(
                         Diagnostics.OptionalValueTypeWarning,
                         Location.None,
@@ -378,7 +391,9 @@ internal static partial class Emitter
                 }
                 else // Fallback for an array whose item type is not mapped to a stub.
                 {
-                    context.ReportDiagnostic(
+                    ReportIf(
+                        reportDiagnostics,
+                        context,
                         Diagnostic.Create(
                             Diagnostics.ArrayItemTypeUnknownWarning,
                             Location.None,
@@ -417,7 +432,9 @@ internal static partial class Emitter
             }
             else // Inner primitive type could not be mapped
             {
-                context.ReportDiagnostic(
+                ReportIf(
+                    reportDiagnostics,
+                    context,
                     Diagnostic.Create(
                         Diagnostics.ArrayItemTypeUnknownWarning,
                         Location.None,
@@ -433,7 +450,9 @@ internal static partial class Emitter
 
         // --- Handle Unmappable Type ---
         // If we reach here, the obsType is not a basic type, not Object/Any, and not Array<T>
-        context.ReportDiagnostic(
+        ReportIf(
+            reportDiagnostics,
+            context,
             Diagnostic.Create(
                 Diagnostics.UnmappableTypeError,
                 Location.None,
@@ -844,6 +863,19 @@ internal static partial class Emitter
         {
             // This path should ideally not be reached due to prior error reporting
             return (overallKind, null);
+        }
+    }
+
+    /// <summary>Reports a diagnostic unless a second pass is asking about the same field.</summary>
+    private static void ReportIf(
+        bool report,
+        SourceProductionContext context,
+        Diagnostic diagnostic
+    )
+    {
+        if (report)
+        {
+            context.ReportDiagnostic(diagnostic);
         }
     }
 }
