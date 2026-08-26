@@ -14,6 +14,7 @@ using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
+using ObsWebSocket.Core.Protocol.Common.NestedTypes;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
@@ -2736,6 +2737,323 @@ internal sealed partial class Worker(
                             return (
                                 ok,
                                 $"raw batch {rawResults.Count}, CallAsync {direct?.ObsVersion}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Canvases category",
+                        async () =>
+                        {
+                            // The only request in its category, and the one stub type nothing
+                            // else reaches.
+                            GetCanvasListResponseData canvases = await client
+                                .Canvases.GetCanvasListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (
+                                canvases.Canvases.Count > 0,
+                                $"{canvases.Canvases.Count} canvas(es)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Request with neither payload",
+                        async () =>
+                        {
+                            // The one generated shape nothing else exercises: no request data and
+                            // no response. Pointing Preview at the scene already in Program makes
+                            // the transition a no-op, so the check is safe to run.
+                            GetStudioModeEnabledResponseData studio = await client
+                                .Ui.GetStudioModeEnabledAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            if (!studio.StudioModeEnabled)
+                            {
+                                await client
+                                    .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+
+                            try
+                            {
+                                GetSceneListResponseData before = await client
+                                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                                    .ConfigureAwait(false);
+                                string program = before.CurrentProgramSceneName!;
+
+                                // Plain switch, not the waiting variant: OBS raises no
+                                // CurrentPreviewSceneChanged when the preview is already that
+                                // scene, which enabling Studio Mode has just made it.
+                                await client
+                                    .Scenes.SwitchPreviewSceneAsync(program, cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                await client
+                                    .Transitions.TriggerStudioModeTransitionAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                GetSceneListResponseData after = await client
+                                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                return (
+                                    string.Equals(
+                                        after.CurrentProgramSceneName,
+                                        program,
+                                        StringComparison.Ordinal
+                                    ),
+                                    $"transitioned, program still '{after.CurrentProgramSceneName}'"
+                                );
+                            }
+                            finally
+                            {
+                                if (!studio.StudioModeEnabled)
+                                {
+                                    await client
+                                        .Ui.SetStudioModeEnabledAsync(new(false), cancellationToken)
+                                        .ConfigureAwait(false);
+                                }
+                            }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Nested request object",
+                        async () =>
+                        {
+                            // keyModifiers is the one generated nested record, a distinct shape
+                            // from the flat request payloads. F13 is not bound by default, so the
+                            // press does nothing.
+                            await client
+                                .General.TriggerHotkeyByKeySequenceAsync(
+                                    new TriggerHotkeyByKeySequenceRequestData(
+                                        keyId: "OBS_KEY_F13",
+                                        keyModifiers: new TriggerHotkeyByKeySequenceRequestData_KeyModifiers(
+                                            shift: false,
+                                            control: true,
+                                            alt: false,
+                                            command: false
+                                        )
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            return (true, "nested keyModifiers accepted");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Remaining stub types",
+                        async () =>
+                        {
+                            // Monitor, output and transition stubs are generated the same way as
+                            // the scene and input ones, so one read each covers the shape.
+                            GetMonitorListResponseData monitors = await client
+                                .Ui.GetMonitorListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneTransitionListResponseData transitions = await client
+                                .Transitions.GetSceneTransitionListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetOutputListResponseData outputs = await client
+                                .Outputs.GetOutputListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                monitors.Monitors.Count > 0
+                                && transitions.Transitions.Count > 0
+                                && outputs.Outputs.Count > 0
+                                && monitors.Monitors[0].MonitorWidth > 0
+                                && !string.IsNullOrEmpty(transitions.Transitions[0].TransitionName)
+                                && !string.IsNullOrEmpty(outputs.Outputs[0].OutputName);
+
+                            return (
+                                ok,
+                                $"{monitors.Monitors.Count} monitor(s) first {monitors.Monitors[0].MonitorWidth}px, "
+                                    + $"{transitions.Transitions.Count} transition(s), {outputs.Outputs.Count} output(s)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Classic handler and subscriptions",
+                        async () =>
+                        {
+                            // The stream path is covered above; this is the += path, plus the
+                            // negotiated subscription flags the client reports.
+                            TaskCompletionSource seen = new(
+                                TaskCreationOptions.RunContinuationsAsynchronously
+                            );
+                            string? observed = null;
+                            void Handler(object? sender, SceneCreatedEventArgs e)
+                            {
+                                observed = e.EventData.SceneName;
+                                _ = seen.TrySetResult();
+                            }
+
+                            client.Scenes.SceneCreated += Handler;
+                            string probe = $"__obsws_handler_{Guid.NewGuid():N}"[..24];
+                            try
+                            {
+                                await client
+                                    .Scenes.CreateSceneAsync(
+                                        new CreateSceneRequestData(sceneName: probe),
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                await seen
+                                    .Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                client.Scenes.SceneCreated -= Handler;
+                                await client
+                                    .Scenes.RemoveSceneAsync(
+                                        new RemoveSceneRequestData(sceneName: probe),
+                                        CancellationToken.None
+                                    )
+                                    .ConfigureAwait(false);
+                            }
+
+                            EventSubscription? subs = client.CurrentEventSubscriptions;
+
+                            return (
+                                string.Equals(observed, probe, StringComparison.Ordinal)
+                                    && subs is not null
+                                    && subs.Value.HasFlag(EventSubscription.Scenes),
+                                $"handler saw '{observed}', subscriptions {subs}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Every way of sending a request",
+                        async () =>
+                        {
+                            // One request, reached six ways, so no path is left unexercised.
+                            // 1. The generated request on its category group.
+                            GetVersionResponseData viaGroup = await client
+                                .General.GetVersionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            // 2. The low level typed call, for a reference type response.
+                            GetVersionResponseData? viaCall = await client
+                                .CallAsync<GetVersionResponseData>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // 3. The low level untyped call, for a value type response.
+                            JsonElement? viaValue = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string? viaRawJson = viaValue?.GetProperty("obsVersion").GetString();
+
+                            // 4. A hand built JsonElement as the request payload.
+                            using JsonDocument requestBody = JsonDocument.Parse(
+                                $$"""{"sceneName":"{{sceneName}}"}"""
+                            );
+                            JsonElement? viaJsonBody = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetSceneItemList",
+                                    requestBody.RootElement,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            int itemsViaJsonBody =
+                                viaJsonBody?.GetProperty("sceneItems").GetArrayLength() ?? -1;
+
+                            // 5. The typed batch builder.
+                            ObsBatchBuilder builder = new();
+                            BatchRef<GetVersionResponseData> batched = builder.General.GetVersion();
+                            BatchResults built = await client
+                                .CallBatchAsync(
+                                    builder,
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string viaBatch = built.Get(batched).ObsVersion;
+
+                            // 6. A hand rolled batch item, with a JsonElement payload.
+                            using JsonDocument batchBody = JsonDocument.Parse(
+                                $$"""{"sceneName":"{{sceneName}}"}"""
+                            );
+                            List<RequestResponsePayload<object>> viaRawBatch = await client
+                                .CallBatchAsync(
+                                    [
+                                        new BatchRequestItem("GetVersion", null),
+                                        new BatchRequestItem(
+                                            "GetSceneItemList",
+                                            batchBody.RootElement
+                                        ),
+                                    ],
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string? viaRawBatchVersion = viaRawBatch[0]
+                                .GetData<GetVersionResponseData>()
+                                ?.ObsVersion;
+
+                            // And the one shape that is not supported, asserted as unsupported:
+                            // an anonymous object has no metadata in the serializer context.
+                            string anonymous;
+                            try
+                            {
+                                _ = await client
+                                    .CallAsyncValue<JsonElement>(
+                                        "GetSceneItemList",
+                                        new { sceneName },
+                                        cancellationToken: cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                anonymous = "unexpectedly accepted";
+                            }
+                            catch (ObsWebSocketSerializationException)
+                            {
+                                anonymous = "refused";
+                            }
+
+                            string expected = viaGroup.ObsVersion;
+                            bool allAgree =
+                                viaCall?.ObsVersion == expected
+                                && viaRawJson == expected
+                                && viaBatch == expected
+                                && viaRawBatchVersion == expected
+                                && itemsViaJsonBody >= 0
+                                && anonymous == "refused";
+
+                            return (
+                                allAgree,
+                                $"six paths agree on {expected}, JsonElement body read "
+                                    + $"{itemsViaJsonBody} item(s), anonymous object {anonymous}"
                             );
                         }
                     )
