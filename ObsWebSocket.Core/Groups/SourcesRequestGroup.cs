@@ -141,7 +141,7 @@ public readonly partial struct SourcesRequestGroup
 
         try
         {
-            return Convert.FromBase64String(response.ImageData);
+            return DecodeImageData(response.ImageData);
         }
         catch (FormatException formatEx)
         {
@@ -150,7 +150,6 @@ public readonly partial struct SourcesRequestGroup
                 "Failed to decode Base64 image data for screenshot of '{SourceName}'.",
                 sourceName
             );
-            // Wrap in ObsWebSocketException? Or just return null? Returning null seems reasonable for a helper.
             return null;
         }
     }
@@ -251,5 +250,17 @@ public readonly partial struct SourcesRequestGroup
                 imageCompressionQuality: compressionQuality
             ),
             cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Decodes the image OBS returns, which arrives as a data URI rather than bare Base64.
+    /// </summary>
+    /// <param name="imageData">The value of the response's image data field.</param>
+    internal static byte[] DecodeImageData(string imageData)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(imageData);
+
+        int comma = imageData.IndexOf(',', StringComparison.Ordinal);
+        return Convert.FromBase64String(comma >= 0 ? imageData[(comma + 1)..] : imageData);
     }
 }
