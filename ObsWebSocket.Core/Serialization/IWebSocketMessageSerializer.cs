@@ -40,20 +40,58 @@ public interface IWebSocketMessageSerializer
     );
 
     /// <summary>
-    /// Deserializes the raw payload data (e.g., JsonElement, object from MessagePack) into a specific target type.
+    /// Deserializes the raw payload data (e.g., JsonElement, object from MessagePack) into a
+    /// specific target type, throwing when the payload cannot be read.
     /// </summary>
+    /// <remarks>
+    /// Use this on paths where a caller is awaiting a result. A payload that is absent still
+    /// returns <see langword="null"/>, because many requests answer with no data at all; only a
+    /// payload that is present and unreadable raises.
+    /// </remarks>
     /// <typeparam name="TPayload">The target type to deserialize into.</typeparam>
     /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
-    /// <returns>The deserialized payload object, or default if null or deserialization fails.</returns>
+    /// <returns>The deserialized payload object, or <see langword="null"/> if no payload was present.</returns>
+    /// <exception cref="ObsWebSocketSerializationException">
+    /// Thrown when a payload is present but cannot be deserialized into <typeparamref name="TPayload"/>.
+    /// </exception>
     TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
         where TPayload : class;
 
     /// <summary>
-    /// Deserializes the raw payload data into a specific target value type.
+    /// Deserializes the raw payload data into a specific target value type, throwing when the
+    /// payload cannot be read.
     /// </summary>
     /// <typeparam name="TPayload">The target value type to deserialize into.</typeparam>
     /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
-    /// <returns>The deserialized payload value, or default if null or deserialization fails.</returns>
+    /// <returns>The deserialized payload value, or <see langword="null"/> if no payload was present.</returns>
+    /// <exception cref="ObsWebSocketSerializationException">
+    /// Thrown when a payload is present but cannot be deserialized into <typeparamref name="TPayload"/>.
+    /// </exception>
     TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
+        where TPayload : struct;
+
+    /// <summary>
+    /// Deserializes the raw payload data, reporting failure instead of throwing.
+    /// </summary>
+    /// <remarks>
+    /// Use this on the receive loop. A newer OBS sending an event this build cannot model, or a
+    /// wrapper that arrives malformed, must not tear the connection down, so the failure is
+    /// logged and the message dropped.
+    /// </remarks>
+    /// <typeparam name="TPayload">The target type to deserialize into.</typeparam>
+    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
+    /// <param name="payload">The deserialized payload, or <see langword="null"/> on failure.</param>
+    /// <returns><see langword="true"/> when a payload was read; otherwise <see langword="false"/>.</returns>
+    bool TryDeserializePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
+        where TPayload : class;
+
+    /// <summary>
+    /// Deserializes the raw payload data into a value type, reporting failure instead of throwing.
+    /// </summary>
+    /// <typeparam name="TPayload">The target value type to deserialize into.</typeparam>
+    /// <param name="rawPayloadData">The raw payload data object received within an IncomingMessage&lt;TData&gt;.D field.</param>
+    /// <param name="payload">The deserialized payload, or <see langword="null"/> on failure.</param>
+    /// <returns><see langword="true"/> when a payload was read; otherwise <see langword="false"/>.</returns>
+    bool TryDeserializeValuePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
         where TPayload : struct;
 }

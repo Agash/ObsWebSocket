@@ -21,6 +21,12 @@ internal sealed class MsgPackJsonElementResolver : IFormatterResolver
         // be read at all over MessagePack.
         : typeof(T) == typeof(List<JsonElement>)
             ? (IMessagePackFormatter<T>)(object)JsonElementListFormatter.Instance
+        // An Object field whose values are all booleans becomes Dictionary<string, bool>, which
+        // the source generated resolver does not build either. GetInputAudioTracks could not be
+        // read and SetInputAudioTracks could not be sent.
+        : typeof(T) == typeof(Dictionary<string, bool>)
+            ? (IMessagePackFormatter<T>)
+                (object)new MessagePack.Formatters.DictionaryFormatter<string, bool>()
         : null;
 
     internal sealed class JsonElementFormatter : IMessagePackFormatter<JsonElement>

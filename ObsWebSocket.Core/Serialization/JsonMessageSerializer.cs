@@ -13,6 +13,8 @@ namespace ObsWebSocket.Core.Serialization;
 public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
     : IWebSocketMessageSerializer
 {
+    private const int RawTextLimit = 512;
+
     private readonly ILogger _logger = logger;
     private static readonly JsonSerializerOptions s_options = ObsWebSocketJsonContext
         .Default
@@ -105,6 +107,30 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
 
     /// <inheritdoc/>
     public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
+        where TPayload : class => DeserializePayloadCore<TPayload>(rawPayloadData);
+
+    /// <inheritdoc/>
+    public bool TryDeserializePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
+        where TPayload : class
+    {
+        try
+        {
+            payload = DeserializePayloadCore<TPayload>(rawPayloadData);
+            return payload is not null;
+        }
+        catch (ObsWebSocketSerializationException ex)
+        {
+            _logger.LogJsonFailedToDeserializePayloadToRaw(
+                ex,
+                typeof(TPayload).Name,
+                RawTextOf(rawPayloadData)
+            );
+            payload = default;
+            return false;
+        }
+    }
+
+    private TPayload? DeserializePayloadCore<TPayload>(object? rawPayloadData)
         where TPayload : class
     {
         if (
@@ -224,19 +250,38 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                 (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
             return jsonElement.Deserialize(typeInfo);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
         {
-            _logger.LogJsonFailedToDeserializePayloadToRaw(
-                ex,
-                typeof(TPayload).Name,
-                jsonElement.GetRawText()
-            );
-            return default;
+            throw new ObsWebSocketSerializationException(FailureMessage<TPayload>(jsonElement), ex);
         }
     }
 
     /// <inheritdoc/>
     public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
+        where TPayload : struct => DeserializeValuePayloadCore<TPayload>(rawPayloadData);
+
+    /// <inheritdoc/>
+    public bool TryDeserializeValuePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
+        where TPayload : struct
+    {
+        try
+        {
+            payload = DeserializeValuePayloadCore<TPayload>(rawPayloadData);
+            return payload.HasValue;
+        }
+        catch (ObsWebSocketSerializationException ex)
+        {
+            _logger.LogJsonFailedToDeserializePayloadToValue(
+                ex,
+                typeof(TPayload).Name,
+                RawTextOf(rawPayloadData)
+            );
+            payload = default;
+            return false;
+        }
+    }
+
+    private TPayload? DeserializeValuePayloadCore<TPayload>(object? rawPayloadData)
         where TPayload : struct
     {
         if (
@@ -267,14 +312,27 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                 (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
             return jsonElement.Deserialize(typeInfo);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
         {
-            _logger.LogJsonFailedToDeserializePayloadToValue(
-                ex,
-                typeof(TPayload).Name,
-                jsonElement.GetRawText()
-            );
-            return default;
+            throw new ObsWebSocketSerializationException(FailureMessage<TPayload>(jsonElement), ex);
         }
     }
+
+    /// <summary>
+    /// Builds the message for a payload that could not be read, keeping enough of the raw JSON to
+    /// identify it without pasting an entire scene list into an exception.
+    /// </summary>
+    private static string FailureMessage<TPayload>(JsonElement element)
+    {
+        string raw = element.GetRawText();
+        if (raw.Length > RawTextLimit)
+        {
+            raw = string.Concat(raw.AsSpan(0, RawTextLimit), "...");
+        }
+
+        return $"Failed to deserialize the payload as '{typeof(TPayload).Name}'. Raw JSON: {raw}";
+    }
+
+    private static string RawTextOf(object? rawPayloadData) =>
+        rawPayloadData is JsonElement element ? element.GetRawText() : string.Empty;
 }

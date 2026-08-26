@@ -13,74 +13,49 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
 
     private MsgPackStubExtensionDataResolver() { }
 
-    public IMessagePackFormatter<T>? GetFormatter<T>()
-    {
-        Type type = typeof(T);
-        if (type == typeof(SceneStub))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<SceneStub>();
-        }
+    /// <summary>
+    /// Every hand-written stub, in both its bare and its list form.
+    /// </summary>
+    /// <remarks>
+    /// A table rather than the <c>typeof(T) ==</c> chain the other resolvers use, because here the
+    /// two forms of each stub have to be registered together: registering the bare stub and
+    /// forgetting the list is what made a response unreadable over MessagePack while JSON read it
+    /// fine. One <see cref="Register{T}"/> call cannot express half a stub. Every instantiation is
+    /// written out, so nothing here needs reflection.
+    /// </remarks>
+    private static readonly Dictionary<Type, object> s_formatters = BuildFormatters();
 
-        if (type == typeof(SceneItemTransformStub))
-        {
-            return (IMessagePackFormatter<T>)
-                (object)new MsgPackJsonBridgeFormatter<SceneItemTransformStub>();
-        }
-
-        if (type == typeof(SceneItemStub))
-        {
-            return (IMessagePackFormatter<T>)
-                (object)new MsgPackJsonBridgeFormatter<SceneItemStub>();
-        }
-
-        if (type == typeof(FilterStub))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<FilterStub>();
-        }
-
-        if (type == typeof(InputStub))
-        {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<InputStub>();
-        }
-
-        if (type == typeof(TransitionStub))
-        {
-            return (IMessagePackFormatter<T>)
-                (object)new MsgPackJsonBridgeFormatter<TransitionStub>();
-        }
-
-        return type == typeof(List<SceneStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<SceneStub>>()
-            : type == typeof(List<SceneItemStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>()
-            : type == typeof(List<FilterStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<FilterStub>>()
-            : type == typeof(List<InputStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<InputStub>>()
-            : type == typeof(List<TransitionStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>()
-            : type == typeof(List<OutputStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<OutputStub>>()
-            : type == typeof(List<MonitorStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>()
-            : type == typeof(List<PropertyItemStub>)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>()
-            : type == typeof(OutputStub)
-                ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>()
-            : type == typeof(MonitorStub)
-                ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>()
-            : type == typeof(PropertyItemStub)
-                ? (IMessagePackFormatter<T>)
-                    (object)new MsgPackJsonBridgeFormatter<PropertyItemStub>()
+    public IMessagePackFormatter<T>? GetFormatter<T>() =>
+        s_formatters.TryGetValue(typeof(T), out object? formatter)
+            ? (IMessagePackFormatter<T>)formatter
             : null;
+
+    private static Dictionary<Type, object> BuildFormatters()
+    {
+        Dictionary<Type, object> map = [];
+        Register<SceneStub>(map);
+        Register<SceneItemStub>(map);
+        Register<SceneItemTransformStub>(map);
+        Register<SceneItemTransformPatchStub>(map);
+        Register<FilterStub>(map);
+        Register<InputStub>(map);
+        Register<InputVolumeMeterStub>(map);
+        Register<SceneItemOrderStub>(map);
+        Register<TransitionStub>(map);
+        Register<OutputStub>(map);
+        Register<MonitorStub>(map);
+        Register<PropertyItemStub>(map);
+        Register<CanvasStub>(map);
+        Register<CanvasFlagsStub>(map);
+        Register<CanvasVideoSettingsStub>(map);
+        return map;
+    }
+
+    private static void Register<T>(Dictionary<Type, object> map)
+        where T : class
+    {
+        map[typeof(T)] = new MsgPackJsonBridgeFormatter<T>();
+        map[typeof(List<T>)] = new MsgPackJsonBridgeFormatter<List<T>>();
     }
 
     private sealed class MsgPackJsonBridgeFormatter<T> : IMessagePackFormatter<T?>

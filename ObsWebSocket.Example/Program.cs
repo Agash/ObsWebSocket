@@ -18,6 +18,10 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 builder.Logging.AddConsole();
 
+// Watches for payloads the client could not read, so validation fails on a shape mismatch instead
+// of leaving it in the log for someone to notice.
+builder.Logging.AddProvider(new SerializationFailureSink());
+
 // Configure OBS WebSocket Client options from "Obs" section in appsettings.json
 builder.Services.Configure<ObsWebSocketClientOptions>(builder.Configuration.GetSection("Obs"));
 builder.Services.Configure<ExampleValidationOptions>(

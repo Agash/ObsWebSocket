@@ -29,7 +29,7 @@ public sealed partial record GetCanvasListResponseData
     /// </summary>
     [JsonPropertyName("canvases")]
     [Key("canvases")]
-    public required System.Collections.Generic.List<System.Text.Json.JsonElement> Canvases { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.CanvasStub> Canvases { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -40,7 +40,7 @@ public sealed partial record GetCanvasListResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetCanvasListResponseData(System.Collections.Generic.List<System.Text.Json.JsonElement> canvases)
+    public GetCanvasListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.CanvasStub> canvases)
     {
         this.Canvases = canvases;
     }

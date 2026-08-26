@@ -97,6 +97,30 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
 
     /// <inheritdoc/>
     public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
+        where TPayload : class => DeserializePayloadCore<TPayload>(rawPayloadData);
+
+    /// <inheritdoc/>
+    public bool TryDeserializePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
+        where TPayload : class
+    {
+        try
+        {
+            payload = DeserializePayloadCore<TPayload>(rawPayloadData);
+            return payload is not null;
+        }
+        catch (ObsWebSocketSerializationException ex)
+        {
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo(
+                ex,
+                typeof(TPayload).Name,
+                rawPayloadData?.GetType().Name ?? "null"
+            );
+            payload = default;
+            return false;
+        }
+    }
+
+    private TPayload? DeserializePayloadCore<TPayload>(object? rawPayloadData)
         where TPayload : class
     {
         if (rawPayloadData is not ReadOnlyMemory<byte> raw)
@@ -121,19 +145,38 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
                 ? (TPayload)(object)DeserializeRequestBatchResponsePayload(raw)
                 : MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
         {
-            _logger.LogMessagepackFailedToDeserializePayloadObjectTo(
-                ex,
-                typeof(TPayload).Name,
-                rawPayloadData.GetType().Name
-            );
-            return default;
+            throw new ObsWebSocketSerializationException(FailureMessage<TPayload>(raw), ex);
         }
     }
 
     /// <inheritdoc/>
     public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
+        where TPayload : struct => DeserializeValuePayloadCore<TPayload>(rawPayloadData);
+
+    /// <inheritdoc/>
+    public bool TryDeserializeValuePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
+        where TPayload : struct
+    {
+        try
+        {
+            payload = DeserializeValuePayloadCore<TPayload>(rawPayloadData);
+            return payload.HasValue;
+        }
+        catch (ObsWebSocketSerializationException ex)
+        {
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo2(
+                ex,
+                typeof(TPayload).Name,
+                rawPayloadData?.GetType().Name ?? "null"
+            );
+            payload = default;
+            return false;
+        }
+    }
+
+    private TPayload? DeserializeValuePayloadCore<TPayload>(object? rawPayloadData)
         where TPayload : struct
     {
         if (rawPayloadData is not ReadOnlyMemory<byte> raw)
@@ -145,16 +188,19 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         {
             return MessagePackSerializer.Deserialize<TPayload>(raw, s_msgPackOptions);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
         {
-            _logger.LogMessagepackFailedToDeserializePayloadObjectTo2(
-                ex,
-                typeof(TPayload).Name,
-                rawPayloadData.GetType().Name
-            );
-            return default;
+            throw new ObsWebSocketSerializationException(FailureMessage<TPayload>(raw), ex);
         }
     }
+
+    /// <summary>
+    /// Builds the message for a payload that could not be read. MessagePack is binary, so the
+    /// byte count is the useful detail; a hex dump of a scene list would not be.
+    /// </summary>
+    private static string FailureMessage<TPayload>(ReadOnlyMemory<byte> raw) =>
+        $"Failed to deserialize the payload as '{typeof(TPayload).Name}' "
+        + $"from {raw.Length} byte(s) of MessagePack.";
 
     private static IncomingMessage<ReadOnlyMemory<byte>> DeserializeIncomingEnvelope(
         ReadOnlyMemory<byte> payload

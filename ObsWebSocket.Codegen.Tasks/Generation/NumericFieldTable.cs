@@ -23,7 +23,6 @@ internal static class NumericFieldTable
         "sceneItemIndex",
         "filterIndex",
         "monitorIndex",
-        "position",
         "searchOffset",
         // Resolutions, in pixels.
         "baseWidth",
@@ -75,6 +74,8 @@ internal static class NumericFieldTable
         "inputVolumeMul",
         "inputVolumeDb",
         "inputAudioBalance",
+        // The T-bar, 0.0 to 1.0. As an int only the two ends were reachable.
+        "position",
         "transitionCursor",
         "outputCongestion",
         "cpuUsage",

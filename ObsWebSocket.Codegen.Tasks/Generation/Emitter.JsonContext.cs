@@ -65,12 +65,18 @@ internal static partial class Emitter
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemTransformStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemTransformPatchStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(FilterStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(InputStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(TransitionStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(OutputStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(MonitorStub))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(PropertyItemStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(InputVolumeMeterStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(SceneItemOrderStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(CanvasStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(CanvasFlagsStub))]");
+            _ = builder.AppendLine("[JsonSerializable(typeof(CanvasVideoSettingsStub))]");
 
             // Common collection payload helpers.
             _ = builder.AppendLine("[JsonSerializable(typeof(List<JsonElement>))]");
