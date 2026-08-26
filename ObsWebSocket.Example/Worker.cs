@@ -14,6 +14,7 @@ using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
+using ObsWebSocket.Core.Protocol.Common.NestedTypes;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
@@ -58,13 +59,13 @@ internal sealed partial class Worker(
         _obsClient.AuthenticationFailure += OnObsAuthenticationFailure;
 
         // --- Subscribe to Specific OBS Events ---
-        _obsClient.CurrentProgramSceneChanged += OnCurrentProgramSceneChanged;
-        _obsClient.InputMuteStateChanged += OnInputMuteStateChanged;
-        _obsClient.StudioModeStateChanged += OnStudioModeStateChanged;
-        _obsClient.InputCreated += OnInputCreated;
-        _obsClient.StreamStateChanged += OnStreamStateChanged;
-        _obsClient.SceneCreated += OnSceneCreated;
-        _obsClient.SourceFilterCreated += OnSourceFilterCreated;
+        _obsClient.Scenes.CurrentProgramSceneChanged += OnCurrentProgramSceneChanged;
+        _obsClient.Inputs.InputMuteStateChanged += OnInputMuteStateChanged;
+        _obsClient.Ui.StudioModeStateChanged += OnStudioModeStateChanged;
+        _obsClient.Inputs.InputCreated += OnInputCreated;
+        _obsClient.Outputs.StreamStateChanged += OnStreamStateChanged;
+        _obsClient.Scenes.SceneCreated += OnSceneCreated;
+        _obsClient.Filters.SourceFilterCreated += OnSourceFilterCreated;
 
         _logger.LogInformation("Example Worker running.");
         _logger.LogInformation(
@@ -150,14 +151,14 @@ internal sealed partial class Worker(
             _obsClient.Disconnected -= OnObsDisconnected;
             _obsClient.ConnectionFailed -= OnObsConnectionFailed;
             _obsClient.AuthenticationFailure -= OnObsAuthenticationFailure;
-            _obsClient.CurrentProgramSceneChanged -= OnCurrentProgramSceneChanged;
-            _obsClient.InputMuteStateChanged -= OnInputMuteStateChanged;
-            _obsClient.StudioModeStateChanged -= OnStudioModeStateChanged;
+            _obsClient.Scenes.CurrentProgramSceneChanged -= OnCurrentProgramSceneChanged;
+            _obsClient.Inputs.InputMuteStateChanged -= OnInputMuteStateChanged;
+            _obsClient.Ui.StudioModeStateChanged -= OnStudioModeStateChanged;
             // Unsubscribe new handlers
-            _obsClient.InputCreated -= OnInputCreated;
-            _obsClient.StreamStateChanged -= OnStreamStateChanged;
-            _obsClient.SceneCreated -= OnSceneCreated;
-            _obsClient.SourceFilterCreated -= OnSourceFilterCreated;
+            _obsClient.Inputs.InputCreated -= OnInputCreated;
+            _obsClient.Outputs.StreamStateChanged -= OnStreamStateChanged;
+            _obsClient.Scenes.SceneCreated -= OnSceneCreated;
+            _obsClient.Filters.SourceFilterCreated -= OnSourceFilterCreated;
 
             // Ensure disconnection on exit
             if (_obsClient.IsConnected)
@@ -454,7 +455,9 @@ internal sealed partial class Worker(
                     _ = table.AddColumn("Enabled");
                     foreach (Core.Protocol.Common.FilterStub filterElement in filterList.Filters)
                     {
-                        string filterIndex = filterElement.FilterIndex?.ToString() ?? "N/A";
+                        string filterIndex = filterElement.FilterIndex.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture
+                        );
                         string filterName =
                             Markup.Escape(filterElement.FilterName ?? "N/A") ?? "N/A";
                         string filterKind =
@@ -704,7 +707,7 @@ internal sealed partial class Worker(
                 {
                     // Typed failure carries the protocol status, so no message matching.
                     UiWarn(
-                        $"OBS rejected {ex.RequestType} with code {ex.Status?.Code}: {ex.Comment}"
+                        $"OBS rejected {ex.RequestType} with code {(int?)ex.StatusCode}: {ex.Comment}"
                     );
                 }
 
@@ -825,7 +828,7 @@ internal sealed partial class Worker(
             int sceneCount = scenes?.Scenes?.Count ?? 0;
 
             GetInputListResponseData? inputs = await cycleClient
-                .Inputs.GetInputListAsync(new GetInputListRequestData(), cancellationToken)
+                .Inputs.GetInputListAsync(new(), cancellationToken)
                 .ConfigureAwait(false);
             if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
             {
@@ -1337,7 +1340,7 @@ internal sealed partial class Worker(
         string inputName = $"__obsws_input_{suffix}";
 
         GetSceneListResponseData? sceneList = await client
-            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .Scenes.GetSceneListAsync(new(), cancellationToken)
             .ConfigureAwait(false);
         string originalScene = sceneList?.CurrentProgramSceneName ?? string.Empty;
 
@@ -1755,7 +1758,7 @@ internal sealed partial class Worker(
                             }
                             catch (ObsWebSocketRequestException ex)
                             {
-                                caught = $"code {ex.Status?.Code}";
+                                caught = $"code {(int?)ex.StatusCode}";
                             }
 
                             // TryGet reports the failure without throwing.
@@ -2366,6 +2369,715 @@ internal sealed partial class Worker(
 
             results.Add(
                 await TrySettingsCheckAsync(
+                        "Preview scene helpers",
+                        async () =>
+                        {
+                            // Preview only exists in Studio Mode, so turn it on for the check and
+                            // put it back however it was found.
+                            GetStudioModeEnabledResponseData studio = await client
+                                .Ui.GetStudioModeEnabledAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            if (!studio.StudioModeEnabled)
+                            {
+                                await client
+                                    .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+
+                            try
+                            {
+                                // Every switch waits for the event confirming it. OBS points
+                                // Preview at the Program scene while enabling Studio Mode, and
+                                // that lands after StudioModeStateChanged, so a switch that does
+                                // not wait for its own confirmation gets silently undone.
+                                await client
+                                    .Scenes.SwitchPreviewSceneAndWaitAsync(
+                                        sceneName,
+                                        cancellationToken: cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                GetCurrentPreviewSceneResponseData preview = await client
+                                    .Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                // The plain overload, confirmed by waiting on the event directly.
+                                Task<CurrentPreviewSceneChangedEventArgs> back =
+                                    client.WaitForEventAsync<CurrentPreviewSceneChangedEventArgs>(
+                                        e =>
+                                            string.Equals(
+                                                e.EventData.SceneName,
+                                                originalScene,
+                                                StringComparison.Ordinal
+                                            ),
+                                        TimeSpan.FromSeconds(5),
+                                        cancellationToken
+                                    );
+                                await client
+                                    .Scenes.SwitchPreviewSceneAsync(
+                                        originalScene,
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                _ = await back.ConfigureAwait(false);
+
+                                GetCurrentPreviewSceneResponseData restored = await client
+                                    .Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                bool ok =
+                                    string.Equals(
+                                        preview.SceneName,
+                                        sceneName,
+                                        StringComparison.Ordinal
+                                    )
+                                    && string.Equals(
+                                        restored.SceneName,
+                                        originalScene,
+                                        StringComparison.Ordinal
+                                    );
+
+                                return (
+                                    ok,
+                                    $"wanted {sceneName} got {preview.SceneName}, "
+                                        + $"then wanted {originalScene} got {restored.SceneName}"
+                                );
+                            }
+                            finally
+                            {
+                                if (!studio.StudioModeEnabled)
+                                {
+                                    await client
+                                        .Ui.SetStudioModeEnabledAsync(new(false), cancellationToken)
+                                        .ConfigureAwait(false);
+                                }
+                            }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "SourceExistsAsync",
+                        async () =>
+                        {
+                            bool present = await client
+                                .Sources.SourceExistsAsync(inputName, cancellationToken)
+                                .ConfigureAwait(false);
+                            bool absent = await client
+                                .Sources.SourceExistsAsync("__absent__", cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (present && !absent, $"present={present}, absent={absent}");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "SetInputMutesAsync",
+                        async () =>
+                        {
+                            GetInputMuteResponseData before = await client
+                                .Inputs.GetInputMuteAsync(
+                                    new(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // One real input beside one that does not exist, so the returned
+                            // results have to show a success next to a failure.
+                            BatchResults muteResults = await client
+                                .Inputs.SetInputMutesAsync(
+                                    [(inputName, !before.InputMuted), ("__absent__", true)],
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetInputMuteResponseData after = await client
+                                .Inputs.GetInputMuteAsync(
+                                    new(inputName: inputName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            await client
+                                .Inputs.SetInputMutesAsync(
+                                    [(inputName, before.InputMuted)],
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                muteResults.Count == 2
+                                && muteResults[0].RequestStatus.Result
+                                && !muteResults[1].RequestStatus.Result
+                                && after.InputMuted == !before.InputMuted;
+
+                            return (
+                                ok,
+                                $"{muteResults.Count} results, muted {before.InputMuted} -> {after.InputMuted}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Transition settings read",
+                        async () =>
+                        {
+                            GetCurrentSceneTransitionResponseData current = await client
+                                .Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            // The typed Get*SettingsAsync helpers deserialize into a settings
+                            // record; the generated request is the way to read the raw JSON.
+                            // A transition with nothing to configure, such as Fade, legitimately
+                            // reports no settings, so the name and kind are what is asserted.
+                            JsonElement? settings = current.TransitionSettings;
+
+                            return (
+                                !string.IsNullOrEmpty(current.TransitionName)
+                                    && !string.IsNullOrEmpty(current.TransitionKind),
+                                $"{current.TransitionName} ({current.TransitionKind}), "
+                                    + $"settings {(settings is null ? "none" : "present")}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Canvas screenshot helper",
+                        async () =>
+                        {
+                            byte[]? bytes = await client
+                                .Sources.GetSourceScreenshotOnCanvasBytesAsync(
+                                    sceneName,
+                                    "png",
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool png =
+                                bytes is { Length: > 8 }
+                                && bytes[0] == 0x89
+                                && bytes[1] == 0x50
+                                && bytes[2] == 0x4E
+                                && bytes[3] == 0x47;
+
+                            return (png, $"{bytes?.Length ?? 0} bytes at canvas size");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Parallel batch, verdict without attribution",
+                        async () =>
+                        {
+                            // A parallel batch of writes is the case Parallel is actually good
+                            // for: OBS mispairs the rows, but a verdict over all of them does not
+                            // depend on which row is which.
+                            ObsBatchBuilder par = new();
+                            _ = par.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: true)
+                            );
+                            _ = par.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: false)
+                            );
+
+                            BatchResults ok = await client
+                                .CallBatchAsync(
+                                    par,
+                                    executionType: RequestBatchExecutionType.Parallel,
+                                    haltOnFailure: false,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // Same again with one request that cannot succeed, so the count of
+                            // failures is checked as well as the all-succeeded verdict.
+                            ObsBatchBuilder mixed = new();
+                            _ = mixed.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(inputName: inputName, inputMuted: false)
+                            );
+                            _ = mixed.Inputs.SetInputMute(
+                                new SetInputMuteRequestData(
+                                    inputName: "__absent__",
+                                    inputMuted: true
+                                )
+                            );
+
+                            BatchResults partial = await client
+                                .CallBatchAsync(
+                                    mixed,
+                                    executionType: RequestBatchExecutionType.Parallel,
+                                    haltOnFailure: false,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            int failures = partial.GetFailures().Count();
+
+                            return (
+                                ok.AllSucceeded() && !partial.AllSucceeded() && failures == 1,
+                                $"all-ok verdict {ok.AllSucceeded()}, mixed verdict "
+                                    + $"{partial.AllSucceeded()} with {failures} failure(s)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Concurrent requests keep their own results",
+                        async () =>
+                        {
+                            // The answer to "how do I run things in parallel" once a parallel
+                            // batch is ruled out for reads. The client multiplexes on request id.
+                            Task<GetVersionResponseData> version = client.General.GetVersionAsync(
+                                cancellationToken
+                            );
+                            Task<GetVideoSettingsResponseData> video =
+                                client.Config.GetVideoSettingsAsync(cancellationToken);
+                            Task<GetSceneItemListResponseData> itemsHere =
+                                client.SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: sceneName),
+                                    cancellationToken
+                                );
+                            Task<GetSceneItemListResponseData> itemsThere =
+                                client.SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: originalScene),
+                                    cancellationToken
+                                );
+
+                            await Task.WhenAll(version, video, itemsHere, itemsThere)
+                                .ConfigureAwait(false);
+
+                            // Each answer has to match what the same request returns on its own.
+                            GetVersionResponseData serialVersion = await client
+                                .General.GetVersionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneItemListResponseData serialHere = await client
+                                .SceneItems.GetSceneItemListAsync(
+                                    new GetSceneItemListRequestData(sceneName: sceneName),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                string.Equals(
+                                    version.Result.ObsVersion,
+                                    serialVersion.ObsVersion,
+                                    StringComparison.Ordinal
+                                )
+                                && video.Result.FpsNumerator > 0
+                                && itemsHere.Result.SceneItems?.Count
+                                    == serialHere.SceneItems?.Count;
+
+                            return (
+                                ok,
+                                $"v={version.Result.ObsVersion}, fps={video.Result.FpsNumerator}, "
+                                    + $"items {itemsHere.Result.SceneItems?.Count} here vs "
+                                    + $"{itemsThere.Result.SceneItems?.Count} there"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Low level Add and raw results",
+                        async () =>
+                        {
+                            // Hand rolled batch: Add covers anything the generated methods do not,
+                            // and the raw payload helpers read it back.
+                            ObsBatchBuilder raw = new();
+                            _ = raw.Add("GetVersion");
+                            _ = raw.Add("GetStats");
+
+                            BatchResults rawResults = await client
+                                .CallBatchAsync(
+                                    raw,
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            GetVersionResponseData? v = rawResults
+                                .Raw[0]
+                                .GetData<GetVersionResponseData>();
+
+                            // And the same request without any batch at all.
+                            GetVersionResponseData? direct = await client
+                                .CallAsync<GetVersionResponseData>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                rawResults.Count == 2
+                                && v is not null
+                                && direct is not null
+                                && string.Equals(
+                                    v.ObsVersion,
+                                    direct.ObsVersion,
+                                    StringComparison.Ordinal
+                                );
+
+                            return (
+                                ok,
+                                $"raw batch {rawResults.Count}, CallAsync {direct?.ObsVersion}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Canvases category",
+                        async () =>
+                        {
+                            // The only request in its category, and the one stub type nothing
+                            // else reaches.
+                            GetCanvasListResponseData canvases = await client
+                                .Canvases.GetCanvasListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (
+                                canvases.Canvases.Count > 0,
+                                $"{canvases.Canvases.Count} canvas(es)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Request with neither payload",
+                        async () =>
+                        {
+                            // The one generated shape nothing else exercises: no request data and
+                            // no response. Pointing Preview at the scene already in Program makes
+                            // the transition a no-op, so the check is safe to run.
+                            GetStudioModeEnabledResponseData studio = await client
+                                .Ui.GetStudioModeEnabledAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            if (!studio.StudioModeEnabled)
+                            {
+                                await client
+                                    .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+
+                            try
+                            {
+                                GetSceneListResponseData before = await client
+                                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                                    .ConfigureAwait(false);
+                                string program = before.CurrentProgramSceneName!;
+
+                                // Plain switch, not the waiting variant: OBS raises no
+                                // CurrentPreviewSceneChanged when the preview is already that
+                                // scene, which enabling Studio Mode has just made it.
+                                await client
+                                    .Scenes.SwitchPreviewSceneAsync(program, cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                await client
+                                    .Transitions.TriggerStudioModeTransitionAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                GetSceneListResponseData after = await client
+                                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                return (
+                                    string.Equals(
+                                        after.CurrentProgramSceneName,
+                                        program,
+                                        StringComparison.Ordinal
+                                    ),
+                                    $"transitioned, program still '{after.CurrentProgramSceneName}'"
+                                );
+                            }
+                            finally
+                            {
+                                if (!studio.StudioModeEnabled)
+                                {
+                                    await client
+                                        .Ui.SetStudioModeEnabledAsync(new(false), cancellationToken)
+                                        .ConfigureAwait(false);
+                                }
+                            }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Nested request object",
+                        async () =>
+                        {
+                            // keyModifiers is the one generated nested record, a distinct shape
+                            // from the flat request payloads. F13 is not bound by default, so the
+                            // press does nothing.
+                            await client
+                                .General.TriggerHotkeyByKeySequenceAsync(
+                                    new TriggerHotkeyByKeySequenceRequestData(
+                                        keyId: "OBS_KEY_F13",
+                                        keyModifiers: new TriggerHotkeyByKeySequenceRequestData_KeyModifiers(
+                                            shift: false,
+                                            control: true,
+                                            alt: false,
+                                            command: false
+                                        )
+                                    ),
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            return (true, "nested keyModifiers accepted");
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Remaining stub types",
+                        async () =>
+                        {
+                            // Monitor, output and transition stubs are generated the same way as
+                            // the scene and input ones, so one read each covers the shape.
+                            GetMonitorListResponseData monitors = await client
+                                .Ui.GetMonitorListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneTransitionListResponseData transitions = await client
+                                .Transitions.GetSceneTransitionListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetOutputListResponseData outputs = await client
+                                .Outputs.GetOutputListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            bool ok =
+                                monitors.Monitors.Count > 0
+                                && transitions.Transitions.Count > 0
+                                && outputs.Outputs.Count > 0
+                                && monitors.Monitors[0].MonitorWidth > 0
+                                && !string.IsNullOrEmpty(transitions.Transitions[0].TransitionName)
+                                && !string.IsNullOrEmpty(outputs.Outputs[0].OutputName);
+
+                            return (
+                                ok,
+                                $"{monitors.Monitors.Count} monitor(s) first {monitors.Monitors[0].MonitorWidth}px, "
+                                    + $"{transitions.Transitions.Count} transition(s), {outputs.Outputs.Count} output(s)"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Classic handler and subscriptions",
+                        async () =>
+                        {
+                            // The stream path is covered above; this is the += path, plus the
+                            // negotiated subscription flags the client reports.
+                            TaskCompletionSource seen = new(
+                                TaskCreationOptions.RunContinuationsAsynchronously
+                            );
+                            string? observed = null;
+                            void Handler(object? sender, SceneCreatedEventArgs e)
+                            {
+                                observed = e.EventData.SceneName;
+                                _ = seen.TrySetResult();
+                            }
+
+                            client.Scenes.SceneCreated += Handler;
+                            string probe = $"__obsws_handler_{Guid.NewGuid():N}"[..24];
+                            try
+                            {
+                                await client
+                                    .Scenes.CreateSceneAsync(
+                                        new CreateSceneRequestData(sceneName: probe),
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                await seen
+                                    .Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                client.Scenes.SceneCreated -= Handler;
+                                await client
+                                    .Scenes.RemoveSceneAsync(
+                                        new RemoveSceneRequestData(sceneName: probe),
+                                        CancellationToken.None
+                                    )
+                                    .ConfigureAwait(false);
+                            }
+
+                            EventSubscription? subs = client.CurrentEventSubscriptions;
+
+                            return (
+                                string.Equals(observed, probe, StringComparison.Ordinal)
+                                    && subs is not null
+                                    && subs.Value.HasFlag(EventSubscription.Scenes),
+                                $"handler saw '{observed}', subscriptions {subs}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Every way of sending a request",
+                        async () =>
+                        {
+                            // One request, reached six ways, so no path is left unexercised.
+                            // 1. The generated request on its category group.
+                            GetVersionResponseData viaGroup = await client
+                                .General.GetVersionAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            // 2. The low level typed call, for a reference type response.
+                            GetVersionResponseData? viaCall = await client
+                                .CallAsync<GetVersionResponseData>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // 3. The low level untyped call, for a value type response.
+                            JsonElement? viaValue = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetVersion",
+                                    null,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string? viaRawJson = viaValue?.GetProperty("obsVersion").GetString();
+
+                            // 4. A hand built JsonElement as the request payload.
+                            using JsonDocument requestBody = JsonDocument.Parse(
+                                $$"""{"sceneName":"{{sceneName}}"}"""
+                            );
+                            JsonElement? viaJsonBody = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetSceneItemList",
+                                    requestBody.RootElement,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            int itemsViaJsonBody =
+                                viaJsonBody?.GetProperty("sceneItems").GetArrayLength() ?? -1;
+
+                            // 5. The typed batch builder.
+                            ObsBatchBuilder builder = new();
+                            BatchRef<GetVersionResponseData> batched = builder.General.GetVersion();
+                            BatchResults built = await client
+                                .CallBatchAsync(
+                                    builder,
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string viaBatch = built.Get(batched).ObsVersion;
+
+                            // 6. A hand rolled batch item, with a JsonElement payload.
+                            using JsonDocument batchBody = JsonDocument.Parse(
+                                $$"""{"sceneName":"{{sceneName}}"}"""
+                            );
+                            List<RequestResponsePayload<object>> viaRawBatch = await client
+                                .CallBatchAsync(
+                                    [
+                                        new BatchRequestItem("GetVersion", null),
+                                        new BatchRequestItem(
+                                            "GetSceneItemList",
+                                            batchBody.RootElement
+                                        ),
+                                    ],
+                                    executionType: RequestBatchExecutionType.SerialRealtime,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            string? viaRawBatchVersion = viaRawBatch[0]
+                                .GetData<GetVersionResponseData>()
+                                ?.ObsVersion;
+
+                            // 7. A consumer's own JsonSerializerContext, so a type this library
+                            // has never heard of is sent without hand building a JsonElement.
+                            JsonElement? viaConsumerContext = await client
+                                .CallAsyncValue<JsonElement>(
+                                    "GetSceneItemList",
+                                    new ConsumerSceneRequest(sceneName),
+                                    ExampleRequestContext.Default.ConsumerSceneRequest,
+                                    cancellationToken: cancellationToken
+                                )
+                                .ConfigureAwait(false);
+                            int itemsViaContext =
+                                viaConsumerContext?.GetProperty("sceneItems").GetArrayLength()
+                                ?? -1;
+
+                            // And the one shape that is not supported, asserted as unsupported:
+                            // an anonymous object has no metadata in the serializer context.
+                            string anonymous;
+                            try
+                            {
+                                _ = await client
+                                    .CallAsyncValue<JsonElement>(
+                                        "GetSceneItemList",
+                                        new { sceneName },
+                                        cancellationToken: cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                                anonymous = "unexpectedly accepted";
+                            }
+                            catch (ObsWebSocketSerializationException)
+                            {
+                                anonymous = "refused";
+                            }
+
+                            string expected = viaGroup.ObsVersion;
+                            bool allAgree =
+                                viaCall?.ObsVersion == expected
+                                && viaRawJson == expected
+                                && viaBatch == expected
+                                && viaRawBatchVersion == expected
+                                && itemsViaJsonBody >= 0
+                                && itemsViaContext == itemsViaJsonBody
+                                && anonymous == "refused";
+
+                            return (
+                                allAgree,
+                                $"seven paths agree on {expected}, JsonElement body and consumer "
+                                    + $"context both read {itemsViaJsonBody} item(s), anonymous "
+                                    + $"object {anonymous}"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
                         "Typed exception on a rejected request",
                         async () =>
                         {
@@ -2384,8 +3096,9 @@ internal sealed partial class Worker(
                             catch (ObsWebSocketRequestException ex)
                             {
                                 return (
-                                    ex.Status?.Code == 600 && ex.RequestType == "GetSceneItemList",
-                                    $"{ex.RequestType} code {ex.Status?.Code}"
+                                    ex.StatusCode == RequestStatusCode.ResourceNotFound
+                                        && ex.RequestType == "GetSceneItemList",
+                                    $"{ex.RequestType} code {(int?)ex.StatusCode}"
                                 );
                             }
                         }
@@ -3365,9 +4078,7 @@ internal sealed partial class Worker(
 
     private void OnStreamStateChanged(object? sender, StreamStateChangedEventArgs e)
     {
-        // The wire value is a string; OutputStateExtensions.FromWireValue turns it into the
-        // typed enum so it can be matched instead of compared against protocol constants.
-        string description = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+        string description = e.EventData.OutputState switch
         {
             OutputState.Starting => "starting up",
             OutputState.Started => "live",
@@ -3377,7 +4088,6 @@ internal sealed partial class Worker(
             OutputState.Reconnected => "reconnected",
             OutputState.Paused => "paused",
             OutputState.Unknown => "in an unknown state",
-            null => $"reporting an unrecognised state ({e.EventData.OutputState})",
             _ => "in an unhandled state",
         };
 
@@ -3430,3 +4140,19 @@ internal sealed record WorkerGainDbSettings([property: JsonPropertyName("db")] d
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
 )]
 internal sealed partial class WorkerSettingsJsonContext : JsonSerializerContext { }
+
+/// <summary>
+/// A request payload this library has no metadata for, sent with the consumer's own context.
+/// </summary>
+/// <param name="SceneName">The scene to list items for.</param>
+internal sealed record ConsumerSceneRequest(
+    [property: System.Text.Json.Serialization.JsonPropertyName("sceneName")] string SceneName
+);
+
+/// <summary>
+/// The consumer side serializer context, the AOT safe way to describe a payload the library does
+/// not model.
+/// </summary>
+[System.Text.Json.Serialization.JsonSerializable(typeof(ConsumerSceneRequest))]
+internal sealed partial class ExampleRequestContext
+    : System.Text.Json.Serialization.JsonSerializerContext;

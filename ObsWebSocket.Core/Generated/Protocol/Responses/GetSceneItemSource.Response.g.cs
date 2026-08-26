@@ -29,14 +29,14 @@ public sealed partial record GetSceneItemSourceResponseData
     /// </summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>
     /// UUID of the source associated with the scene item
     /// </summary>
     [JsonPropertyName("sourceUuid")]
     [Key("sourceUuid")]
-    public string? SourceUuid { get; init; }
+    public required string SourceUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record GetSceneItemSourceResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneItemSourceResponseData(string? sourceName = null, string? sourceUuid = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneItemSourceResponseData(string sourceName, string sourceUuid)
     {
         this.SourceName = sourceName;
         this.SourceUuid = sourceUuid;

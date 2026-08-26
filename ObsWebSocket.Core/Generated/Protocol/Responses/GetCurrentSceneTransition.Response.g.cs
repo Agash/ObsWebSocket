@@ -50,14 +50,14 @@ public sealed partial record GetCurrentSceneTransitionResponseData
     /// </summary>
     [JsonPropertyName("transitionKind")]
     [Key("transitionKind")]
-    public string? TransitionKind { get; init; }
+    public required string TransitionKind { get; init; }
 
     /// <summary>
     /// Name of the transition
     /// </summary>
     [JsonPropertyName("transitionName")]
     [Key("transitionName")]
-    public string? TransitionName { get; init; }
+    public required string TransitionName { get; init; }
 
     /// <summary>
     /// Object of settings for the transition. `null` if transition is not configurable
@@ -71,7 +71,7 @@ public sealed partial record GetCurrentSceneTransitionResponseData
     /// </summary>
     [JsonPropertyName("transitionUuid")]
     [Key("transitionUuid")]
-    public string? TransitionUuid { get; init; }
+    public required string TransitionUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -82,7 +82,7 @@ public sealed partial record GetCurrentSceneTransitionResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetCurrentSceneTransitionResponseData(bool transitionFixed, bool transitionConfigurable, string? transitionName = null, string? transitionUuid = null, string? transitionKind = null, int? transitionDuration = null, System.Text.Json.JsonElement? transitionSettings = null)
+    public GetCurrentSceneTransitionResponseData(string transitionName, string transitionUuid, string transitionKind, bool transitionFixed, bool transitionConfigurable, int? transitionDuration = null, System.Text.Json.JsonElement? transitionSettings = default)
     {
         this.TransitionName = transitionName;
         this.TransitionUuid = transitionUuid;

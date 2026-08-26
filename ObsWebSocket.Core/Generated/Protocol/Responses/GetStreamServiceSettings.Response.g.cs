@@ -36,7 +36,7 @@ public sealed partial record GetStreamServiceSettingsResponseData
     /// </summary>
     [JsonPropertyName("streamServiceType")]
     [Key("streamServiceType")]
-    public string? StreamServiceType { get; init; }
+    public required string StreamServiceType { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record GetStreamServiceSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetStreamServiceSettingsResponseData(string? streamServiceType = null, System.Text.Json.JsonElement? streamServiceSettings = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetStreamServiceSettingsResponseData(string streamServiceType, System.Text.Json.JsonElement? streamServiceSettings = default)
     {
         this.StreamServiceType = streamServiceType;
         this.StreamServiceSettings = streamServiceSettings;

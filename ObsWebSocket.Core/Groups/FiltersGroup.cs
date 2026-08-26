@@ -99,7 +99,7 @@ public readonly partial struct FiltersGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Filters.GetSourceFilterSettingsAsync(
             sourceName,
             filterName,
@@ -183,7 +183,7 @@ public readonly partial struct FiltersGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Filters.SetSourceFilterSettingsAsync(
             sourceName,
             filterName,
@@ -270,7 +270,7 @@ public readonly partial struct FiltersGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Filters.CreateSourceFilterAsync(
             sourceName,
             filterName,
@@ -329,7 +329,7 @@ public readonly partial struct FiltersGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Filters.GetSourceFilterDefaultSettingsAsync(
             filterKind,
             typeInfo,

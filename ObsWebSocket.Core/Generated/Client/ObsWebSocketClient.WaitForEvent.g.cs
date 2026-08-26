@@ -15,7 +15,7 @@ namespace ObsWebSocket.Core; // Add to ObsWebSocket.Core namespace
 /// <summary>
 /// Contains generated helper methods for the <see cref="ObsWebSocketClient"/>.
 /// </summary>
-public static partial class ObsWebSocketClientHelpers
+public static partial class ObsWebSocketClientOperations
 {
     /// <summary>
     /// Asynchronously waits for a specific OBS event of type <typeparamref name="TEventArgs"/> that satisfies a predicate condition.
@@ -1320,7 +1320,7 @@ public static partial class ObsWebSocketClientHelpers
         {
             client._logger.LogDebug("WaitForEventAsync<{EventType}> timed out after {Timeout}.", typeof(TEventArgs).Name, timeout);
             tcs.TrySetCanceled(linkedCts.Token);
-            throw new TimeoutException($"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.");
+            throw new ObsWebSocketTimeoutException($"Timed out after {timeout} waiting for {typeof(TEventArgs).Name}.");
         }
         catch (Exception ex)
         {

@@ -25,7 +25,7 @@ public class ObsWebSocketRequestException : ObsWebSocketException
     {
         RequestType = requestType;
         RequestId = requestId;
-        Status = status;
+        StatusCode = status is null ? null : (RequestStatusCode)status.Code;
         Comment = comment;
     }
 
@@ -49,16 +49,13 @@ public class ObsWebSocketRequestException : ObsWebSocketException
     /// <summary>The identifier of the rejected request.</summary>
     public string RequestId { get; } = string.Empty;
 
-    /// <summary>The status OBS reported, when one was available.</summary>
-    public RequestStatus? Status { get; }
-
     /// <summary>The comment OBS attached, if any.</summary>
     public string? Comment { get; }
 
     /// <summary>
-    /// The status OBS reported as
-    /// <see cref="ObsWebSocket.Core.Protocol.Generated.RequestStatusCode"/>, so a handler can
-    /// match on the reason rather than on the text of <see cref="Exception.Message"/>.
+    /// The reason OBS gave for rejecting the request, so a handler matches on the reason rather
+    /// than on the text of <see cref="Exception.Message"/>. A code this build does not know still
+    /// round trips, since the enum carries the number: cast it back to <see cref="int"/>.
     /// </summary>
     /// <example>
     /// <code>
@@ -66,7 +63,7 @@ public class ObsWebSocketRequestException : ObsWebSocketException
     ///     when (ex.StatusCode is RequestStatusCode.ResourceNotFound) { }
     /// </code>
     /// </example>
-    public RequestStatusCode? StatusCode => Status is null ? null : (RequestStatusCode)Status.Code;
+    public RequestStatusCode? StatusCode { get; }
 }
 
 /// <summary>

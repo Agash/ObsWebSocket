@@ -39,14 +39,14 @@ public sealed partial record VendorEventPayload
     /// </summary>
     [JsonPropertyName("eventType")]
     [Key("eventType")]
-    public string? EventType { get; init; }
+    public required string EventType { get; init; }
 
     /// <summary>
     /// Name of the vendor emitting the event
     /// </summary>
     [JsonPropertyName("vendorName")]
     [Key("vendorName")]
-    public string? VendorName { get; init; }
+    public required string VendorName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -56,7 +56,8 @@ public sealed partial record VendorEventPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public VendorEventPayload(string? vendorName = null, string? eventType = null, System.Text.Json.JsonElement? eventData = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public VendorEventPayload(string vendorName, string eventType, System.Text.Json.JsonElement? eventData = default)
     {
         this.VendorName = vendorName;
         this.EventType = eventType;

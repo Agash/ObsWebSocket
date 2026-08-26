@@ -67,7 +67,7 @@ public sealed partial record CallVendorRequestRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CallVendorRequestRequestData(string vendorName, string requestType, System.Text.Json.JsonElement? requestData = null)
+    public CallVendorRequestRequestData(string vendorName, string requestType, System.Text.Json.JsonElement? requestData = default)
     {
         this.VendorName = vendorName;
         this.RequestType = requestType;

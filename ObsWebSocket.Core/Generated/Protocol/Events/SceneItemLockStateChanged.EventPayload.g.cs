@@ -43,14 +43,14 @@ public sealed partial record SceneItemLockStateChangedPayload
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// UUID of the scene the item is in
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -61,7 +61,7 @@ public sealed partial record SceneItemLockStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemLockStateChangedPayload(int sceneItemId, bool sceneItemLocked, string? sceneName = null, string? sceneUuid = null)
+    public SceneItemLockStateChangedPayload(string sceneName, string sceneUuid, int sceneItemId, bool sceneItemLocked)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

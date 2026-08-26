@@ -39,7 +39,7 @@ public sealed partial record GetInputDefaultSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputDefaultSettingsResponseData(System.Text.Json.JsonElement? defaultInputSettings = null)
+    public GetInputDefaultSettingsResponseData(System.Text.Json.JsonElement? defaultInputSettings = default)
     {
         this.DefaultInputSettings = defaultInputSettings;
     }

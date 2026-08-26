@@ -29,7 +29,7 @@ public sealed partial record GetLastReplayBufferReplayResponseData
     /// </summary>
     [JsonPropertyName("savedReplayPath")]
     [Key("savedReplayPath")]
-    public string? SavedReplayPath { get; init; }
+    public required string SavedReplayPath { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record GetLastReplayBufferReplayResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetLastReplayBufferReplayResponseData(string? savedReplayPath = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetLastReplayBufferReplayResponseData(string savedReplayPath)
     {
         this.SavedReplayPath = savedReplayPath;
     }

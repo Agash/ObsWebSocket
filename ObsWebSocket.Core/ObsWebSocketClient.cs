@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -6,6 +6,7 @@ using System.Diagnostics.Metrics;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core.Events;
@@ -321,6 +322,11 @@ public sealed partial class ObsWebSocketClient(
     /// <typeparam name="TResponse">The expected response data type.</typeparam>
     /// <param name="requestType">The OBS request type string.</param>
     /// <param name="requestData">The request payload, or <see langword="null"/>.</param>
+    /// <param name="requestTypeInfo">
+    /// Metadata for <paramref name="requestData"/>, for a type this library does not know.
+    /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
+    /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
+    /// </param>
     /// <param name="timeoutMs">Optional override for the request timeout.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The response data.</returns>
@@ -331,11 +337,18 @@ public sealed partial class ObsWebSocketClient(
     public async Task<TResponse> CallRequiredAsync<TResponse>(
         string requestType,
         object? requestData = null,
+        JsonTypeInfo? requestTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
         where TResponse : class =>
-        await CallAsync<TResponse>(requestType, requestData, timeoutMs, cancellationToken)
+        await CallAsync<TResponse>(
+                requestType,
+                requestData,
+                requestTypeInfo,
+                timeoutMs,
+                cancellationToken
+            )
             .ConfigureAwait(false)
         ?? throw new ObsWebSocketException(
             $"OBS reported success for '{requestType}' but returned no {typeof(TResponse).Name} payload."
@@ -348,6 +361,11 @@ public sealed partial class ObsWebSocketClient(
     /// <typeparam name="TResponse">The expected type of the response data payload (must be a reference type).</typeparam>
     /// <param name="requestType">The OBS WebSocket request type string.</param>
     /// <param name="requestData">Optional data payload for the request. Should be serializable to the format expected by OBS for the request type.</param>
+    /// <param name="requestTypeInfo">
+    /// Metadata for <paramref name="requestData"/>, for a type this library does not know.
+    /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
+    /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
+    /// </param>
     /// <param name="timeoutMs">Optional timeout in milliseconds to wait for the response. Defaults to <see cref="ObsWebSocketClientOptions.RequestTimeoutMs"/>.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
@@ -361,6 +379,7 @@ public sealed partial class ObsWebSocketClient(
     public async Task<TResponse?> CallAsync<TResponse>(
         string requestType,
         object? requestData = null,
+        JsonTypeInfo? requestTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
@@ -403,7 +422,7 @@ public sealed partial class ObsWebSocketClient(
                     new RequestPayload(
                         requestType,
                         requestId,
-                        SerializeRequestData(requestType, requestData)
+                        SerializeRequestData(requestType, requestData, requestTypeInfo)
                     ),
                     linkedCts.Token
                 )
@@ -469,6 +488,11 @@ public sealed partial class ObsWebSocketClient(
     /// <typeparam name="TResponse">The expected type of the response data payload (must be a value type).</typeparam>
     /// <param name="requestType">The OBS WebSocket request type string.</param>
     /// <param name="requestData">Optional data payload for the request. Should be serializable to the format expected by OBS for the request type.</param>
+    /// <param name="requestTypeInfo">
+    /// Metadata for <paramref name="requestData"/>, for a type this library does not know.
+    /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
+    /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
+    /// </param>
     /// <param name="timeoutMs">Optional timeout in milliseconds to wait for the response. Defaults to <see cref="ObsWebSocketClientOptions.RequestTimeoutMs"/>.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
@@ -482,6 +506,7 @@ public sealed partial class ObsWebSocketClient(
     public async Task<TResponse?> CallAsyncValue<TResponse>(
         string requestType,
         object? requestData = null,
+        JsonTypeInfo? requestTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
@@ -510,7 +535,7 @@ public sealed partial class ObsWebSocketClient(
                     new RequestPayload(
                         requestType,
                         requestId,
-                        SerializeRequestData(requestType, requestData)
+                        SerializeRequestData(requestType, requestData, requestTypeInfo)
                     ),
                     linkedCts.Token
                 )
@@ -2179,7 +2204,16 @@ public sealed partial class ObsWebSocketClient(
     /// In Native AOT, arbitrary objects passed through the batch API path may fail if they are not registered
     /// in <see cref="ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext"/>.
     /// </remarks>
-    private static JsonElement? SerializeRequestData(string requestContext, object? requestData)
+    /// <param name="requestTypeInfo">
+    /// Metadata for <paramref name="requestData"/>, for a type this library does not know.
+    /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
+    /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
+    /// </param>
+    private static JsonElement? SerializeRequestData(
+        string requestContext,
+        object? requestData,
+        JsonTypeInfo? requestTypeInfo = null
+    )
     {
         if (requestData is null)
         {
@@ -2188,12 +2222,17 @@ public sealed partial class ObsWebSocketClient(
 
         try
         {
-            return requestData is JsonElement element
-                ? element
-                : JsonSerializer.SerializeToElement(
-                    requestData,
-                    s_payloadJsonOptions.GetTypeInfo(requestData.GetType())
-                );
+            if (requestData is JsonElement element)
+            {
+                return element;
+            }
+
+            // A caller passing metadata from their own context can send a type this library has
+            // never heard of, without hand rolling a JsonDocument, and stays AOT safe doing it.
+            return JsonSerializer.SerializeToElement(
+                requestData,
+                requestTypeInfo ?? s_payloadJsonOptions.GetTypeInfo(requestData.GetType())
+            );
         }
         catch (InvalidOperationException ex)
         {

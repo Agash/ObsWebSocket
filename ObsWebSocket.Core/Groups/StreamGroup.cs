@@ -58,7 +58,7 @@ public readonly partial struct StreamGroup
         try
         {
             StreamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
-            return OutputStateExtensions.FromWireValue(ev.EventData.OutputState);
+            return ev.EventData.OutputState;
         }
         catch (TimeoutException)
         {

@@ -489,23 +489,43 @@ internal static partial class Emitter
                 }
                 else // Response, Event, Nested
                 {
-                    isConsideredRequired = !typeIsInherentlyNullable && !csharpType.EndsWith("?");
+                    // The protocol never marks a response or event field optional: all 152
+                    // response fields and all 149 event fields carry a null valueOptional. The
+                    // only place it records that a field can be absent is the prose, which is
+                    // therefore the signal, rather than whether C# happens to make the type
+                    // nullable. Without this a string OBS always sends still arrives nullable and
+                    // every read needs a "!".
+                    bool proseAllowsNull = DescriptionAllowsNull(
+                        associatedFieldDef.ValueDescription
+                    );
 
-                    // Some fields are only ever null in a particular state, which the protocol
-                    // records in the description rather than in valueOptional. Deserializing
-                    // those into a non-nullable value type fails outright when it happens.
-                    if (
-                        isConsideredRequired
-                        && isValueType
-                        && DescriptionAllowsNull(associatedFieldDef.ValueDescription)
-                    )
+                    if (proseAllowsNull)
                     {
                         isConsideredRequired = false;
                     }
-
-                    if (csharpType.StartsWith("List<") || csharpType.StartsWith("Dictionary<"))
+                    else if (isValueType)
                     {
-                        isConsideredRequired = false;
+                        isConsideredRequired = !csharpType.EndsWith("?");
+                    }
+                    else
+                    {
+                        // Strings and arrays are always sent. A dictionary or a JsonElement is a
+                        // settings bag that genuinely may not be there, so those stay nullable.
+                        // The array and stub mappers bake the "?" into the type they return, so
+                        // those have to have it stripped here rather than merely left off the
+                        // suffix. A stub is a concrete record for an object OBS always sends,
+                        // unlike a JsonElement settings bag.
+                        bool isList = csharpType.Contains("List<");
+                        bool isStub =
+                            csharpType.EndsWith("Stub?", StringComparison.Ordinal)
+                            || csharpType.EndsWith("Stub", StringComparison.Ordinal);
+                        isConsideredRequired = csharpType == "string" || isList || isStub;
+                        if (
+                            (isList || isStub) && csharpType.EndsWith("?", StringComparison.Ordinal)
+                        )
+                        {
+                            csharpType = csharpType.Substring(0, csharpType.Length - 1);
+                        }
                     }
                 }
                 propertyNullableSuffix =
@@ -523,6 +543,19 @@ internal static partial class Emitter
             if (csharpType == null)
             {
                 continue;
+            }
+
+            // A field mapped onto a protocol enum needs the wire value on both transports, not the
+            // member name and not the ordinal. It is never nullable: OBS always sends a value, and
+            // one it does not recognise maps onto the enum's zero member rather than onto null, so
+            // a caller never has to null check a state before switching on it.
+            string? propertyStringEnum =
+                associatedFieldDef?.ValueType == "String"
+                    ? StringEnumFieldTable.MapStringEnum(originalName)
+                    : null;
+            if (propertyStringEnum is not null)
+            {
+                propertyNullableSuffix = string.Empty;
             }
 
             PropertyGenInfo propInfo = new(
@@ -561,6 +594,16 @@ internal static partial class Emitter
 
             mainBuilder.AppendLine($"    [JsonPropertyName(\"{originalName}\")]");
             mainBuilder.AppendLine($"    [Key(\"{originalName}\")]");
+
+            if (propertyStringEnum is not null)
+            {
+                mainBuilder.AppendLine(
+                    $"    [JsonConverter(typeof({GeneratedEnumsNamespace}.{propertyStringEnum}JsonConverter))]"
+                );
+                mainBuilder.AppendLine(
+                    $"    [MessagePackFormatter(typeof({GeneratedEnumsNamespace}.{propertyStringEnum}MessagePackFormatter))]"
+                );
+            }
             mainBuilder.Append("    public ");
             if (isConsideredRequired)
             {
@@ -648,7 +691,9 @@ internal static partial class Emitter
             // Append optional parameters WITH default null value
             constructorParams.AddRange(
                 optionalParamsList.Select(p =>
-                    $"{p.CSharpType}{p.NullableSuffix} {p.ParamName} = null"
+                    // A non-nullable optional parameter cannot default to null. That happens for
+                    // the enum-typed fields, whose zero member is the "unknown" one anyway.
+                    $"{p.CSharpType}{p.NullableSuffix} {p.ParamName} = {(p.NullableSuffix.Length == 0 ? "default" : "null")}"
                 )
             );
 

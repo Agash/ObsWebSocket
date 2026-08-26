@@ -31,7 +31,7 @@ public sealed partial record GetTransitionKindListResponseData
     /// </summary>
     [JsonPropertyName("transitionKinds")]
     [Key("transitionKinds")]
-    public System.Collections.Generic.List<string>? TransitionKinds { get; init; }
+    public required System.Collections.Generic.List<string> TransitionKinds { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -41,7 +41,8 @@ public sealed partial record GetTransitionKindListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetTransitionKindListResponseData(System.Collections.Generic.List<string>? transitionKinds = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetTransitionKindListResponseData(System.Collections.Generic.List<string> transitionKinds)
     {
         this.TransitionKinds = transitionKinds;
     }

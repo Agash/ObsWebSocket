@@ -31,7 +31,7 @@ public sealed partial record GetSceneItemTransformResponseData
     /// </summary>
     [JsonPropertyName("sceneItemTransform")]
     [Key("sceneItemTransform")]
-    public ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? SceneItemTransform { get; init; }
+    public required ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub SceneItemTransform { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -41,7 +41,8 @@ public sealed partial record GetSceneItemTransformResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneItemTransformResponseData(ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneItemTransformResponseData(ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub sceneItemTransform)
     {
         this.SceneItemTransform = sceneItemTransform;
     }

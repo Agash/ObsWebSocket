@@ -76,9 +76,11 @@ reach anything:
 ```csharp
 await client.Scenes.GetSceneListAsync(new(), ct);                                   // generated request
 await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);  // convenience
-await client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct);         // event stream
 await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
 await client.SceneItems.SetSceneItemEnabledAsync("Intro", "Logo", false, ct);
+
+client.Scenes.CurrentProgramSceneChanged += (_, e) => { };                           // classic event
+await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct)) { break; }
 ```
 
 The groups are `Canvases`, `Config`, `Filters`, `General`, `Inputs`, `MediaInputs`, `Outputs`,
@@ -87,6 +89,75 @@ protocol definition, so a refresh that recategorises a request moves it here too
 
 `WaitForEventAsync` and `CallBatchAsync` stay directly on the client, since neither belongs to one
 category.
+
+## The helper set
+
+Alongside the generated request per protocol request, each group carries conveniences for things
+that otherwise take several calls or a lookup. Every typed settings helper has two overloads: an
+implicit one for library-registered types, and an explicit one taking a `JsonTypeInfo<T>` for
+consumer-provided types. Use the explicit overload to stay AOT-safe.
+
+**Settings read and write**
+
+| Helper | Notes |
+|---|---|
+| `Inputs.GetInputSettingsAsync<T>` / `SetInputSettingsAsync<T>` | Input settings; Set supports `overlay` |
+| `Inputs.GetInputDefaultSettingsAsync<T>` | Defaults for a given input kind |
+| `Filters.GetSourceFilterSettingsAsync<T>` / `SetSourceFilterSettingsAsync<T>` | Filter settings; Set supports `overlay` |
+| `Filters.GetSourceFilterDefaultSettingsAsync<T>` | Defaults for a given filter kind |
+| `Transitions.GetCurrentSceneTransitionSettingsAsync<T>` / `SetCurrentSceneTransitionSettingsAsync<T>` | Transition settings |
+| `Outputs.GetOutputSettingsAsync<T>` / `SetOutputSettingsAsync<T>` | Output settings |
+| `Config.GetStreamServiceSettingsAsync<T>` / `SetStreamServiceSettingsAsync<T>` | Stream service settings |
+
+Most take optional parameters ahead of the cancellation token, so pass it as `cancellationToken: ct`.
+
+**Scenes and scene items**
+
+- `Scenes.SwitchProgramSceneAsync(scene, ct)` and `Scenes.SwitchPreviewSceneAsync(scene, ct)` switch
+  a scene. Optional `transitionName` and `transitionDurationMs` apply to that switch only.
+- `Scenes.SwitchProgramSceneAndWaitAsync` and `Scenes.SwitchPreviewSceneAndWaitAsync` do the same
+  and wait for the event confirming it.
+- `SceneItems.SetSceneItemEnabledAsync(scene, sourceName, isEnabled, ct)` returns the resulting
+  state. Leave `isEnabled` null to toggle. An overload takes the numeric item id instead.
+- `SceneItems.FindSceneItemIdAsync(scene, sourceName, ct)` returns `int?`, null rather than throwing
+  when the item is not in the scene.
+- `Sources.SourceExistsAsync(name, ct)` and `Scenes.SceneExistsAsync(name, ct)` check existence.
+
+**Inputs and filters**
+
+- `Inputs.SetInputTextAsync(name, text, ct)` is shorthand for updating text source content.
+- `Inputs.SetInputVolumeDbAsync(name, db, ct)` and `Inputs.SetInputVolumeMulAsync(name, mul, ct)`
+  each pick one unit. The underlying request accepts either and fails when given neither.
+- `Inputs.SetInputMutesAsync(inputMutes, ct)` sets many mute states in one batch and returns the
+  results, so a caller sees which inputs OBS rejected.
+- `Inputs.CreateInputAsync<T>(kind, name, settings, ...)` creates an input with typed settings.
+- `Filters.CreateSourceFilterAsync<T>(source, filterName, kind, settings, ct)` adds a typed filter.
+
+**Media**
+
+- `MediaInputs.PlayMediaAsync`, `PauseMediaAsync`, `StopMediaAsync` and `RestartMediaAsync` are
+  shorthands over `TriggerMediaActionAsync(name, MediaInputAction, ct)`.
+
+**Screenshots**
+
+- `Sources.GetSourceScreenshotBytesAsync(source, ...)` returns decoded image bytes.
+- `Sources.GetSourceScreenshotOnCanvasBytesAsync(source, ...)` does the same at canvas dimensions.
+- `Sources.SaveSourceScreenshotToFileAsync(source, filePath, ...)` writes straight to disk.
+
+**Outputs**
+
+- `Record.SetRecordActiveAndWaitAsync(activate, timeout, ct)`,
+  `Stream.SetStreamActiveAndWaitAsync(...)` and `Outputs.SetVirtualCamActiveAndWaitAsync(...)` start
+  or stop the output and wait for OBS to confirm, returning the resulting `OutputState`.
+- `Record.IsRecordActiveAsync(ct)`, `Stream.IsStreamActiveAsync(ct)` and
+  `Outputs.IsVirtualCamActiveAsync(ct)` read current state.
+
+**Application state**
+
+- `Config.EnsureProfileActiveAsync(name, ct)` and `Config.EnsureSceneCollectionActiveAsync(name, ct)`
+  switch only if needed, returning whether the target is active rather than throwing when it does
+  not exist.
+- `General.TriggerHotkeyAsync(hotkeyName, ct)` fires a hotkey by name.
 
 ## Observing events
 
@@ -103,12 +174,20 @@ await foreach (var e in client.Scenes.CurrentProgramSceneChangedStream(cancellat
 Streams buffer a bounded number of events and drop the oldest when a consumer falls behind, so a
 slow loop cannot stall the receive loop. Pass `capacity` to change that.
 
-The classic events still work, including alongside a stream over the same event:
+The classic handler sits on the same group, so subscribing and streaming read alike and there is no
+second place to look:
 
 ```csharp
-client.CurrentProgramSceneChanged += (_, e) =>
+client.Scenes.CurrentProgramSceneChanged += (_, e) =>
     Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
 ```
+
+Both work over the same event at once. The group's event is the client's event, so a handler added
+through one can be removed through the other; `client.CurrentProgramSceneChanged` remains for the
+low-level path, the way `CallAsync` remains alongside the generated requests.
+
+Connection lifecycle events stay on the client, since `Connected`, `Disconnected`,
+`ConnectionFailed` and `AuthenticationFailure` belong to no protocol category.
 
 To wait for a single occurrence, use `WaitForEventAsync`. It subscribes before returning, so you can
 start the wait and then trigger the action without racing it:
@@ -123,7 +202,8 @@ var intro = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
 );
 ```
 
-It throws `TimeoutException` when the wait elapses.
+It throws `ObsWebSocketTimeoutException` when the wait elapses, the same type a request
+timeout raises, so one `catch (ObsWebSocketException)` covers both.
 
 ## Common use cases
 
@@ -244,48 +324,154 @@ batch.Add("GetStats");
 batch.Add("SetInputSettings", myJsonElement);
 ```
 
-> `RequestBatchExecutionType.Parallel` is best avoided when you care about the results. OBS collects
-> them in completion order but labels them from the submission order, so every result carries
-> another request's `responseData` and `requestStatus`. That happens before the response leaves OBS,
-> so it cannot be corrected here; references refuse to resolve on such a batch and say why. See
-> [#16](https://github.com/Agash/ObsWebSocket/issues/16).
+### Running requests in parallel
 
-## Typed protocol enums
+`RequestBatchExecutionType.Parallel` works, but OBS mislabels what comes back. It collects results
+in completion order and labels them from the submission order, so on any one row the
+`requestType` and `requestId` belong to a different request than the `requestStatus` and
+`responseData` beside them. That happens before the response leaves OBS, so it cannot be corrected
+here. See [#16](https://github.com/Agash/ObsWebSocket/issues/16).
 
-Protocol enums that travel as strings have a real C# enum, so states can be matched rather than
-compared against constants:
+Only the labelling is wrong. `requestStatus` and `responseData` come from the same object, so each
+row's status does belong to the payload beside it; it is the `requestType` and `requestId` on that
+row that name a different request. `Get` and the indexer therefore throw rather than hand back data
+under the wrong reference, and `TryGet` reports `false`.
+
+Nothing is lost, though, and `Raw` still reaches all of it. `GetData<T>` reads the payload without
+consulting the label, so every response is recoverable as a set:
 
 ```csharp
-client.StreamStateChanged += (_, e) =>
+BatchResults results = await client.CallBatchAsync(
+    batch, executionType: RequestBatchExecutionType.Parallel, haltOnFailure: false, cancellationToken: ct);
+
+foreach (RequestResponsePayload<object> row in results.Raw)
 {
-    string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+    if (!row.RequestStatus.Result)
     {
-        OutputState.Started => "live",
-        OutputState.Starting or OutputState.Reconnecting => "coming up",
-        OutputState.Stopped or OutputState.Stopping => "going down",
-        null => $"unrecognised ({e.EventData.OutputState})",
-        _ => "in between",
-    };
+        Console.WriteLine($"one request failed with {row.RequestStatus.Code}");
+        continue;   // the code is right, the requestType naming it is not
+    }
 
-    Console.WriteLine($"Stream is {what}");
-};
+    // Correct data, from one of the requests in the batch. Which one is not knowable.
+    GetSceneItemListResponseData? data = row.GetData<GetSceneItemListResponseData>();
+}
 ```
 
-Media transport works the same way, with shorthands for the common actions:
+That works when every request in the batch returns the **same** type, so it does not matter which
+row is which, and when the order is not what you needed.
+
+A parallel batch of **different** request types is harder, because nothing on a row tells you which
+type its payload really is. `GetData<T>` will not invent an answer, though: it checks the payload
+against the fields `T` expects and throws `ObsWebSocketSerializationException` when the payload
+carries none of them. So you can try each type you expect and let the mismatch tell you.
+
+That check rejects rather than identifies. Two records that share field names cannot be told apart
+this way, and a payload overlapping the target only partly still passes with the rest of the
+properties left at their defaults. Where two records are field for field identical, which happens
+for five shapes including `GetInputMute` and `ToggleInputMute`, reading one as the other gives the
+right values anyway.
+
+So a heterogeneous parallel batch is possible to unpick but never reliable. Use a serial batch, or
+concurrent requests.
+
+Anything that does not depend on which row is which stays exact:
 
 ```csharp
-await client.MediaInputs.PlayMediaAsync("Stinger", ct);
-await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+ObsBatchBuilder batch = new();
+foreach (string input in inputs)
+{
+    _ = batch.Inputs.SetInputMute(new(inputName: input, inputMuted: true));
+}
+
+BatchResults results = await client.CallBatchAsync(
+    batch, executionType: RequestBatchExecutionType.Parallel, cancellationToken: ct);
+
+bool everythingWorked = results.AllSucceeded();   // reliable: order does not change the verdict
+int failureCount = results.GetFailures().Count(); // reliable count, unreliable names
 ```
 
-The wire constants remain available as `const` strings on `ObsOutputState` and `ObsMediaInputAction`,
-and `ToWireValue()` converts an enum back.
+So `Parallel` suits a set of writes you want applied as fast as possible, where you only need to
+know whether they all took. It does not suit reading anything back.
 
-## Numbers
+When you need results attributed, use concurrent requests rather than a parallel batch. The client
+multiplexes on the request id, so anything in flight at once is matched back to its own caller:
 
-The protocol has a single `Number` type because JSON does, so a scene item id and a volume
-multiplier look identical in the definition. Fields that hold whole numbers are generated as `int`
-or `long` rather than `double`:
+```csharp
+Task<GetVersionResponseData> version = client.General.GetVersionAsync(ct);
+Task<GetStatsResponseData> stats = client.General.GetStatsAsync(ct);
+Task<GetSceneItemListResponseData>[] perScene =
+[
+    .. sceneNames.Select(n => client.SceneItems.GetSceneItemListAsync(new(sceneName: n), ct)),
+];
+
+await Task.WhenAll([version, stats, .. perScene.Cast<Task>()]);
+
+Console.WriteLine(version.Result.ObsVersion);   // each result belongs to its own request
+```
+
+That costs one round trip per request rather than one for the set. Use a serial batch when the round
+trip is what you are saving, and concurrent requests when you need the answers attributed.
+
+## Dropping to the low level
+
+Nothing above is a wall. Every generated request is a thin wrapper over the same primitives, and
+they stay available for a request this build does not model, an OBS newer than this library, or a
+vendor plugin:
+
+```csharp
+// A request with a reference type response.
+GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>("GetVersion", null, cancellationToken: ct);
+
+// A value type response, JsonElement included. CallAsync is constrained to classes, so a struct
+// response goes through CallAsyncValue.
+JsonElement? raw = await client.CallAsyncValue<JsonElement>("GetStats", null, cancellationToken: ct);
+
+// Request data is written through a source generated context, so it must be a JsonElement, a type
+// the library knows, or a type you supply metadata for. An anonymous object has no metadata
+// anywhere and throws ObsWebSocketSerializationException.
+
+// Your own type, with your own context. AOT safe, and nothing to hand build.
+[JsonSerializable(typeof(MyRequest))]
+internal sealed partial class MyContext : JsonSerializerContext;
+
+JsonElement? answer = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", new MyRequest(1), MyContext.Default.MyRequest, cancellationToken: ct);
+
+// Or a JsonElement built by hand, when a one-off payload does not deserve a type.
+using JsonDocument body = JsonDocument.Parse("""{"someField":1}""");
+JsonElement? viaElement = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", body.RootElement, cancellationToken: ct);
+
+// A batch assembled by hand, without the typed builder.
+List<RequestResponsePayload<object>> results = await client.CallBatchAsync(
+    [new BatchRequestItem("GetVersion", null), new BatchRequestItem("GetStats", null)],
+    executionType: RequestBatchExecutionType.SerialRealtime,
+    cancellationToken: ct);
+
+foreach (RequestResponsePayload<object> result in results)
+{
+    GetVersionResponseData? data = result.GetData<GetVersionResponseData>();
+}
+```
+
+Those two are the AOT-safe ways to build a payload. `JsonSerializer.SerializeToElement` without a
+`JsonTypeInfo`, and the `JsonNode` and `JsonObject` routes, all work at runtime but carry `IL2026`
+and `IL3050`, so they are not options under Native AOT.
+
+The same applies to events and enums: `client.SceneCreated` remains alongside
+`client.Scenes.SceneCreated`, and `ToWireValue()` / `FromWireValue()` convert an enum to and from
+the protocol string when you are building a payload by hand.
+
+## Protocol types
+
+The protocol definition is looser than C#: it has one numeric type because JSON does, and it types
+enum-valued fields as plain strings. The generated surface narrows both, so callers get the C# type
+rather than the wire representation.
+
+**Numbers.** A scene item id and a volume multiplier are both `Number` with a `>= 0` restriction, so
+which ones are integral is not recoverable from the definition. Fields holding whole numbers are
+generated as `int` or `long`, from an explicit list in the generator rather than a rule over field
+names, so a volume can never be truncated by a naming coincidence:
 
 ```csharp
 int id = await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct) ?? throw new(...);
@@ -295,8 +481,36 @@ long bytes = (await client.Stream.GetStreamStatusAsync(ct)).OutputBytes;
 double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputVolumeMul;
 ```
 
-Which fields those are is an explicit list in the generator, not a rule over field names, so a
-volume can never be silently truncated by a naming coincidence.
+**Enums.** Fields carrying a protocol enum are that enum, on both the read and the write side, so
+there is nothing to convert at the call site:
+
+```csharp
+client.Outputs.StreamStateChanged += (_, e) =>
+{
+    string what = e.EventData.OutputState switch
+    {
+        OutputState.Started => "live",
+        OutputState.Starting or OutputState.Reconnecting => "coming up",
+        OutputState.Stopped or OutputState.Stopping => "going down",
+        OutputState.Unknown => "in a state this build does not recognise",
+        _ => "in between",
+    };
+};
+
+await client.MediaInputs.TriggerMediaActionAsync("Stinger", MediaInputAction.Restart, ct);
+```
+
+A value OBS sends that this build does not know maps to the enum's zero member rather than throwing,
+so a state added by a newer OBS does not fail the whole message.
+
+This covers the enums the protocol declares. `mediaState`, `monitorType`, `sceneItemBlendMode` and
+`inputKind` carry fixed vocabularies too, but the protocol types them as strings and never lists
+their values, so they stay strings rather than being given an enum this library would have to keep
+correct by hand.
+
+The wire values also remain as `const` strings on `ObsOutputState` and `ObsMediaInputAction`, and
+`ToWireValue()` converts an enum back, for payloads built by hand. See
+[Dropping to the low level](#dropping-to-the-low-level).
 
 ## Host integration
 
@@ -359,7 +573,7 @@ try
 }
 catch (ObsWebSocketRequestException ex)
 {
-    Console.WriteLine($"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}");
+    Console.WriteLine($"{ex.RequestType} failed with {ex.StatusCode}: {ex.Comment}");
 }
 catch (ObsWebSocketTimeoutException)
 {
@@ -390,6 +604,15 @@ raises `ObsWebSocketException` rather than handing back null.
 Reconnect delays grow by `ReconnectBackoffMultiplier`, are capped at `MaxReconnectDelayMs`, and carry
 jitter so several clients recovering from one outage do not retry in lockstep. Authentication
 failures are never retried, since they cannot succeed on a second attempt.
+
+`WithReconnectPipeline()` registers the default pipeline explicitly, which is worth doing when a
+host has its own resilience configuration and you want this client's to be visible alongside it:
+
+```csharp
+builder.AddObsWebSocketClient("obs")
+       .WithAutoConnect()
+       .WithReconnectPipeline();
+```
 
 To replace the policy outright rather than tune those options, register your own pipeline under
 `ObsWebSocketResilience.ReconnectPipelineKey` after adding the client.
@@ -426,10 +649,13 @@ identically on either, and the validation suite exercises both.
 - **One-shot mode**: `ObsWebSocket.Example run-transport-tests`
 
 `run-transport-tests` creates its own scene and input, so it does not depend on a particular OBS
-layout, and removes them afterwards. On each transport it asserts real values for the settings modes,
-event streams and buffering, `WaitForEventAsync`, the typed batch builder including duplicate request
-types, partial failure and truncation, typed protocol enums, screenshots, and the scene, input,
-volume and output helpers.
+layout, and removes them afterwards. It runs the same checks on JSON and on MessagePack, asserting
+real values rather than that a call returned: the three settings modes, event streams and their
+buffering, `WaitForEventAsync`, the typed batch builder including duplicate request types, partial
+failure and truncation, a parallel batch and what survives its mispairing, concurrent requests
+keeping their own results, the low level `Add` and `CallAsync` path, typed protocol enums, integer
+fields round tripping in both directions, screenshots in memory and on disk, and the scene, preview,
+input, mute, volume, media, transition and output helpers.
 
 ## Native AOT
 

@@ -41,7 +41,7 @@ public sealed partial record GetSceneItemBlendModeResponseData
     /// </summary>
     [JsonPropertyName("sceneItemBlendMode")]
     [Key("sceneItemBlendMode")]
-    public string? SceneItemBlendMode { get; init; }
+    public required string SceneItemBlendMode { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -51,7 +51,8 @@ public sealed partial record GetSceneItemBlendModeResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneItemBlendModeResponseData(string? sceneItemBlendMode = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneItemBlendModeResponseData(string sceneItemBlendMode)
     {
         this.SceneItemBlendMode = sceneItemBlendMode;
     }

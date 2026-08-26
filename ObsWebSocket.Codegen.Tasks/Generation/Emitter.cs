@@ -338,6 +338,16 @@ internal static partial class Emitter
 
         string prefix = FindCommonMemberPrefix([.. members.Select(m => m.Member)]);
 
+        // The first member is the enum's zero value, which is what an unrecognised wire value
+        // falls back to. Both protocol enums name theirs sensibly (Unknown, None).
+        string firstMember = members[0].Member;
+        if (prefix.Length > 0 && firstMember.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            firstMember = firstMember.Substring(prefix.Length);
+        }
+
+        string fallbackMember = SnakeToPascalCase(firstMember);
+
         StringBuilder builder = BuildSourceHeader(
             "// Type: Typed Enum for a string-valued protocol enum"
         );
@@ -427,7 +437,72 @@ internal static partial class Emitter
         builder.AppendLine("        _ => null,");
         builder.AppendLine("    };");
         builder.AppendLine("}");
+        builder.AppendLine();
+        AppendWireConverters(builder, enumName, fallbackMember);
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Emits the converters that let a generated property be the enum itself rather than the wire
+    /// string, one for each transport.
+    /// </summary>
+    /// <remarks>
+    /// Both map an unrecognised value onto the enum's zero member rather than throwing, so a state
+    /// added by a newer OBS degrades to an unknown value instead of failing the whole message.
+    /// </remarks>
+    private static void AppendWireConverters(
+        StringBuilder builder,
+        string enumName,
+        string fallbackMember
+    )
+    {
+        builder.AppendLine("/// <summary>");
+        builder.AppendLine(
+            $"/// Reads and writes <see cref=\"{enumName}\"/> as the protocol string in JSON."
+        );
+        builder.AppendLine("/// </summary>");
+        builder.AppendLine(
+            $"public sealed class {enumName}JsonConverter : System.Text.Json.Serialization.JsonConverter<{enumName}>"
+        );
+        builder.AppendLine("{");
+        builder.AppendLine("    /// <inheritdoc/>");
+        builder.AppendLine(
+            $"    public override {enumName} Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>"
+        );
+        builder.AppendLine(
+            $"        {enumName}Extensions.FromWireValue(reader.GetString()) ?? {enumName}.{fallbackMember};"
+        );
+        builder.AppendLine();
+        builder.AppendLine("    /// <inheritdoc/>");
+        builder.AppendLine(
+            $"    public override void Write(System.Text.Json.Utf8JsonWriter writer, {enumName} value, System.Text.Json.JsonSerializerOptions options) =>"
+        );
+        builder.AppendLine("        writer.WriteStringValue(value.ToWireValue());");
+        builder.AppendLine("}");
+        builder.AppendLine();
+        builder.AppendLine("/// <summary>");
+        builder.AppendLine(
+            $"/// Reads and writes <see cref=\"{enumName}\"/> as the protocol string in MessagePack."
+        );
+        builder.AppendLine("/// </summary>");
+        builder.AppendLine(
+            $"public sealed class {enumName}MessagePackFormatter : MessagePack.Formatters.IMessagePackFormatter<{enumName}>"
+        );
+        builder.AppendLine("{");
+        builder.AppendLine("    /// <inheritdoc/>");
+        builder.AppendLine(
+            $"    public {enumName} Deserialize(ref MessagePack.MessagePackReader reader, MessagePack.MessagePackSerializerOptions options) =>"
+        );
+        builder.AppendLine(
+            $"        {enumName}Extensions.FromWireValue(reader.ReadString()) ?? {enumName}.{fallbackMember};"
+        );
+        builder.AppendLine();
+        builder.AppendLine("    /// <inheritdoc/>");
+        builder.AppendLine(
+            $"    public void Serialize(ref MessagePack.MessagePackWriter writer, {enumName} value, MessagePack.MessagePackSerializerOptions options) =>"
+        );
+        builder.AppendLine("        writer.Write(value.ToWireValue());");
+        builder.AppendLine("}");
     }
 
     /// <summary>

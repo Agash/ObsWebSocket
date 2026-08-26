@@ -29,35 +29,35 @@ public sealed partial record GetVersionResponseData
     /// </summary>
     [JsonPropertyName("availableRequests")]
     [Key("availableRequests")]
-    public System.Collections.Generic.List<string>? AvailableRequests { get; init; }
+    public required System.Collections.Generic.List<string> AvailableRequests { get; init; }
 
     /// <summary>
     /// Current OBS Studio version
     /// </summary>
     [JsonPropertyName("obsVersion")]
     [Key("obsVersion")]
-    public string? ObsVersion { get; init; }
+    public required string ObsVersion { get; init; }
 
     /// <summary>
     /// Current obs-websocket version
     /// </summary>
     [JsonPropertyName("obsWebSocketVersion")]
     [Key("obsWebSocketVersion")]
-    public string? ObsWebSocketVersion { get; init; }
+    public required string ObsWebSocketVersion { get; init; }
 
     /// <summary>
     /// Name of the platform. Usually `windows`, `macos`, or `ubuntu` (linux flavor). Not guaranteed to be any of those
     /// </summary>
     [JsonPropertyName("platform")]
     [Key("platform")]
-    public string? Platform { get; init; }
+    public required string Platform { get; init; }
 
     /// <summary>
     /// Description of the platform, like `Windows 10 (10.0)`
     /// </summary>
     [JsonPropertyName("platformDescription")]
     [Key("platformDescription")]
-    public string? PlatformDescription { get; init; }
+    public required string PlatformDescription { get; init; }
 
     /// <summary>
     /// Current latest obs-websocket RPC version
@@ -71,7 +71,7 @@ public sealed partial record GetVersionResponseData
     /// </summary>
     [JsonPropertyName("supportedImageFormats")]
     [Key("supportedImageFormats")]
-    public System.Collections.Generic.List<string>? SupportedImageFormats { get; init; }
+    public required System.Collections.Generic.List<string> SupportedImageFormats { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -82,7 +82,7 @@ public sealed partial record GetVersionResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetVersionResponseData(int rpcVersion, string? obsVersion = null, string? obsWebSocketVersion = null, System.Collections.Generic.List<string>? availableRequests = null, System.Collections.Generic.List<string>? supportedImageFormats = null, string? platform = null, string? platformDescription = null)
+    public GetVersionResponseData(string obsVersion, string obsWebSocketVersion, int rpcVersion, System.Collections.Generic.List<string> availableRequests, System.Collections.Generic.List<string> supportedImageFormats, string platform, string platformDescription)
     {
         this.ObsVersion = obsVersion;
         this.ObsWebSocketVersion = obsWebSocketVersion;

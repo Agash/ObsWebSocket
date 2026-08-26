@@ -228,6 +228,25 @@ internal static class TestUtils
     /// <summary>
     /// Invokes the private ProcessIncomingMessage method on the client instance using reflection.
     /// </summary>
+    /// <summary>
+    /// A fully populated GetVersion response. Response records name every field OBS always sends
+    /// as required, so a test that only cares about one of them still has to supply the rest.
+    /// </summary>
+    /// <param name="obsVersion">The version to report.</param>
+    internal static ObsWebSocket.Core.Protocol.Responses.GetVersionResponseData SampleVersion(
+        string obsVersion = "32.2.2"
+    ) =>
+        new()
+        {
+            ObsVersion = obsVersion,
+            ObsWebSocketVersion = "5.7.0",
+            RpcVersion = 1,
+            AvailableRequests = [],
+            SupportedImageFormats = [],
+            Platform = "windows",
+            PlatformDescription = "Windows 11",
+        };
+
     internal static void InvokeProcessIncomingMessage(
         ObsWebSocketClient client,
         object messageObject

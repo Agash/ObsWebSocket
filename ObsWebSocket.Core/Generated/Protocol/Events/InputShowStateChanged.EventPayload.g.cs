@@ -31,14 +31,14 @@ public sealed partial record InputShowStateChangedPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// UUID of the input
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>
     /// Whether the input is showing
@@ -56,7 +56,7 @@ public sealed partial record InputShowStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputShowStateChangedPayload(bool videoShowing, string? inputName = null, string? inputUuid = null)
+    public InputShowStateChangedPayload(string inputName, string inputUuid, bool videoShowing)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

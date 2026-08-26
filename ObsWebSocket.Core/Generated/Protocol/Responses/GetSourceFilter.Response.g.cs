@@ -43,7 +43,7 @@ public sealed partial record GetSourceFilterResponseData
     /// </summary>
     [JsonPropertyName("filterKind")]
     [Key("filterKind")]
-    public string? FilterKind { get; init; }
+    public required string FilterKind { get; init; }
 
     /// <summary>
     /// Settings object associated with the filter
@@ -61,7 +61,7 @@ public sealed partial record GetSourceFilterResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetSourceFilterResponseData(bool filterEnabled, int filterIndex, string? filterKind = null, System.Text.Json.JsonElement? filterSettings = null)
+    public GetSourceFilterResponseData(bool filterEnabled, int filterIndex, string filterKind, System.Text.Json.JsonElement? filterSettings = default)
     {
         this.FilterEnabled = filterEnabled;
         this.FilterIndex = filterIndex;

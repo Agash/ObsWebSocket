@@ -47,10 +47,7 @@ public sealed class BatchResultTests
     [TestMethod]
     public void GetRequiredData_JsonPayload_Deserializes()
     {
-        RequestResponsePayload<object> result = JsonResult(
-            "GetVersion",
-            new GetVersionResponseData { ObsVersion = "32.2.2", RpcVersion = 1 }
-        );
+        RequestResponsePayload<object> result = JsonResult("GetVersion", TestUtils.SampleVersion());
 
         Assert.AreEqual("32.2.2", result.GetRequiredData<GetVersionResponseData>().ObsVersion);
     }
@@ -61,7 +58,7 @@ public sealed class BatchResultTests
         // The MessagePack transport hands back raw payload bytes rather than a JsonElement.
         RequestResponsePayload<object> result = MsgPackResult(
             "GetVersion",
-            new GetVersionResponseData { ObsVersion = "32.2.2", RpcVersion = 1 }
+            TestUtils.SampleVersion()
         );
 
         Assert.AreEqual("32.2.2", result.GetRequiredData<GetVersionResponseData>().ObsVersion);
@@ -90,7 +87,7 @@ public sealed class BatchResultTests
             result.GetRequiredData<GetSceneItemListResponseData>()
         );
 
-        Assert.AreEqual(600, ex.Status?.Code);
+        Assert.AreEqual(600, (int?)ex.StatusCode);
         Assert.AreEqual("GetSceneItemList", ex.RequestType);
     }
 
@@ -113,10 +110,7 @@ public sealed class BatchResultTests
     {
         List<RequestResponsePayload<object>> results =
         [
-            JsonResult(
-                "GetVersion",
-                new GetVersionResponseData { ObsVersion = "1", RpcVersion = 1 }
-            ),
+            JsonResult("GetVersion", TestUtils.SampleVersion("1")),
             new("GetStats", "GetStats_1", new RequestStatus(false, 604, "nope"), null),
         ];
 

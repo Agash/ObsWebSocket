@@ -261,9 +261,14 @@ internal static partial class Emitter
             }
         }
 
+        // A String field that carries a protocol enum is generated as that enum, with converters
+        // that map to and from the wire value on both transports.
+        string? stringEnum =
+            obsType == "String" ? StringEnumFieldTable.MapStringEnum(fieldName) : null;
+
         string? mappedType = obsType switch
         {
-            "String" => "string",
+            "String" => stringEnum is null ? "string" : $"{GeneratedEnumsNamespace}.{stringEnum}",
             "Number" => numberType,
             "Boolean" => "bool",
             "Uuid" => "string",

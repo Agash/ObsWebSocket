@@ -36,7 +36,7 @@ public sealed partial record InputCreatedPayload
     /// </summary>
     [JsonPropertyName("inputKind")]
     [Key("inputKind")]
-    public string? InputKind { get; init; }
+    public required string InputKind { get; init; }
 
     /// <summary>
     /// Bitflag value for the caps that an input supports. See obs_source_info.output_flags in the libobs docs
@@ -50,7 +50,7 @@ public sealed partial record InputCreatedPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// The settings configured to the input when it was created
@@ -64,14 +64,14 @@ public sealed partial record InputCreatedPayload
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>
     /// The unversioned kind of input (aka no `_v2` stuff)
     /// </summary>
     [JsonPropertyName("unversionedInputKind")]
     [Key("unversionedInputKind")]
-    public string? UnversionedInputKind { get; init; }
+    public required string UnversionedInputKind { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -82,7 +82,7 @@ public sealed partial record InputCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputCreatedPayload(long inputKindCaps, string? inputName = null, string? inputUuid = null, string? inputKind = null, string? unversionedInputKind = null, System.Text.Json.JsonElement? inputSettings = null, System.Text.Json.JsonElement? defaultInputSettings = null)
+    public InputCreatedPayload(string inputName, string inputUuid, string inputKind, string unversionedInputKind, long inputKindCaps, System.Text.Json.JsonElement? inputSettings = default, System.Text.Json.JsonElement? defaultInputSettings = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

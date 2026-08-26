@@ -39,7 +39,7 @@ public sealed partial record CustomEventPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CustomEventPayload(System.Text.Json.JsonElement? eventData = null)
+    public CustomEventPayload(System.Text.Json.JsonElement? eventData = default)
     {
         this.EventData = eventData;
     }

@@ -31,7 +31,7 @@ public sealed partial record SceneListChangedPayload
     /// </summary>
     [JsonPropertyName("scenes")]
     [Key("scenes")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? Scenes { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub> Scenes { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -41,7 +41,8 @@ public sealed partial record SceneListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneListChangedPayload(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SceneListChangedPayload(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub> scenes)
     {
         this.Scenes = scenes;
     }

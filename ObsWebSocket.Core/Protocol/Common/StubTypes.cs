@@ -14,17 +14,17 @@ public sealed class SceneStub
     /// <summary>Scene name.</summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>Scene UUID.</summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Scene index position.</summary>
     [JsonPropertyName("sceneIndex")]
     [Key("sceneIndex")]
-    public double? SceneIndex { get; init; }
+    public required int SceneIndex { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -48,126 +48,126 @@ public sealed class SceneItemTransformStub
     /// </summary>
     [JsonPropertyName("positionX")]
     [Key("positionX")]
-    public double? PositionX { get; init; }
+    public required double PositionX { get; init; }
 
     /// <summary>
     /// Position X value.
     /// </summary>
     [JsonPropertyName("positionY")]
     [Key("positionY")]
-    public double? PositionY { get; init; }
+    public required double PositionY { get; init; }
 
     /// <summary>
     /// Rotation value.
     /// </summary>
     [JsonPropertyName("rotation")]
     [Key("rotation")]
-    public double? Rotation { get; init; }
+    public required double Rotation { get; init; }
 
     /// <summary>
     /// Scale X value.
     /// </summary>
     [JsonPropertyName("scaleX")]
     [Key("scaleX")]
-    public double? ScaleX { get; init; }
+    public required double ScaleX { get; init; }
 
     /// <summary>
     /// Scale Y value.
     /// </summary>
     [JsonPropertyName("scaleY")]
     [Key("scaleY")]
-    public double? ScaleY { get; init; }
+    public required double ScaleY { get; init; }
 
     /// <summary>
     /// Width value.
     /// </summary>
     [JsonPropertyName("width")]
     [Key("width")]
-    public double? Width { get; init; }
+    public required double Width { get; init; }
 
     /// <summary>
     /// Height value.
     /// </summary>
     [JsonPropertyName("height")]
     [Key("height")]
-    public double? Height { get; init; }
+    public required double Height { get; init; }
 
     /// <summary>
     /// Source width value.
     /// </summary>
     [JsonPropertyName("sourceWidth")]
     [Key("sourceWidth")]
-    public double? SourceWidth { get; init; }
+    public required double SourceWidth { get; init; }
 
     /// <summary>
     /// Source height value.
     /// </summary>
     [JsonPropertyName("sourceHeight")]
     [Key("sourceHeight")]
-    public double? SourceHeight { get; init; }
+    public required double SourceHeight { get; init; }
 
     /// <summary>
     /// Alignment value.
     /// </summary>
     [JsonPropertyName("alignment")]
     [Key("alignment")]
-    public double? Alignment { get; init; }
+    public required int Alignment { get; init; }
 
     /// <summary>
     /// Bounds type value.
     /// </summary>
     [JsonPropertyName("boundsType")]
     [Key("boundsType")]
-    public string? BoundsType { get; init; }
+    public required string BoundsType { get; init; }
 
     /// <summary>
     /// Bounds alignment value.
     /// </summary>
     [JsonPropertyName("boundsAlignment")]
     [Key("boundsAlignment")]
-    public double? BoundsAlignment { get; init; }
+    public required int BoundsAlignment { get; init; }
 
     /// <summary>
     /// Bounds width value.
     /// </summary>
     [JsonPropertyName("boundsWidth")]
     [Key("boundsWidth")]
-    public double? BoundsWidth { get; init; }
+    public required double BoundsWidth { get; init; }
 
     /// <summary>
     /// Bounds height value.
     /// </summary>
     [JsonPropertyName("boundsHeight")]
     [Key("boundsHeight")]
-    public double? BoundsHeight { get; init; }
+    public required double BoundsHeight { get; init; }
 
     /// <summary>
     /// Crop left value.
     /// </summary>
     [JsonPropertyName("cropLeft")]
     [Key("cropLeft")]
-    public double? CropLeft { get; init; }
+    public required int CropLeft { get; init; }
 
     /// <summary>
     /// Crop top value.
     /// </summary>
     [JsonPropertyName("cropTop")]
     [Key("cropTop")]
-    public double? CropTop { get; init; }
+    public required int CropTop { get; init; }
 
     /// <summary>
     /// Crop right value.
     /// </summary>
     [JsonPropertyName("cropRight")]
     [Key("cropRight")]
-    public double? CropRight { get; init; }
+    public required int CropRight { get; init; }
 
     /// <summary>
     /// Crop bottom value.
     /// </summary>
     [JsonPropertyName("cropBottom")]
     [Key("cropBottom")]
-    public double? CropBottom { get; init; }
+    public required int CropBottom { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -189,32 +189,32 @@ public sealed class SceneItemStub
     /// <summary>Scene item ID.</summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public double? SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>Scene item index position.</summary>
     [JsonPropertyName("sceneItemIndex")]
     [Key("sceneItemIndex")]
-    public double? SceneItemIndex { get; init; }
+    public required int SceneItemIndex { get; init; }
 
     /// <summary>Name of the source associated with the scene item.</summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>UUID of the source associated with the scene item.</summary>
     [JsonPropertyName("sourceUuid")]
     [Key("sourceUuid")]
-    public string? SourceUuid { get; init; }
+    public required string SourceUuid { get; init; }
 
     /// <summary>Whether the scene item is enabled (visible).</summary>
     [JsonPropertyName("sceneItemEnabled")]
     [Key("sceneItemEnabled")]
-    public bool? SceneItemEnabled { get; init; }
+    public required bool SceneItemEnabled { get; init; }
 
     /// <summary>Whether the scene item is locked.</summary>
     [JsonPropertyName("sceneItemLocked")]
     [Key("sceneItemLocked")]
-    public bool? SceneItemLocked { get; init; }
+    public required bool SceneItemLocked { get; init; }
 
     /// <summary>Whether the source is a group.</summary>
     [JsonPropertyName("isGroup")]
@@ -224,7 +224,7 @@ public sealed class SceneItemStub
     /// <summary>Transform data for the scene item.</summary>
     [JsonPropertyName("sceneItemTransform")]
     [Key("sceneItemTransform")]
-    public SceneItemTransformStub? SceneItemTransform { get; init; } // Made nullable for safety
+    public required SceneItemTransformStub SceneItemTransform { get; init; } // Made nullable for safety
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -246,22 +246,22 @@ public sealed class FilterStub
     /// <summary>Filter name.</summary>
     [JsonPropertyName("filterName")]
     [Key("filterName")]
-    public string? FilterName { get; init; }
+    public required string FilterName { get; init; }
 
     /// <summary>Filter kind.</summary>
     [JsonPropertyName("filterKind")]
     [Key("filterKind")]
-    public string? FilterKind { get; init; }
+    public required string FilterKind { get; init; }
 
     /// <summary>Filter index position.</summary>
     [JsonPropertyName("filterIndex")]
     [Key("filterIndex")]
-    public double? FilterIndex { get; init; }
+    public required int FilterIndex { get; init; }
 
     /// <summary>Whether the filter is enabled.</summary>
     [JsonPropertyName("filterEnabled")]
     [Key("filterEnabled")]
-    public bool? FilterEnabled { get; init; }
+    public required bool FilterEnabled { get; init; }
 
     /// <summary>Filter settings object.</summary>
     [JsonPropertyName("filterSettings")]
@@ -288,22 +288,22 @@ public sealed class InputStub
     /// <summary>Input name.</summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>Input UUID.</summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>Input kind.</summary>
     [JsonPropertyName("inputKind")]
     [Key("inputKind")]
-    public string? InputKind { get; init; }
+    public required string InputKind { get; init; }
 
     /// <summary>Unversioned input kind.</summary>
     [JsonPropertyName("unversionedInputKind")]
     [Key("unversionedInputKind")]
-    public string? UnversionedInputKind { get; init; }
+    public required string UnversionedInputKind { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -325,27 +325,27 @@ public sealed class TransitionStub
     /// <summary>Transition name.</summary>
     [JsonPropertyName("transitionName")]
     [Key("transitionName")]
-    public string? TransitionName { get; init; }
+    public required string TransitionName { get; init; }
 
     /// <summary>Transition UUID.</summary>
     [JsonPropertyName("transitionUuid")]
     [Key("transitionUuid")]
-    public string? TransitionUuid { get; init; }
+    public required string TransitionUuid { get; init; }
 
     /// <summary>Transition kind.</summary>
     [JsonPropertyName("transitionKind")]
     [Key("transitionKind")]
-    public string? TransitionKind { get; init; }
+    public required string TransitionKind { get; init; }
 
     /// <summary>Whether the transition is configurable.</summary>
     [JsonPropertyName("transitionConfigurable")]
     [Key("transitionConfigurable")]
-    public bool? TransitionConfigurable { get; init; }
+    public required bool TransitionConfigurable { get; init; }
 
     /// <summary>Whether the transition duration is fixed.</summary>
     [JsonPropertyName("transitionFixed")]
     [Key("transitionFixed")]
-    public bool? TransitionFixed { get; init; }
+    public required bool TransitionFixed { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -367,27 +367,27 @@ public sealed class OutputStub
     /// <summary>Output name.</summary>
     [JsonPropertyName("outputName")]
     [Key("outputName")]
-    public string? OutputName { get; init; }
+    public required string OutputName { get; init; }
 
     /// <summary>Output kind.</summary>
     [JsonPropertyName("outputKind")]
     [Key("outputKind")]
-    public string? OutputKind { get; init; }
+    public required string OutputKind { get; init; }
 
     /// <summary>Whether the output is active.</summary>
     [JsonPropertyName("outputActive")]
     [Key("outputActive")]
-    public bool? OutputActive { get; init; }
+    public required bool OutputActive { get; init; }
 
     /// <summary>Output width.</summary>
     [JsonPropertyName("outputWidth")]
     [Key("outputWidth")]
-    public double? OutputWidth { get; init; }
+    public required int OutputWidth { get; init; }
 
     /// <summary>Output height.</summary>
     [JsonPropertyName("outputHeight")]
     [Key("outputHeight")]
-    public double? OutputHeight { get; init; }
+    public required int OutputHeight { get; init; }
 
     /// <summary>Output settings.</summary>
     [JsonPropertyName("outputSettings")]
@@ -414,32 +414,32 @@ public sealed class MonitorStub
     /// <summary>Monitor name.</summary>
     [JsonPropertyName("monitorName")]
     [Key("monitorName")]
-    public string? MonitorName { get; init; }
+    public required string MonitorName { get; init; }
 
     /// <summary>Monitor index.</summary>
     [JsonPropertyName("monitorIndex")]
     [Key("monitorIndex")]
-    public double? MonitorIndex { get; init; }
+    public required int MonitorIndex { get; init; }
 
     /// <summary>Monitor width.</summary>
     [JsonPropertyName("monitorWidth")]
     [Key("monitorWidth")]
-    public double? MonitorWidth { get; init; }
+    public required int MonitorWidth { get; init; }
 
     /// <summary>Monitor height.</summary>
     [JsonPropertyName("monitorHeight")]
     [Key("monitorHeight")]
-    public double? MonitorHeight { get; init; }
+    public required int MonitorHeight { get; init; }
 
     /// <summary>Monitor position X.</summary>
     [JsonPropertyName("monitorPositionX")]
     [Key("monitorPositionX")]
-    public double? MonitorPositionX { get; init; }
+    public required int MonitorPositionX { get; init; }
 
     /// <summary>Monitor position Y.</summary>
     [JsonPropertyName("monitorPositionY")]
     [Key("monitorPositionY")]
-    public double? MonitorPositionY { get; init; }
+    public required int MonitorPositionY { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]

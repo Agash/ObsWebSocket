@@ -29,14 +29,14 @@ public sealed partial record GetProfileListResponseData
     /// </summary>
     [JsonPropertyName("currentProfileName")]
     [Key("currentProfileName")]
-    public string? CurrentProfileName { get; init; }
+    public required string CurrentProfileName { get; init; }
 
     /// <summary>
     /// Array of all available profiles
     /// </summary>
     [JsonPropertyName("profiles")]
     [Key("profiles")]
-    public System.Collections.Generic.List<string>? Profiles { get; init; }
+    public required System.Collections.Generic.List<string> Profiles { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record GetProfileListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetProfileListResponseData(string? currentProfileName = null, System.Collections.Generic.List<string>? profiles = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetProfileListResponseData(string currentProfileName, System.Collections.Generic.List<string> profiles)
     {
         this.CurrentProfileName = currentProfileName;
         this.Profiles = profiles;

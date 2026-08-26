@@ -11,7 +11,12 @@ using ObsWebSocket.Core.Protocol.Responses;
 namespace ObsWebSocket.Tests;
 
 [JsonSerializable(typeof(OverlaySettings))]
+[JsonSerializable(typeof(MyRequest))]
 internal partial class MyContext : JsonSerializerContext { }
+
+/// <summary>A request payload the library does not model, described by the consumer's context.</summary>
+/// <param name="SomeField">An arbitrary field.</param>
+internal sealed record MyRequest([property: JsonPropertyName("someField")] int SomeField);
 
 internal sealed record OverlaySettings(
     [property: JsonPropertyName("url")] string? Url = null,
@@ -164,7 +169,7 @@ internal static class ReadmeCompileCheck
             break;
         }
 
-        client.CurrentProgramSceneChanged += (_, e) => _ = e.EventData.SceneName;
+        client.Scenes.CurrentProgramSceneChanged += (_, e) => _ = e.EventData.SceneName;
 
         _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(ct);
         _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
@@ -208,14 +213,14 @@ internal static class ReadmeCompileCheck
 
     internal static void TypedEnums(ObsWebSocketClient client)
     {
-        client.StreamStateChanged += (_, e) =>
+        client.Outputs.StreamStateChanged += (_, e) =>
         {
-            string what = OutputStateExtensions.FromWireValue(e.EventData.OutputState) switch
+            string what = e.EventData.OutputState switch
             {
                 OutputState.Started => "live",
                 OutputState.Starting or OutputState.Reconnecting => "coming up",
                 OutputState.Stopped or OutputState.Stopping => "going down",
-                null => $"unrecognised ({e.EventData.OutputState})",
+                OutputState.Unknown => "in an unrecognised state",
                 _ => "in between",
             };
 
@@ -268,7 +273,7 @@ internal static class ReadmeCompileCheck
         }
         catch (ObsWebSocketRequestException ex)
         {
-            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+            _ = $"{ex.RequestType} failed with {(int?)ex.StatusCode}: {ex.Comment}";
         }
         catch (ObsWebSocketTimeoutException)
         {
@@ -307,11 +312,178 @@ internal static class ReadmeCompileCheck
         _ = $"{bytes} {volume}";
     }
 
+    internal static async Task DroppingToTheWireAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        string wire = MediaInputAction.Restart.ToWireValue();
+
+        // Request data has to be a JsonElement or a type the serializer context knows. An
+        // anonymous object compiles and then throws at runtime, so the README does not use one.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
+        System.Text.Json.JsonElement? raw =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                body.RootElement,
+                cancellationToken: ct
+            );
+        _ = $"{wire} {raw}";
+    }
+
+    internal static async Task ParallelRecoveryAsync(
+        ObsWebSocketClient client,
+        ObsBatchBuilder batch,
+        CancellationToken ct
+    )
+    {
+        BatchResults results = await client.CallBatchAsync(
+            batch,
+            executionType: RequestBatchExecutionType.Parallel,
+            haltOnFailure: false,
+            cancellationToken: ct
+        );
+
+        foreach (RequestResponsePayload<object> row in results.Raw)
+        {
+            if (!row.RequestStatus.Result)
+            {
+                _ = $"one request failed with {row.RequestStatus.Code}";
+                continue;
+            }
+
+            GetSceneItemListResponseData? data = row.GetData<GetSceneItemListResponseData>();
+            _ = data?.SceneItems?.Count;
+        }
+
+        _ = results.AllSucceeded();
+        _ = results.GetFailures().Count();
+    }
+
+    internal static async Task ConcurrentRequestsAsync(
+        ObsWebSocketClient client,
+        string[] sceneNames,
+        CancellationToken ct
+    )
+    {
+        Task<GetVersionResponseData> version = client.General.GetVersionAsync(ct);
+        Task<GetStatsResponseData> stats = client.General.GetStatsAsync(ct);
+        Task<GetSceneItemListResponseData>[] perScene =
+        [
+            .. sceneNames.Select(n =>
+                client.SceneItems.GetSceneItemListAsync(new(sceneName: n), ct)
+            ),
+        ];
+
+        await Task.WhenAll([version, stats, .. perScene.Cast<Task>()]);
+        _ = version.Result.ObsVersion;
+    }
+
+    internal static async Task LowLevelAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>(
+            "GetVersion",
+            null,
+            cancellationToken: ct
+        );
+
+        // Request data has to be a JsonElement or a type the serializer context knows. An
+        // anonymous object compiles and then throws at runtime, so the README does not use one.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
+        System.Text.Json.JsonElement? raw =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                body.RootElement,
+                cancellationToken: ct
+            );
+
+        List<RequestResponsePayload<object>> results = await client.CallBatchAsync(
+            [new BatchRequestItem("GetVersion", null), new BatchRequestItem("GetStats", null)],
+            executionType: RequestBatchExecutionType.SerialRealtime,
+            cancellationToken: ct
+        );
+
+        foreach (RequestResponsePayload<object> result in results)
+        {
+            _ = result.GetData<GetVersionResponseData>();
+        }
+
+        _ = $"{v?.ObsVersion} {raw}";
+    }
+
+    internal static async Task GroupedSurfaceAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        await client.Scenes.GetSceneListAsync(new(), ct);
+        await client.Scenes.SwitchProgramSceneAndWaitAsync("Intro", cancellationToken: ct);
+        await client.Inputs.SetInputVolumeDbAsync("Mic", -6, ct);
+        await client.SceneItems.SetSceneItemEnabledAsync("Intro", "Logo", false, ct);
+
+        client.Scenes.CurrentProgramSceneChanged += (_, e) => { };
+        await foreach (
+            var e in client.Scenes.CurrentProgramSceneChangedStream(cancellationToken: ct)
+        )
+        {
+            break;
+        }
+    }
+
+    internal static async Task TimeoutTypeAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        try
+        {
+            _ = await client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+                TimeSpan.FromSeconds(5),
+                ct
+            );
+        }
+        catch (ObsWebSocketTimeoutException)
+        {
+            // One catch covers a request timeout and a wait timeout alike.
+        }
+    }
+
+    internal static async Task ConsumerContextPayloadAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        // The preferred way to send a payload the library does not model: your own type and your
+        // own context, which is AOT safe and needs nothing hand built.
+        System.Text.Json.JsonElement? answer =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                new MyRequest(1),
+                MyContext.Default.MyRequest,
+                cancellationToken: ct
+            );
+
+        // The alternative, for a one-off payload that does not deserve a type.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
+        System.Text.Json.JsonElement? viaElement =
+            await client.CallAsyncValue<System.Text.Json.JsonElement>(
+                "SomeNewRequest",
+                body.RootElement,
+                cancellationToken: ct
+            );
+
+        _ = $"{answer} {viaElement}";
+    }
+
     internal static void HostIntegration(
         Microsoft.Extensions.Hosting.IHostApplicationBuilder builder
     )
     {
-        _ = builder.AddObsWebSocketClient("obs").WithAutoConnect().WithHealthCheck();
+        _ = builder
+            .AddObsWebSocketClient("obs")
+            .WithAutoConnect()
+            .WithHealthCheck()
+            .WithReconnectPipeline();
     }
 
     internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
@@ -358,7 +530,7 @@ internal static class ReadmeCompileCheck
         }
         catch (ObsWebSocketRequestException ex)
         {
-            _ = $"{ex.RequestType} failed with {ex.Status?.Code}: {ex.Comment}";
+            _ = $"{ex.RequestType} failed with {(int?)ex.StatusCode}: {ex.Comment}";
         }
         catch (ObsWebSocketTimeoutException) { }
     }

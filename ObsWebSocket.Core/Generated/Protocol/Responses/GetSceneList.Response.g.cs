@@ -57,7 +57,7 @@ public sealed partial record GetSceneListResponseData
     /// </summary>
     [JsonPropertyName("scenes")]
     [Key("scenes")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? Scenes { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub> Scenes { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -67,7 +67,8 @@ public sealed partial record GetSceneListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneListResponseData(string? currentProgramSceneName = null, string? currentProgramSceneUuid = null, string? currentPreviewSceneName = null, string? currentPreviewSceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub>? scenes = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneStub> scenes, string? currentProgramSceneName = null, string? currentProgramSceneUuid = null, string? currentPreviewSceneName = null, string? currentPreviewSceneUuid = null)
     {
         this.CurrentProgramSceneName = currentProgramSceneName;
         this.CurrentProgramSceneUuid = currentProgramSceneUuid;

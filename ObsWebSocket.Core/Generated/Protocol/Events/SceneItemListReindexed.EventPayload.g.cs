@@ -29,21 +29,21 @@ public sealed partial record SceneItemListReindexedPayload
     /// </summary>
     [JsonPropertyName("sceneItems")]
     [Key("sceneItems")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? SceneItems { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub> SceneItems { get; init; }
 
     /// <summary>
     /// Name of the scene
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// UUID of the scene
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -53,7 +53,8 @@ public sealed partial record SceneItemListReindexedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneItemListReindexedPayload(string? sceneName = null, string? sceneUuid = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub>? sceneItems = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SceneItemListReindexedPayload(string sceneName, string sceneUuid, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.SceneItemStub> sceneItems)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

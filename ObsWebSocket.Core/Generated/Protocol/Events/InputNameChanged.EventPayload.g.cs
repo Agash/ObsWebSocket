@@ -29,21 +29,21 @@ public sealed partial record InputNameChangedPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// UUID of the input
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>
     /// Old name of the input
     /// </summary>
     [JsonPropertyName("oldInputName")]
     [Key("oldInputName")]
-    public string? OldInputName { get; init; }
+    public required string OldInputName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -53,7 +53,8 @@ public sealed partial record InputNameChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public InputNameChangedPayload(string? inputUuid = null, string? oldInputName = null, string? inputName = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public InputNameChangedPayload(string inputUuid, string oldInputName, string inputName)
     {
         this.InputUuid = inputUuid;
         this.OldInputName = oldInputName;

@@ -108,7 +108,7 @@ public sealed partial record CreateInputRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public CreateInputRequestData(string inputName, string inputKind, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, System.Text.Json.JsonElement? inputSettings = null, bool? sceneItemEnabled = null)
+    public CreateInputRequestData(string inputName, string inputKind, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, System.Text.Json.JsonElement? inputSettings = default, bool? sceneItemEnabled = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

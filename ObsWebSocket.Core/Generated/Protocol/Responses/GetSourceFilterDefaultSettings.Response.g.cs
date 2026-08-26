@@ -39,7 +39,7 @@ public sealed partial record GetSourceFilterDefaultSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSourceFilterDefaultSettingsResponseData(System.Text.Json.JsonElement? defaultFilterSettings = null)
+    public GetSourceFilterDefaultSettingsResponseData(System.Text.Json.JsonElement? defaultFilterSettings = default)
     {
         this.DefaultFilterSettings = defaultFilterSettings;
     }

@@ -8,7 +8,7 @@ namespace ObsWebSocket.Core;
 /// The client level conveniences: waiting for an event, and sending a batch. Neither belongs to
 /// one protocol category, so both stay on the client rather than on a category group.
 /// </summary>
-public static partial class ObsWebSocketClientHelpers
+public static partial class ObsWebSocketClientOperations
 {
     extension(ObsWebSocketClient client)
     {

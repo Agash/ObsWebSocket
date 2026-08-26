@@ -29,7 +29,7 @@ public sealed partial record CurrentProfileChangingPayload
     /// </summary>
     [JsonPropertyName("profileName")]
     [Key("profileName")]
-    public string? ProfileName { get; init; }
+    public required string ProfileName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record CurrentProfileChangingPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CurrentProfileChangingPayload(string? profileName = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CurrentProfileChangingPayload(string profileName)
     {
         this.ProfileName = profileName;
     }

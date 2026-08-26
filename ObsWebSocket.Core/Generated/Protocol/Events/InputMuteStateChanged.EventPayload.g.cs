@@ -36,14 +36,14 @@ public sealed partial record InputMuteStateChangedPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// UUID of the input
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -54,7 +54,7 @@ public sealed partial record InputMuteStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputMuteStateChangedPayload(bool inputMuted, string? inputName = null, string? inputUuid = null)
+    public InputMuteStateChangedPayload(string inputName, string inputUuid, bool inputMuted)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

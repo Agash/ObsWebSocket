@@ -42,7 +42,7 @@ public readonly partial struct MediaInputsGroup
                 new TriggerMediaInputActionRequestData
                 {
                     InputName = inputName,
-                    MediaAction = action.ToWireValue(),
+                    MediaAction = action,
                 },
                 cancellationToken
             )

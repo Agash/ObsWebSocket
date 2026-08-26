@@ -29,14 +29,14 @@ public sealed partial record CurrentProgramSceneChangedPayload
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// UUID of the scene that was switched to
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record CurrentProgramSceneChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CurrentProgramSceneChangedPayload(string? sceneName = null, string? sceneUuid = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CurrentProgramSceneChangedPayload(string sceneName, string sceneUuid)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

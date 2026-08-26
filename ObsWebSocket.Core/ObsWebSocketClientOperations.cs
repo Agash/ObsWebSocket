@@ -9,7 +9,7 @@ namespace ObsWebSocket.Core;
 /// <c>WaitForEventAsync</c>. Everything category scoped lives on the category group instead, so
 /// <c>client.Scenes</c>, <c>client.Inputs</c> and the rest are where those methods are found.
 /// </summary>
-public static partial class ObsWebSocketClientHelpers
+public static partial class ObsWebSocketClientOperations
 {
     private static readonly JsonSerializerOptions s_helperJsonOptions = CreateHelperOptions();
 

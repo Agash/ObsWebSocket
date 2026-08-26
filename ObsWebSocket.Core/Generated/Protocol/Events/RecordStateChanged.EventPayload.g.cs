@@ -43,7 +43,9 @@ public sealed partial record RecordStateChangedPayload
     /// </summary>
     [JsonPropertyName("outputState")]
     [Key("outputState")]
-    public string? OutputState { get; init; }
+    [JsonConverter(typeof(ObsWebSocket.Core.Protocol.Generated.OutputStateJsonConverter))]
+    [MessagePackFormatter(typeof(ObsWebSocket.Core.Protocol.Generated.OutputStateMessagePackFormatter))]
+    public ObsWebSocket.Core.Protocol.Generated.OutputState OutputState { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -54,7 +56,7 @@ public sealed partial record RecordStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public RecordStateChangedPayload(bool outputActive, string? outputState = null, string? outputPath = null)
+    public RecordStateChangedPayload(bool outputActive, ObsWebSocket.Core.Protocol.Generated.OutputState outputState = default, string? outputPath = null)
     {
         this.OutputActive = outputActive;
         this.OutputState = outputState;

@@ -29,14 +29,14 @@ public sealed partial record InputVolumeChangedPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// UUID of the input
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>
     /// New volume level in dB
@@ -61,7 +61,7 @@ public sealed partial record InputVolumeChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputVolumeChangedPayload(double inputVolumeMul, double inputVolumeDb, string? inputName = null, string? inputUuid = null)
+    public InputVolumeChangedPayload(string inputName, string inputUuid, double inputVolumeMul, double inputVolumeDb)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

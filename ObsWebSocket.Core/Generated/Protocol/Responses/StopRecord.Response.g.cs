@@ -29,7 +29,7 @@ public sealed partial record StopRecordResponseData
     /// </summary>
     [JsonPropertyName("outputPath")]
     [Key("outputPath")]
-    public string? OutputPath { get; init; }
+    public required string OutputPath { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record StopRecordResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public StopRecordResponseData(string? outputPath = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public StopRecordResponseData(string outputPath)
     {
         this.OutputPath = outputPath;
     }

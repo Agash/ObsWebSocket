@@ -150,7 +150,6 @@ public class ObsWebSocketClientIntegrationTests
 
             Assert.IsTrue(client.IsConnected, "Client should be connected after ConnectAsync.");
             Assert.IsTrue(connectedEventFired, "Connected event should have fired.");
-            Assert.IsNotNull(client.NegotiatedRpcVersion, "NegotiatedRpcVersion should be set.");
             Assert.IsTrue(client.NegotiatedRpcVersion >= 1, "NegotiatedRpcVersion should be >= 1.");
             Assert.IsNotNull(
                 client.CurrentEventSubscriptions,
@@ -198,7 +197,6 @@ public class ObsWebSocketClientIntegrationTests
             "ObsWebSocketVersion should not be empty."
         );
         Assert.IsGreaterThanOrEqualTo(version.RpcVersion, 1, "RpcVersion should be >= 1.");
-        Assert.IsNotNull(version.AvailableRequests, "AvailableRequests should not be null.");
         Assert.IsNotEmpty(version.AvailableRequests, "AvailableRequests should not be empty.");
     }
 
@@ -355,7 +353,6 @@ public class ObsWebSocketClientIntegrationTests
         GetSceneListResponseData? response = await client.Scenes.GetSceneListAsync(new());
 
         Assert.IsNotNull(response, "GetSceneList response was null.");
-        Assert.IsNotNull(response.Scenes, "Scenes list was null.");
         Assert.IsNotEmpty(response.Scenes, "Expected at least one scene in the list.");
 
         // Find the test scene using the SceneStub
@@ -397,7 +394,6 @@ public class ObsWebSocketClientIntegrationTests
         ); // Empty request data
 
         Assert.IsNotNull(response, "GetInputList response was null.");
-        Assert.IsNotNull(response.Inputs, "Inputs list was null.");
         Assert.IsNotEmpty(response.Inputs, "Expected at least one input in the list.");
 
         // Find the test input
@@ -457,16 +453,9 @@ public class ObsWebSocketClientIntegrationTests
             );
 
         Assert.IsNotNull(transformResponse, "GetSceneItemTransform response was null.");
-        Assert.IsNotNull(transformResponse.SceneItemTransform, "SceneItemTransform data was null.");
 
         // Validate some core transform properties
         SceneItemTransformStub transform = transformResponse.SceneItemTransform;
-        Assert.IsNotNull(transform.PositionX, "PositionX should have a value.");
-        Assert.IsNotNull(transform.PositionY, "PositionY should have a value.");
-        Assert.IsNotNull(transform.ScaleX, "ScaleX should have a value.");
-        Assert.IsNotNull(transform.ScaleY, "ScaleY should have a value.");
-        Assert.IsNotNull(transform.Width, "Width should have a value.");
-        Assert.IsNotNull(transform.Height, "Height should have a value.");
         Trace.WriteLine(
             $"Transform for Item {sceneItemId}: Pos=({transform.PositionX},{transform.PositionY}), Scale=({transform.ScaleX},{transform.ScaleY}), Size=({transform.Width}x{transform.Height})"
         );
@@ -497,7 +486,7 @@ public class ObsWebSocketClientIntegrationTests
         }
 
         Assert.IsNotNull(response, "GetInputAudioTracks response was null.");
-        Assert.IsNotNull(response.InputAudioTracks, "InputAudioTracks dictionary was null.");
+        Assert.IsNotNull(response.InputAudioTracks, "Audio tracks object was null.");
         Assert.IsNotEmpty(response.InputAudioTracks, "Expected at least one audio track.");
 
         // Check if common tracks exist (OBS usually has 6)
@@ -549,7 +538,6 @@ public class ObsWebSocketClientIntegrationTests
         }
 
         Assert.IsNotNull(response, "GetInputSettings response was null.");
-        Assert.IsNotNull(response.InputSettings, "InputSettings (JsonElement?) was null.");
         Assert.AreEqual(
             "text_gdiplus_v3",
             response.InputKind,
@@ -557,6 +545,7 @@ public class ObsWebSocketClientIntegrationTests
         ); // Verify kind
 
         // Demonstrate deserializing the JsonElement
+        Assert.IsNotNull(response.InputSettings, "Input settings were null.");
         JsonElement settingsElement = response.InputSettings.Value;
         Assert.AreEqual(
             JsonValueKind.Object,
@@ -569,10 +558,8 @@ public class ObsWebSocketClientIntegrationTests
             TestUtils.s_jsonSerializerOptions
         );
         Assert.IsNotNull(textSettings, "Failed to deserialize settings element.");
-        Assert.IsNotNull(textSettings.Text, "Expected 'text' property in settings.");
         Trace.WriteLine($"Text GDI+ Settings 'text' property: {textSettings.Text}");
-        Assert.IsNotNull(textSettings.Font, "Expected 'font' property in settings.");
-        Trace.WriteLine($"Text GDI+ Settings 'font.face': {textSettings.Font.Face}");
+        Trace.WriteLine($"Text GDI+ Settings 'font.face': {textSettings.Font?.Face}");
     }
 
     [TestMethod, TestCategory("Integration")]
@@ -600,7 +587,6 @@ public class ObsWebSocketClientIntegrationTests
         }
 
         Assert.IsNotNull(response, "GetSourceFilterList response was null.");
-        Assert.IsNotNull(response.Filters, "Filters list was null.");
 
         FilterStub? testFilter = response.Filters.FirstOrDefault(f =>
             f.FilterName == s_testOptions.TestFilterName
@@ -613,8 +599,6 @@ public class ObsWebSocketClientIntegrationTests
             string.IsNullOrWhiteSpace(testFilter.FilterKind),
             "Filter kind should not be empty."
         );
-        Assert.IsNotNull(testFilter.FilterIndex, "Filter index should have a value.");
-        Assert.IsNotNull(testFilter.FilterEnabled, "Filter enabled should have a value.");
         Trace.WriteLine(
             $"Found Test Filter Stub: Name={testFilter.FilterName}, Kind={testFilter.FilterKind}, Index={testFilter.FilterIndex}, Enabled={testFilter.FilterEnabled}"
         );
@@ -644,7 +628,6 @@ public class ObsWebSocketClientIntegrationTests
             await client.Transitions.GetSceneTransitionListAsync();
 
         Assert.IsNotNull(response, "GetSceneTransitionList response was null.");
-        Assert.IsNotNull(response.Transitions, "Transitions list was null.");
         Assert.IsNotEmpty(response.Transitions, "Expected at least one transition.");
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(response.CurrentSceneTransitionName),
@@ -661,11 +644,6 @@ public class ObsWebSocketClientIntegrationTests
             string.IsNullOrWhiteSpace(firstTransition.TransitionKind),
             "Transition kind should not be empty."
         );
-        Assert.IsNotNull(
-            firstTransition.TransitionConfigurable,
-            "Transition configurable flag should exist."
-        );
-        Assert.IsNotNull(firstTransition.TransitionFixed, "Transition fixed flag should exist.");
         Trace.WriteLine($"Current Transition: {response.CurrentSceneTransitionName}");
         Trace.WriteLine(
             $"First Transition Stub: Name={firstTransition.TransitionName}, Kind={firstTransition.TransitionKind}"
@@ -684,7 +662,6 @@ public class ObsWebSocketClientIntegrationTests
         GetOutputListResponseData? response = await client.Outputs.GetOutputListAsync();
 
         Assert.IsNotNull(response, "GetOutputList response was null.");
-        Assert.IsNotNull(response.Outputs, "Outputs list was null.");
         Assert.IsNotEmpty(
             response.Outputs,
             "Expected at least one output (e.g., Simple Output or Advanced)."
@@ -700,7 +677,6 @@ public class ObsWebSocketClientIntegrationTests
             string.IsNullOrWhiteSpace(firstOutput.OutputKind),
             "Output kind should not be empty."
         );
-        Assert.IsNotNull(firstOutput.OutputActive, "Output active flag should exist.");
         // Note: Width/Height/Settings might be null depending on the output type and state
         Trace.WriteLine(
             $"First Output Stub: Name={firstOutput.OutputName}, Kind={firstOutput.OutputKind}, Active={firstOutput.OutputActive}"
@@ -719,7 +695,6 @@ public class ObsWebSocketClientIntegrationTests
         GetMonitorListResponseData? response = await client.Ui.GetMonitorListAsync();
 
         Assert.IsNotNull(response, "GetMonitorList response was null.");
-        Assert.IsNotNull(response.Monitors, "Monitors list was null.");
 
         // Cannot assert count > 0 as user might have no monitors, but list should exist.
         if (response.Monitors.Count > 0)
@@ -730,11 +705,6 @@ public class ObsWebSocketClientIntegrationTests
                 string.IsNullOrWhiteSpace(firstMonitor.MonitorName),
                 "Monitor name should not be empty."
             );
-            Assert.IsNotNull(firstMonitor.MonitorIndex, "Monitor index should exist.");
-            Assert.IsNotNull(firstMonitor.MonitorWidth, "Monitor width should exist.");
-            Assert.IsNotNull(firstMonitor.MonitorHeight, "Monitor height should exist.");
-            Assert.IsNotNull(firstMonitor.MonitorPositionX, "Monitor position X should exist.");
-            Assert.IsNotNull(firstMonitor.MonitorPositionY, "Monitor position Y should exist.");
             Trace.WriteLine(
                 $"First Monitor Stub: Name={firstMonitor.MonitorName}, Index={firstMonitor.MonitorIndex}, Res=({firstMonitor.MonitorWidth}x{firstMonitor.MonitorHeight})"
             );
@@ -838,11 +808,8 @@ public class ObsWebSocketClientIntegrationTests
         }
 
         Assert.IsNotNull(response, "GetInputDefaultSettings response was null.");
-        Assert.IsNotNull(
-            response.DefaultInputSettings,
-            "DefaultInputSettings (JsonElement?) was null."
-        );
 
+        Assert.IsNotNull(response.DefaultInputSettings, "Default input settings were null.");
         JsonElement settingsElement = response.DefaultInputSettings.Value;
         Assert.AreEqual(
             JsonValueKind.Object,

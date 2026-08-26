@@ -29,7 +29,7 @@ public sealed partial record GetMonitorListResponseData
     /// </summary>
     [JsonPropertyName("monitors")]
     [Key("monitors")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub>? Monitors { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub> Monitors { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record GetMonitorListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetMonitorListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub>? monitors = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetMonitorListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.MonitorStub> monitors)
     {
         this.Monitors = monitors;
     }

@@ -32,7 +32,7 @@ public sealed partial record CurrentSceneCollectionChangingPayload
     /// </summary>
     [JsonPropertyName("sceneCollectionName")]
     [Key("sceneCollectionName")]
-    public string? SceneCollectionName { get; init; }
+    public required string SceneCollectionName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -42,7 +42,8 @@ public sealed partial record CurrentSceneCollectionChangingPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CurrentSceneCollectionChangingPayload(string? sceneCollectionName = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CurrentSceneCollectionChangingPayload(string sceneCollectionName)
     {
         this.SceneCollectionName = sceneCollectionName;
     }

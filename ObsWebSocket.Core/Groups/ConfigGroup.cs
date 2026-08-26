@@ -57,7 +57,7 @@ public readonly partial struct ConfigGroup
     public Task<T?> GetStreamServiceSettingsAsync<T>(CancellationToken cancellationToken = default)
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Config.GetStreamServiceSettingsAsync(typeInfo, cancellationToken);
     }
 
@@ -112,7 +112,7 @@ public readonly partial struct ConfigGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Config.SetStreamServiceSettingsAsync(
             streamServiceType,
             settings,

@@ -29,14 +29,14 @@ public sealed partial record GetSceneCollectionListResponseData
     /// </summary>
     [JsonPropertyName("currentSceneCollectionName")]
     [Key("currentSceneCollectionName")]
-    public string? CurrentSceneCollectionName { get; init; }
+    public required string CurrentSceneCollectionName { get; init; }
 
     /// <summary>
     /// Array of all available scene collections
     /// </summary>
     [JsonPropertyName("sceneCollections")]
     [Key("sceneCollections")]
-    public System.Collections.Generic.List<string>? SceneCollections { get; init; }
+    public required System.Collections.Generic.List<string> SceneCollections { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record GetSceneCollectionListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneCollectionListResponseData(string? currentSceneCollectionName = null, System.Collections.Generic.List<string>? sceneCollections = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneCollectionListResponseData(string currentSceneCollectionName, System.Collections.Generic.List<string> sceneCollections)
     {
         this.CurrentSceneCollectionName = currentSceneCollectionName;
         this.SceneCollections = sceneCollections;

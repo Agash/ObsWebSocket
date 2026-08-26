@@ -59,7 +59,7 @@ public readonly partial struct TransitionsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Transitions.GetCurrentSceneTransitionSettingsAsync(
             typeInfo,
             cancellationToken
@@ -116,7 +116,7 @@ public readonly partial struct TransitionsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Transitions.SetCurrentSceneTransitionSettingsAsync(
             settings,
             typeInfo,

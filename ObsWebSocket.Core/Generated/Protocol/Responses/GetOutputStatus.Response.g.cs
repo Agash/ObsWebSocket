@@ -71,7 +71,7 @@ public sealed partial record GetOutputStatusResponseData
     /// </summary>
     [JsonPropertyName("outputTimecode")]
     [Key("outputTimecode")]
-    public string? OutputTimecode { get; init; }
+    public required string OutputTimecode { get; init; }
 
     /// <summary>
     /// Total number of frames delivered by the output&apos;s process
@@ -89,7 +89,7 @@ public sealed partial record GetOutputStatusResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetOutputStatusResponseData(bool outputActive, bool outputReconnecting, long outputDuration, double outputCongestion, long outputBytes, int outputSkippedFrames, int outputTotalFrames, string? outputTimecode = null)
+    public GetOutputStatusResponseData(bool outputActive, bool outputReconnecting, string outputTimecode, long outputDuration, double outputCongestion, long outputBytes, int outputSkippedFrames, int outputTotalFrames)
     {
         this.OutputActive = outputActive;
         this.OutputReconnecting = outputReconnecting;
