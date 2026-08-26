@@ -786,6 +786,8 @@ internal sealed partial class Worker(
         );
 
         await cycleClient.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        // Each transport is judged on its own run.
+        SerializationFailureSink.Reset();
         try
         {
             GetVersionResponseData? version = await cycleClient
@@ -991,6 +993,25 @@ internal sealed partial class Worker(
             List<(string Label, bool Pass, string Detail)> modernResults =
                 await ValidateModernApisAsync(cycleClient, healthChecks, cancellationToken)
                     .ConfigureAwait(false);
+
+            modernResults.AddRange(
+                await SweepEveryReadRequestAsync(cycleClient, cancellationToken)
+                    .ConfigureAwait(false)
+            );
+
+            // Last, so it covers every check above it. An event whose payload cannot be read is
+            // dropped rather than raised, which is deliberate and silent; this is what makes it
+            // loud during validation.
+            string[] unreadable = [.. SerializationFailureSink.Failures.Distinct()];
+            modernResults.Add(
+                (
+                    "No unreadable payloads",
+                    unreadable.Length == 0,
+                    unreadable.Length == 0
+                        ? "every payload the run received deserialized"
+                        : string.Join(" | ", unreadable.Take(3))
+                )
+            );
 
             Table summary = new() { Title = new TableTitle($"{format} Validation Summary") };
             _ = summary.AddColumn("Check");
@@ -4118,6 +4139,483 @@ internal sealed partial class Worker(
             Markup.Escape("Create or update a fullscreen browser source overlay in a scene")
         );
         AnsiConsole.Write(commandTable);
+    }
+
+    /// <summary>
+    /// Calls every read-only request in the protocol and reports the ones whose response could not
+    /// be deserialized.
+    /// </summary>
+    /// <remarks>
+    /// The targeted checks elsewhere cover behaviour; this covers surface. A response record that
+    /// does not match what OBS sends is invisible until something reads it, and three of them were
+    /// shipping. Requests OBS declines for the state of the machine (no replay buffer, no group,
+    /// an input of the wrong kind) are reported as untested rather than as failures, so the count
+    /// says how much of the surface was actually exercised.
+    /// </remarks>
+    private static async Task<
+        List<(string Label, bool Pass, string Detail)>
+    > SweepEveryReadRequestAsync(ObsWebSocketClient client, CancellationToken cancellationToken)
+    {
+        List<string> unreadable = [];
+        List<string> untested = [];
+        int read = 0;
+
+        async Task Probe(string name, Func<Task> call)
+        {
+            try
+            {
+                await call().ConfigureAwait(false);
+                read++;
+            }
+            catch (ObsWebSocketSerializationException ex)
+            {
+                unreadable.Add($"{name}: {ex.InnerException?.Message ?? ex.Message}");
+            }
+            catch (ObsWebSocketRequestException ex)
+            {
+                // OBS declined for the state of the machine, so the response shape was never
+                // exercised. Not a defect, but not coverage either.
+                untested.Add($"{name} ({ex.StatusCode})");
+            }
+        }
+
+        // Discover targets, so the sweep needs no fixture of its own.
+        GetSceneListResponseData scenes = await client
+            .Scenes.GetSceneListAsync(new(), cancellationToken)
+            .ConfigureAwait(false);
+        string sceneName = scenes.CurrentProgramSceneName ?? scenes.Scenes[0].SceneName;
+
+        GetInputListResponseData inputs = await client
+            .Inputs.GetInputListAsync(new(), cancellationToken)
+            .ConfigureAwait(false);
+        string inputName = inputs.Inputs[0].InputName;
+
+        GetSceneItemListResponseData items = await client
+            .SceneItems.GetSceneItemListAsync(new(sceneName: sceneName), cancellationToken)
+            .ConfigureAwait(false);
+        int sceneItemId = items.SceneItems.Count > 0 ? items.SceneItems[0].SceneItemId : -1;
+        string? itemSourceName = items.SceneItems.Count > 0 ? items.SceneItems[0].SourceName : null;
+
+        GetInputKindListResponseData inputKinds = await client
+            .Inputs.GetInputKindListAsync(new(), cancellationToken)
+            .ConfigureAwait(false);
+        string inputKind = inputKinds.InputKinds[0];
+
+        GetSourceFilterKindListResponseData filterKinds = await client
+            .Filters.GetSourceFilterKindListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        string filterKind = filterKinds.SourceFilterKinds[0];
+
+        GetOutputListResponseData outputs = await client
+            .Outputs.GetOutputListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        string outputName = outputs.Outputs[0].OutputName;
+
+        GetGroupListResponseData groups = await client
+            .Scenes.GetGroupListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        string? groupName = groups.Groups.Count > 0 ? groups.Groups[0] : null;
+
+        GetSourceFilterListResponseData sourceFilters = await client
+            .Filters.GetSourceFilterListAsync(new(sourceName: inputName), cancellationToken)
+            .ConfigureAwait(false);
+        string? filterName =
+            sourceFilters.Filters.Count > 0 ? sourceFilters.Filters[0].FilterName : null;
+
+        // The nine discovery calls above are themselves read requests.
+        read += 9;
+
+        await Probe("GetCanvasList", () => client.Canvases.GetCanvasListAsync(cancellationToken))
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetPersistentData",
+                () =>
+                    client.Config.GetPersistentDataAsync(
+                        new(realm: "OBS_WEBSOCKET_DATA_REALM_PROFILE", slotName: "__obsws_sweep"),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetSceneCollectionList",
+                () => client.Config.GetSceneCollectionListAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe("GetProfileList", () => client.Config.GetProfileListAsync(cancellationToken))
+            .ConfigureAwait(false);
+        await Probe(
+                "GetProfileParameter",
+                () =>
+                    client.Config.GetProfileParameterAsync(
+                        new(parameterCategory: "General", parameterName: "Name"),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetVideoSettings",
+                () => client.Config.GetVideoSettingsAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetStreamServiceSettings",
+                () => client.Config.GetStreamServiceSettingsAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetRecordDirectory",
+                () => client.Config.GetRecordDirectoryAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetSourceFilterDefaultSettings",
+                () =>
+                    client.Filters.GetSourceFilterDefaultSettingsAsync(
+                        new(filterKind: filterKind),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        if (filterName is not null)
+        {
+            await Probe(
+                    "GetSourceFilter",
+                    () =>
+                        client.Filters.GetSourceFilterAsync(
+                            new(filterName: filterName, sourceName: inputName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            untested.Add("GetSourceFilter (no filter on the first input)");
+        }
+
+        await Probe("GetVersion", () => client.General.GetVersionAsync(cancellationToken))
+            .ConfigureAwait(false);
+        await Probe("GetStats", () => client.General.GetStatsAsync(cancellationToken))
+            .ConfigureAwait(false);
+        await Probe("GetHotkeyList", () => client.General.GetHotkeyListAsync(cancellationToken))
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetSpecialInputs",
+                () => client.Inputs.GetSpecialInputsAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputDefaultSettings",
+                () =>
+                    client.Inputs.GetInputDefaultSettingsAsync(
+                        new(inputKind: inputKind),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputSettings",
+                () =>
+                    client.Inputs.GetInputSettingsAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputMute",
+                () => client.Inputs.GetInputMuteAsync(new(inputName: inputName), cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputVolume",
+                () =>
+                    client.Inputs.GetInputVolumeAsync(new(inputName: inputName), cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputAudioBalance",
+                () =>
+                    client.Inputs.GetInputAudioBalanceAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputAudioSyncOffset",
+                () =>
+                    client.Inputs.GetInputAudioSyncOffsetAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputAudioMonitorType",
+                () =>
+                    client.Inputs.GetInputAudioMonitorTypeAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputAudioTracks",
+                () =>
+                    client.Inputs.GetInputAudioTracksAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputDeinterlaceMode",
+                () =>
+                    client.Inputs.GetInputDeinterlaceModeAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputDeinterlaceFieldOrder",
+                () =>
+                    client.Inputs.GetInputDeinterlaceFieldOrderAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetInputPropertiesListPropertyItems",
+                () =>
+                    client.Inputs.GetInputPropertiesListPropertyItemsAsync(
+                        new(propertyName: "monitor", inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetMediaInputStatus",
+                () =>
+                    client.MediaInputs.GetMediaInputStatusAsync(
+                        new(inputName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetVirtualCamStatus",
+                () => client.Outputs.GetVirtualCamStatusAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetReplayBufferStatus",
+                () => client.Outputs.GetReplayBufferStatusAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetLastReplayBufferReplay",
+                () => client.Outputs.GetLastReplayBufferReplayAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetOutputStatus",
+                () =>
+                    client.Outputs.GetOutputStatusAsync(
+                        new(outputName: outputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetOutputSettings",
+                () =>
+                    client.Outputs.GetOutputSettingsAsync(
+                        new(outputName: outputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        await Probe("GetRecordStatus", () => client.Record.GetRecordStatusAsync(cancellationToken))
+            .ConfigureAwait(false);
+
+        if (groupName is not null)
+        {
+            await Probe(
+                    "GetGroupSceneItemList",
+                    () =>
+                        client.SceneItems.GetGroupSceneItemListAsync(
+                            new(sceneName: groupName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            untested.Add("GetGroupSceneItemList (no group in the collection)");
+        }
+
+        if (sceneItemId >= 0)
+        {
+            await Probe(
+                    "GetSceneItemId",
+                    () =>
+                        client.SceneItems.GetSceneItemIdAsync(
+                            new(sourceName: itemSourceName!, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemSource",
+                    () =>
+                        client.SceneItems.GetSceneItemSourceAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemTransform",
+                    () =>
+                        client.SceneItems.GetSceneItemTransformAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemEnabled",
+                    () =>
+                        client.SceneItems.GetSceneItemEnabledAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemLocked",
+                    () =>
+                        client.SceneItems.GetSceneItemLockedAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemIndex",
+                    () =>
+                        client.SceneItems.GetSceneItemIndexAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemBlendMode",
+                    () =>
+                        client.SceneItems.GetSceneItemBlendModeAsync(
+                            new(sceneItemId: sceneItemId, sceneName: sceneName),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            untested.Add("7 scene item requests (the program scene has no items)");
+        }
+
+        await Probe(
+                "GetCurrentProgramScene",
+                () => client.Scenes.GetCurrentProgramSceneAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetCurrentPreviewScene",
+                () => client.Scenes.GetCurrentPreviewSceneAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetSceneSceneTransitionOverride",
+                () =>
+                    client.Scenes.GetSceneSceneTransitionOverrideAsync(
+                        new(sceneName: sceneName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetSourceActive",
+                () =>
+                    client.Sources.GetSourceActiveAsync(
+                        new(sourceName: inputName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetSourceScreenshot",
+                () =>
+                    client.Sources.GetSourceScreenshotAsync(
+                        new(imageFormat: "png", sourceName: sceneName),
+                        cancellationToken
+                    )
+            )
+            .ConfigureAwait(false);
+
+        await Probe("GetStreamStatus", () => client.Stream.GetStreamStatusAsync(cancellationToken))
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetTransitionKindList",
+                () => client.Transitions.GetTransitionKindListAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetSceneTransitionList",
+                () => client.Transitions.GetSceneTransitionListAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetCurrentSceneTransition",
+                () => client.Transitions.GetCurrentSceneTransitionAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe(
+                "GetCurrentSceneTransitionCursor",
+                () => client.Transitions.GetCurrentSceneTransitionCursorAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+
+        await Probe(
+                "GetStudioModeEnabled",
+                () => client.Ui.GetStudioModeEnabledAsync(cancellationToken)
+            )
+            .ConfigureAwait(false);
+        await Probe("GetMonitorList", () => client.Ui.GetMonitorListAsync(cancellationToken))
+            .ConfigureAwait(false);
+
+        return
+        [
+            (
+                "Every read request deserializes",
+                unreadable.Count == 0,
+                unreadable.Count == 0
+                    ? $"{read} of 60 read; untested: {string.Join(", ", untested)}"
+                    : string.Join(" | ", unreadable.Take(3))
+            ),
+        ];
     }
 
     private static void RenderKeyValueTable(
