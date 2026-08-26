@@ -15,7 +15,7 @@ namespace ObsWebSocket.Core; // Add to ObsWebSocket.Core namespace
 /// <summary>
 /// Contains generated helper methods for the <see cref="ObsWebSocketClient"/>.
 /// </summary>
-public static partial class ObsWebSocketClientHelpers
+public static partial class ObsWebSocketClientOperations
 {
     /// <summary>
     /// Asynchronously waits for a specific OBS event of type <typeparamref name="TEventArgs"/> that satisfies a predicate condition.

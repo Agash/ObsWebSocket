@@ -67,7 +67,7 @@ public readonly partial struct OutputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Outputs.GetOutputSettingsAsync(outputName, typeInfo, cancellationToken);
     }
 
@@ -122,7 +122,7 @@ public readonly partial struct OutputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Outputs.SetOutputSettingsAsync(
             outputName,
             settings,

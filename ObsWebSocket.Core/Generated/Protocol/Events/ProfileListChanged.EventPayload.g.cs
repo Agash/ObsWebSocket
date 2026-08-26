@@ -29,7 +29,7 @@ public sealed partial record ProfileListChangedPayload
     /// </summary>
     [JsonPropertyName("profiles")]
     [Key("profiles")]
-    public System.Collections.Generic.List<string>? Profiles { get; init; }
+    public required System.Collections.Generic.List<string> Profiles { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record ProfileListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public ProfileListChangedPayload(System.Collections.Generic.List<string>? profiles = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public ProfileListChangedPayload(System.Collections.Generic.List<string> profiles)
     {
         this.Profiles = profiles;
     }

@@ -22,7 +22,7 @@ public sealed class PayloadShapeTests
     [TestMethod]
     public void MsgPack_ReadingAPayloadAsTheWrongRecord_Throws()
     {
-        GetVersionResponseData version = new() { RpcVersion = 1, ObsVersion = "32.2.2" };
+        GetVersionResponseData version = TestUtils.SampleVersion();
         byte[] packed = MessagePackSerializer.Serialize(
             version,
             MsgPackMessageSerializer.s_msgPackOptions
@@ -50,7 +50,7 @@ public sealed class PayloadShapeTests
     [TestMethod]
     public void ReadingAPayloadAsItsOwnRecord_StillWorks()
     {
-        GetVersionResponseData version = new() { RpcVersion = 1, ObsVersion = "32.2.2" };
+        GetVersionResponseData version = TestUtils.SampleVersion();
         byte[] packed = MessagePackSerializer.Serialize(
             version,
             MsgPackMessageSerializer.s_msgPackOptions

@@ -149,7 +149,7 @@ public partial class ObsWebSocketClientTests
         List<BatchRequestItem> requests = [request1, request2];
 
         // Expected Response Payloads (for simulation)
-        GetVersionResponseData response1Data = new(1, "v1", "v5", [], [], "windows", "windows 11");
+        GetVersionResponseData response1Data = new("v1", "v5", 1, [], [], "windows", "windows 11");
         RequestResponsePayload<object> response1 = new(
             "GetVersion",
             "batch1_0",

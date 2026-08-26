@@ -34,7 +34,10 @@ public sealed class EventStreamTests
             Fired?.Invoke(
                 this,
                 new CurrentProgramSceneChangedEventArgs(
-                    new CurrentProgramSceneChangedPayload(sceneName: sceneName)
+                    new CurrentProgramSceneChangedPayload(
+                        sceneName: sceneName,
+                        sceneUuid: Guid.NewGuid().ToString()
+                    )
                 )
             );
     }

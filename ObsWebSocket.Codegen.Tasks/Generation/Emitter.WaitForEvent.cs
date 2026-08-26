@@ -46,7 +46,7 @@ internal static partial class Emitter
             "/// Contains generated helper methods for the <see cref=\"ObsWebSocketClient\"/>."
         );
         builder.AppendLine("/// </summary>");
-        builder.AppendLine("public static partial class ObsWebSocketClientHelpers");
+        builder.AppendLine("public static partial class ObsWebSocketClientOperations");
         builder.AppendLine("{");
 
         // Generate the WaitForEventAsync method signature and documentation
@@ -283,7 +283,7 @@ internal static partial class Emitter
         builder.AppendLine("    }"); // End WaitForEventAsync method
 
         // Close class and namespace
-        builder.AppendLine("}"); // End ObsWebSocketClientHelpers class
+        builder.AppendLine("}"); // End ObsWebSocketClientOperations class
         // File-scoped namespace is assumed, no closing brace needed here
 
         // Add the generated source file to the compilation

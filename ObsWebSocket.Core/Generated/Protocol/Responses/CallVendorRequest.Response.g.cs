@@ -32,7 +32,7 @@ public sealed partial record CallVendorRequestResponseData
     /// </summary>
     [JsonPropertyName("requestType")]
     [Key("requestType")]
-    public string? RequestType { get; init; }
+    public required string RequestType { get; init; }
 
     /// <summary>
     /// Object containing appropriate response data. {} if request does not provide any response data
@@ -46,7 +46,7 @@ public sealed partial record CallVendorRequestResponseData
     /// </summary>
     [JsonPropertyName("vendorName")]
     [Key("vendorName")]
-    public string? VendorName { get; init; }
+    public required string VendorName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -56,7 +56,8 @@ public sealed partial record CallVendorRequestResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CallVendorRequestResponseData(string? vendorName = null, string? requestType = null, System.Text.Json.JsonElement? responseData = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CallVendorRequestResponseData(string vendorName, string requestType, System.Text.Json.JsonElement? responseData = default)
     {
         this.VendorName = vendorName;
         this.RequestType = requestType;

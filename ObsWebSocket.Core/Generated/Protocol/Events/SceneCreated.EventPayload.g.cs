@@ -36,14 +36,14 @@ public sealed partial record SceneCreatedPayload
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// UUID of the new scene
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -54,7 +54,7 @@ public sealed partial record SceneCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneCreatedPayload(bool isGroup, string? sceneName = null, string? sceneUuid = null)
+    public SceneCreatedPayload(string sceneName, string sceneUuid, bool isGroup)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

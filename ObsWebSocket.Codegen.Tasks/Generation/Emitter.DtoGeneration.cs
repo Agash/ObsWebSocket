@@ -489,23 +489,36 @@ internal static partial class Emitter
                 }
                 else // Response, Event, Nested
                 {
-                    isConsideredRequired = !typeIsInherentlyNullable && !csharpType.EndsWith("?");
+                    // The protocol never marks a response or event field optional: all 152
+                    // response fields and all 149 event fields carry a null valueOptional. The
+                    // only place it records that a field can be absent is the prose, which is
+                    // therefore the signal, rather than whether C# happens to make the type
+                    // nullable. Without this a string OBS always sends still arrives nullable and
+                    // every read needs a "!".
+                    bool proseAllowsNull = DescriptionAllowsNull(
+                        associatedFieldDef.ValueDescription
+                    );
 
-                    // Some fields are only ever null in a particular state, which the protocol
-                    // records in the description rather than in valueOptional. Deserializing
-                    // those into a non-nullable value type fails outright when it happens.
-                    if (
-                        isConsideredRequired
-                        && isValueType
-                        && DescriptionAllowsNull(associatedFieldDef.ValueDescription)
-                    )
+                    if (proseAllowsNull)
                     {
                         isConsideredRequired = false;
                     }
-
-                    if (csharpType.StartsWith("List<") || csharpType.StartsWith("Dictionary<"))
+                    else if (isValueType)
                     {
-                        isConsideredRequired = false;
+                        isConsideredRequired = !csharpType.EndsWith("?");
+                    }
+                    else
+                    {
+                        // Strings and arrays are always sent. A dictionary or a JsonElement is a
+                        // settings bag that genuinely may not be there, so those stay nullable.
+                        // The array mapper bakes the "?" into the type it returns, so a list has
+                        // to have it stripped here rather than merely left off the suffix.
+                        bool isList = csharpType.Contains("List<");
+                        isConsideredRequired = csharpType == "string" || isList;
+                        if (isList && csharpType.EndsWith("?", StringComparison.Ordinal))
+                        {
+                            csharpType = csharpType.Substring(0, csharpType.Length - 1);
+                        }
                     }
                 }
                 propertyNullableSuffix =

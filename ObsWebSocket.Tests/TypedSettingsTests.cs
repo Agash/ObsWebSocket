@@ -831,7 +831,10 @@ public class TypedSettingsTests
 
         BrowserSourceSettings settings = new(Url: "https://create.test", Width: 800, Height: 600);
         JsonElement? capturedSettings = null;
-        CreateInputResponseData responseDto = new(sceneItemId: 42);
+        CreateInputResponseData responseDto = new(
+            inputUuid: Guid.NewGuid().ToString(),
+            sceneItemId: 42
+        );
 
         _ = mockConnection
             .Setup(ws =>
@@ -913,7 +916,10 @@ public class TypedSettingsTests
             .Default
             .TestConsumerSettings;
         JsonElement? capturedSettings = null;
-        CreateInputResponseData responseDto = new(sceneItemId: 7);
+        CreateInputResponseData responseDto = new(
+            inputUuid: Guid.NewGuid().ToString(),
+            sceneItemId: 7
+        );
 
         _ = mockConnection
             .Setup(ws =>

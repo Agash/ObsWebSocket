@@ -31,7 +31,7 @@ public sealed partial record GetGroupListResponseData
     /// </summary>
     [JsonPropertyName("groups")]
     [Key("groups")]
-    public System.Collections.Generic.List<string>? Groups { get; init; }
+    public required System.Collections.Generic.List<string> Groups { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -41,7 +41,8 @@ public sealed partial record GetGroupListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetGroupListResponseData(System.Collections.Generic.List<string>? groups = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetGroupListResponseData(System.Collections.Generic.List<string> groups)
     {
         this.Groups = groups;
     }

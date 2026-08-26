@@ -43,7 +43,7 @@ public sealed partial record GetInputDeinterlaceModeResponseData
     /// </summary>
     [JsonPropertyName("inputDeinterlaceMode")]
     [Key("inputDeinterlaceMode")]
-    public string? InputDeinterlaceMode { get; init; }
+    public required string InputDeinterlaceMode { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -53,7 +53,8 @@ public sealed partial record GetInputDeinterlaceModeResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputDeinterlaceModeResponseData(string? inputDeinterlaceMode = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputDeinterlaceModeResponseData(string inputDeinterlaceMode)
     {
         this.InputDeinterlaceMode = inputDeinterlaceMode;
     }

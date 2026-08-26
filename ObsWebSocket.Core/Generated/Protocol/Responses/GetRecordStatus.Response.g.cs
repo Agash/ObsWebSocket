@@ -57,7 +57,7 @@ public sealed partial record GetRecordStatusResponseData
     /// </summary>
     [JsonPropertyName("outputTimecode")]
     [Key("outputTimecode")]
-    public string? OutputTimecode { get; init; }
+    public required string OutputTimecode { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -68,7 +68,7 @@ public sealed partial record GetRecordStatusResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetRecordStatusResponseData(bool outputActive, bool outputPaused, long outputDuration, long outputBytes, string? outputTimecode = null)
+    public GetRecordStatusResponseData(bool outputActive, bool outputPaused, string outputTimecode, long outputDuration, long outputBytes)
     {
         this.OutputActive = outputActive;
         this.OutputPaused = outputPaused;

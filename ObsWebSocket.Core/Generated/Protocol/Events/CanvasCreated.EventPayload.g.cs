@@ -29,14 +29,14 @@ public sealed partial record CanvasCreatedPayload
     /// </summary>
     [JsonPropertyName("canvasName")]
     [Key("canvasName")]
-    public string? CanvasName { get; init; }
+    public required string CanvasName { get; init; }
 
     /// <summary>
     /// UUID of the new canvas
     /// </summary>
     [JsonPropertyName("canvasUuid")]
     [Key("canvasUuid")]
-    public string? CanvasUuid { get; init; }
+    public required string CanvasUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record CanvasCreatedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CanvasCreatedPayload(string? canvasName = null, string? canvasUuid = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CanvasCreatedPayload(string canvasName, string canvasUuid)
     {
         this.CanvasName = canvasName;
         this.CanvasUuid = canvasUuid;

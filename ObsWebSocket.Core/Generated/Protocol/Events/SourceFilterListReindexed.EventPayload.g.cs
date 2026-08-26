@@ -29,14 +29,14 @@ public sealed partial record SourceFilterListReindexedPayload
     /// </summary>
     [JsonPropertyName("filters")]
     [Key("filters")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub>? Filters { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub> Filters { get; init; }
 
     /// <summary>
     /// Name of the source
     /// </summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record SourceFilterListReindexedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SourceFilterListReindexedPayload(string? sourceName = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub>? filters = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SourceFilterListReindexedPayload(string sourceName, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.FilterStub> filters)
     {
         this.SourceName = sourceName;
         this.Filters = filters;

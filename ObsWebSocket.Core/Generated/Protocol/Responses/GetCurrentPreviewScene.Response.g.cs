@@ -33,28 +33,28 @@ public sealed partial record GetCurrentPreviewSceneResponseData
     /// </summary>
     [JsonPropertyName("currentPreviewSceneName")]
     [Key("currentPreviewSceneName")]
-    public string? CurrentPreviewSceneName { get; init; }
+    public required string CurrentPreviewSceneName { get; init; }
 
     /// <summary>
     /// Current preview scene UUID
     /// </summary>
     [JsonPropertyName("currentPreviewSceneUuid")]
     [Key("currentPreviewSceneUuid")]
-    public string? CurrentPreviewSceneUuid { get; init; }
+    public required string CurrentPreviewSceneUuid { get; init; }
 
     /// <summary>
     /// Current preview scene name
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// Current preview scene UUID
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -64,7 +64,8 @@ public sealed partial record GetCurrentPreviewSceneResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetCurrentPreviewSceneResponseData(string? sceneName = null, string? sceneUuid = null, string? currentPreviewSceneName = null, string? currentPreviewSceneUuid = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetCurrentPreviewSceneResponseData(string sceneName, string sceneUuid, string currentPreviewSceneName, string currentPreviewSceneUuid)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

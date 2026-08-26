@@ -29,14 +29,14 @@ public sealed partial record SourceFilterRemovedPayload
     /// </summary>
     [JsonPropertyName("filterName")]
     [Key("filterName")]
-    public string? FilterName { get; init; }
+    public required string FilterName { get; init; }
 
     /// <summary>
     /// Name of the source the filter was on
     /// </summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record SourceFilterRemovedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SourceFilterRemovedPayload(string? sourceName = null, string? filterName = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SourceFilterRemovedPayload(string sourceName, string filterName)
     {
         this.SourceName = sourceName;
         this.FilterName = filterName;

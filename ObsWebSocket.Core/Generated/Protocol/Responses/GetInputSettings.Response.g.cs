@@ -31,7 +31,7 @@ public sealed partial record GetInputSettingsResponseData
     /// </summary>
     [JsonPropertyName("inputKind")]
     [Key("inputKind")]
-    public string? InputKind { get; init; }
+    public required string InputKind { get; init; }
 
     /// <summary>
     /// Object of settings for the input
@@ -48,7 +48,8 @@ public sealed partial record GetInputSettingsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputSettingsResponseData(System.Text.Json.JsonElement? inputSettings = default, string? inputKind = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputSettingsResponseData(string inputKind, System.Text.Json.JsonElement? inputSettings = default)
     {
         this.InputSettings = inputSettings;
         this.InputKind = inputKind;

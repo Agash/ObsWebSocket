@@ -314,10 +314,15 @@ internal static class ReadmeCompileCheck
     {
         string wire = MediaInputAction.Restart.ToWireValue();
 
+        // Request data has to be a JsonElement or a type the serializer context knows. An
+        // anonymous object compiles and then throws at runtime, so the README does not use one.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
         System.Text.Json.JsonElement? raw =
             await client.CallAsyncValue<System.Text.Json.JsonElement>(
                 "SomeNewRequest",
-                new { someField = 1 },
+                body.RootElement,
                 cancellationToken: ct
             );
         _ = $"{wire} {raw}";
@@ -379,10 +384,15 @@ internal static class ReadmeCompileCheck
             cancellationToken: ct
         );
 
+        // Request data has to be a JsonElement or a type the serializer context knows. An
+        // anonymous object compiles and then throws at runtime, so the README does not use one.
+        using System.Text.Json.JsonDocument body = System.Text.Json.JsonDocument.Parse(
+            """{"someField":1}"""
+        );
         System.Text.Json.JsonElement? raw =
             await client.CallAsyncValue<System.Text.Json.JsonElement>(
                 "SomeNewRequest",
-                new { someField = 1 },
+                body.RootElement,
                 cancellationToken: ct
             );
 

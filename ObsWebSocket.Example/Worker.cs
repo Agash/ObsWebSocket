@@ -454,7 +454,9 @@ internal sealed partial class Worker(
                     _ = table.AddColumn("Enabled");
                     foreach (Core.Protocol.Common.FilterStub filterElement in filterList.Filters)
                     {
-                        string filterIndex = filterElement.FilterIndex?.ToString() ?? "N/A";
+                        string filterIndex = filterElement.FilterIndex.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture
+                        );
                         string filterName =
                             Markup.Escape(filterElement.FilterName ?? "N/A") ?? "N/A";
                         string filterKind =

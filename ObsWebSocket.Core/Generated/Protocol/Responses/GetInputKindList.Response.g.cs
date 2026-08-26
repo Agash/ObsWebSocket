@@ -29,7 +29,7 @@ public sealed partial record GetInputKindListResponseData
     /// </summary>
     [JsonPropertyName("inputKinds")]
     [Key("inputKinds")]
-    public System.Collections.Generic.List<string>? InputKinds { get; init; }
+    public required System.Collections.Generic.List<string> InputKinds { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record GetInputKindListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputKindListResponseData(System.Collections.Generic.List<string>? inputKinds = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputKindListResponseData(System.Collections.Generic.List<string> inputKinds)
     {
         this.InputKinds = inputKinds;
     }

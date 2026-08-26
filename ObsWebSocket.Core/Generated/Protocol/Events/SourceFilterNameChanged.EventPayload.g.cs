@@ -29,21 +29,21 @@ public sealed partial record SourceFilterNameChangedPayload
     /// </summary>
     [JsonPropertyName("filterName")]
     [Key("filterName")]
-    public string? FilterName { get; init; }
+    public required string FilterName { get; init; }
 
     /// <summary>
     /// Old name of the filter
     /// </summary>
     [JsonPropertyName("oldFilterName")]
     [Key("oldFilterName")]
-    public string? OldFilterName { get; init; }
+    public required string OldFilterName { get; init; }
 
     /// <summary>
     /// The source the filter is on
     /// </summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -53,7 +53,8 @@ public sealed partial record SourceFilterNameChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SourceFilterNameChangedPayload(string? sourceName = null, string? oldFilterName = null, string? filterName = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SourceFilterNameChangedPayload(string sourceName, string oldFilterName, string filterName)
     {
         this.SourceName = sourceName;
         this.OldFilterName = oldFilterName;

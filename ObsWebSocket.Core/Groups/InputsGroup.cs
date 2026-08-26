@@ -185,7 +185,7 @@ public readonly partial struct InputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Inputs.GetInputSettingsAsync(inputName, typeInfo, cancellationToken);
     }
 
@@ -258,7 +258,7 @@ public readonly partial struct InputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Inputs.SetInputSettingsAsync(
             inputName,
             settings,
@@ -355,7 +355,7 @@ public readonly partial struct InputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Inputs.CreateInputAsync(
             inputKind,
             inputName,
@@ -416,7 +416,7 @@ public readonly partial struct InputsGroup
     )
         where T : class
     {
-        JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
+        JsonTypeInfo<T> typeInfo = ObsWebSocketClientOperations.GetRegisteredTypeInfo<T>();
         return client.Inputs.GetInputDefaultSettingsAsync(inputKind, typeInfo, cancellationToken);
     }
 

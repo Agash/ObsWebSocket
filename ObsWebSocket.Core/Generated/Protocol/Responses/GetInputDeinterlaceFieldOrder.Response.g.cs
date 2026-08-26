@@ -36,7 +36,7 @@ public sealed partial record GetInputDeinterlaceFieldOrderResponseData
     /// </summary>
     [JsonPropertyName("inputDeinterlaceFieldOrder")]
     [Key("inputDeinterlaceFieldOrder")]
-    public string? InputDeinterlaceFieldOrder { get; init; }
+    public required string InputDeinterlaceFieldOrder { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record GetInputDeinterlaceFieldOrderResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputDeinterlaceFieldOrderResponseData(string? inputDeinterlaceFieldOrder = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputDeinterlaceFieldOrderResponseData(string inputDeinterlaceFieldOrder)
     {
         this.InputDeinterlaceFieldOrder = inputDeinterlaceFieldOrder;
     }

@@ -50,7 +50,7 @@ public sealed partial record GetSceneTransitionListResponseData
     /// </summary>
     [JsonPropertyName("transitions")]
     [Key("transitions")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.TransitionStub>? Transitions { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.TransitionStub> Transitions { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -60,7 +60,8 @@ public sealed partial record GetSceneTransitionListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSceneTransitionListResponseData(string? currentSceneTransitionName = null, string? currentSceneTransitionUuid = null, string? currentSceneTransitionKind = null, System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.TransitionStub>? transitions = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSceneTransitionListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.TransitionStub> transitions, string? currentSceneTransitionName = null, string? currentSceneTransitionUuid = null, string? currentSceneTransitionKind = null)
     {
         this.CurrentSceneTransitionName = currentSceneTransitionName;
         this.CurrentSceneTransitionUuid = currentSceneTransitionUuid;

@@ -31,7 +31,7 @@ public sealed partial record GetInputPropertiesListPropertyItemsResponseData
     /// </summary>
     [JsonPropertyName("propertyItems")]
     [Key("propertyItems")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.PropertyItemStub>? PropertyItems { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.PropertyItemStub> PropertyItems { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -41,7 +41,8 @@ public sealed partial record GetInputPropertiesListPropertyItemsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputPropertiesListPropertyItemsResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.PropertyItemStub>? propertyItems = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputPropertiesListPropertyItemsResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.PropertyItemStub> propertyItems)
     {
         this.PropertyItems = propertyItems;
     }

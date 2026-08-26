@@ -29,7 +29,7 @@ public sealed partial record SceneCollectionListChangedPayload
     /// </summary>
     [JsonPropertyName("sceneCollections")]
     [Key("sceneCollections")]
-    public System.Collections.Generic.List<string>? SceneCollections { get; init; }
+    public required System.Collections.Generic.List<string> SceneCollections { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record SceneCollectionListChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SceneCollectionListChangedPayload(System.Collections.Generic.List<string>? sceneCollections = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public SceneCollectionListChangedPayload(System.Collections.Generic.List<string> sceneCollections)
     {
         this.SceneCollections = sceneCollections;
     }

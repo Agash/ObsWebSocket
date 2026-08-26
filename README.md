@@ -421,8 +421,14 @@ GetVersionResponseData? v = await client.CallAsync<GetVersionResponseData>("GetV
 
 // A value type response, JsonElement included. CallAsync is constrained to classes, so a struct
 // response goes through CallAsyncValue.
-JsonElement? raw = await client.CallAsyncValue<JsonElement>(
-    "SomeNewRequest", new { someField = 1 }, cancellationToken: ct);
+JsonElement? raw = await client.CallAsyncValue<JsonElement>("GetStats", null, cancellationToken: ct);
+
+// Request data must be a JsonElement or a type the library's serializer context knows, because
+// the payload is written through a source generated context. An anonymous object has no metadata
+// there and throws ObsWebSocketSerializationException at runtime.
+using JsonDocument body = JsonDocument.Parse("""{"someField":1}""");
+JsonElement? answer = await client.CallAsyncValue<JsonElement>(
+    "SomeNewRequest", body.RootElement, cancellationToken: ct);
 
 // A batch assembled by hand, without the typed builder.
 List<RequestResponsePayload<object>> results = await client.CallBatchAsync(

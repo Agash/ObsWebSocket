@@ -43,14 +43,14 @@ public sealed partial record SceneItemTransformChangedPayload
     /// </summary>
     [JsonPropertyName("sceneName")]
     [Key("sceneName")]
-    public string? SceneName { get; init; }
+    public required string SceneName { get; init; }
 
     /// <summary>
     /// The UUID of the scene the item is in
     /// </summary>
     [JsonPropertyName("sceneUuid")]
     [Key("sceneUuid")]
-    public string? SceneUuid { get; init; }
+    public required string SceneUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -61,7 +61,7 @@ public sealed partial record SceneItemTransformChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemTransformChangedPayload(int sceneItemId, string? sceneName = null, string? sceneUuid = null, ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = default)
+    public SceneItemTransformChangedPayload(string sceneName, string sceneUuid, int sceneItemId, ObsWebSocket.Core.Protocol.Common.SceneItemTransformStub? sceneItemTransform = default)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

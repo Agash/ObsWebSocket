@@ -36,14 +36,14 @@ public sealed partial record SourceFilterEnableStateChangedPayload
     /// </summary>
     [JsonPropertyName("filterName")]
     [Key("filterName")]
-    public string? FilterName { get; init; }
+    public required string FilterName { get; init; }
 
     /// <summary>
     /// Name of the source the filter is on
     /// </summary>
     [JsonPropertyName("sourceName")]
     [Key("sourceName")]
-    public string? SourceName { get; init; }
+    public required string SourceName { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -54,7 +54,7 @@ public sealed partial record SourceFilterEnableStateChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SourceFilterEnableStateChangedPayload(bool filterEnabled, string? sourceName = null, string? filterName = null)
+    public SourceFilterEnableStateChangedPayload(string sourceName, string filterName, bool filterEnabled)
     {
         this.SourceName = sourceName;
         this.FilterName = filterName;

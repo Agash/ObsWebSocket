@@ -54,7 +54,7 @@ public sealed partial record GetMediaInputStatusResponseData
     /// </summary>
     [JsonPropertyName("mediaState")]
     [Key("mediaState")]
-    public string? MediaState { get; init; }
+    public required string MediaState { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -64,7 +64,8 @@ public sealed partial record GetMediaInputStatusResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetMediaInputStatusResponseData(string? mediaState = null, long? mediaDuration = null, long? mediaCursor = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetMediaInputStatusResponseData(string mediaState, long? mediaDuration = null, long? mediaCursor = null)
     {
         this.MediaState = mediaState;
         this.MediaDuration = mediaDuration;

@@ -29,7 +29,7 @@ public sealed partial record GetOutputListResponseData
     /// </summary>
     [JsonPropertyName("outputs")]
     [Key("outputs")]
-    public System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub>? Outputs { get; init; }
+    public required System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub> Outputs { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record GetOutputListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetOutputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub>? outputs = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetOutputListResponseData(System.Collections.Generic.List<ObsWebSocket.Core.Protocol.Common.OutputStub> outputs)
     {
         this.Outputs = outputs;
     }

@@ -29,42 +29,42 @@ public sealed partial record GetSpecialInputsResponseData
     /// </summary>
     [JsonPropertyName("desktop1")]
     [Key("desktop1")]
-    public string? Desktop1 { get; init; }
+    public required string Desktop1 { get; init; }
 
     /// <summary>
     /// Name of the Desktop Audio 2 input
     /// </summary>
     [JsonPropertyName("desktop2")]
     [Key("desktop2")]
-    public string? Desktop2 { get; init; }
+    public required string Desktop2 { get; init; }
 
     /// <summary>
     /// Name of the Mic/Auxiliary Audio input
     /// </summary>
     [JsonPropertyName("mic1")]
     [Key("mic1")]
-    public string? Mic1 { get; init; }
+    public required string Mic1 { get; init; }
 
     /// <summary>
     /// Name of the Mic/Auxiliary Audio 2 input
     /// </summary>
     [JsonPropertyName("mic2")]
     [Key("mic2")]
-    public string? Mic2 { get; init; }
+    public required string Mic2 { get; init; }
 
     /// <summary>
     /// Name of the Mic/Auxiliary Audio 3 input
     /// </summary>
     [JsonPropertyName("mic3")]
     [Key("mic3")]
-    public string? Mic3 { get; init; }
+    public required string Mic3 { get; init; }
 
     /// <summary>
     /// Name of the Mic/Auxiliary Audio 4 input
     /// </summary>
     [JsonPropertyName("mic4")]
     [Key("mic4")]
-    public string? Mic4 { get; init; }
+    public required string Mic4 { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -74,7 +74,8 @@ public sealed partial record GetSpecialInputsResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetSpecialInputsResponseData(string? desktop1 = null, string? desktop2 = null, string? mic1 = null, string? mic2 = null, string? mic3 = null, string? mic4 = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetSpecialInputsResponseData(string desktop1, string desktop2, string mic1, string mic2, string mic3, string mic4)
     {
         this.Desktop1 = desktop1;
         this.Desktop2 = desktop2;

@@ -29,7 +29,7 @@ public sealed partial record GetCanvasListResponseData
     /// </summary>
     [JsonPropertyName("canvases")]
     [Key("canvases")]
-    public System.Collections.Generic.List<System.Text.Json.JsonElement>? Canvases { get; init; }
+    public required System.Collections.Generic.List<System.Text.Json.JsonElement> Canvases { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -39,7 +39,8 @@ public sealed partial record GetCanvasListResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetCanvasListResponseData(System.Collections.Generic.List<System.Text.Json.JsonElement>? canvases = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetCanvasListResponseData(System.Collections.Generic.List<System.Text.Json.JsonElement> canvases)
     {
         this.Canvases = canvases;
     }

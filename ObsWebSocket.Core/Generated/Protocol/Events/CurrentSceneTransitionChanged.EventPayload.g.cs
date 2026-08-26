@@ -29,14 +29,14 @@ public sealed partial record CurrentSceneTransitionChangedPayload
     /// </summary>
     [JsonPropertyName("transitionName")]
     [Key("transitionName")]
-    public string? TransitionName { get; init; }
+    public required string TransitionName { get; init; }
 
     /// <summary>
     /// UUID of the new transition
     /// </summary>
     [JsonPropertyName("transitionUuid")]
     [Key("transitionUuid")]
-    public string? TransitionUuid { get; init; }
+    public required string TransitionUuid { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -46,7 +46,8 @@ public sealed partial record CurrentSceneTransitionChangedPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public CurrentSceneTransitionChangedPayload(string? transitionName = null, string? transitionUuid = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public CurrentSceneTransitionChangedPayload(string transitionName, string transitionUuid)
     {
         this.TransitionName = transitionName;
         this.TransitionUuid = transitionUuid;

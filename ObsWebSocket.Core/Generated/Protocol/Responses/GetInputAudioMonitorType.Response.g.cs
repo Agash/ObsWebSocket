@@ -35,7 +35,7 @@ public sealed partial record GetInputAudioMonitorTypeResponseData
     /// </summary>
     [JsonPropertyName("monitorType")]
     [Key("monitorType")]
-    public string? MonitorType { get; init; }
+    public required string MonitorType { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -45,7 +45,8 @@ public sealed partial record GetInputAudioMonitorTypeResponseData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public GetInputAudioMonitorTypeResponseData(string? monitorType = null)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public GetInputAudioMonitorTypeResponseData(string monitorType)
     {
         this.MonitorType = monitorType;
     }

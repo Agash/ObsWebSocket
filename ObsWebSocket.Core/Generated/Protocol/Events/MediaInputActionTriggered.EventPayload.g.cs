@@ -29,14 +29,14 @@ public sealed partial record MediaInputActionTriggeredPayload
     /// </summary>
     [JsonPropertyName("inputName")]
     [Key("inputName")]
-    public string? InputName { get; init; }
+    public required string InputName { get; init; }
 
     /// <summary>
     /// UUID of the input
     /// </summary>
     [JsonPropertyName("inputUuid")]
     [Key("inputUuid")]
-    public string? InputUuid { get; init; }
+    public required string InputUuid { get; init; }
 
     /// <summary>
     /// Action performed on the input. See `ObsMediaInputAction` enum
@@ -55,7 +55,8 @@ public sealed partial record MediaInputActionTriggeredPayload
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public MediaInputActionTriggeredPayload(string? inputName = null, string? inputUuid = null, ObsWebSocket.Core.Protocol.Generated.MediaInputAction mediaAction = default)
+    [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
+    public MediaInputActionTriggeredPayload(string inputName, string inputUuid, ObsWebSocket.Core.Protocol.Generated.MediaInputAction mediaAction = default)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

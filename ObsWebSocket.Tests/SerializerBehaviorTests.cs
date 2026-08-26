@@ -122,7 +122,7 @@ public class SerializerBehaviorTests
         Assert.AreEqual("Color Correction", filters[0].FilterName);
         Assert.AreEqual("color_filter_v2", filters[0].FilterKind);
         Assert.AreEqual(0, filters[0].FilterIndex);
-        Assert.IsTrue(filters[0].FilterEnabled ?? false);
+        Assert.IsTrue(filters[0].FilterEnabled);
         Assert.IsTrue(filters[0].FilterSettings.HasValue);
         JsonElement filterSettings = filters[0].FilterSettings.GetValueOrDefault();
         Assert.AreEqual(0.8d, filterSettings.GetProperty("opacity").GetDouble(), 0.0001d);
@@ -387,8 +387,8 @@ public class SerializerBehaviorTests
         Assert.AreEqual("Camera", sceneItems[0].SourceName);
         Core.Protocol.Common.SceneItemTransformStub? transform = sceneItems[0].SceneItemTransform;
         Assert.IsNotNull(transform);
-        Assert.IsTrue(transform.Width.HasValue);
-        Assert.AreEqual(1920d, transform.Width.Value, 0.001d);
+        Assert.AreNotEqual(0, transform.Width);
+        Assert.AreEqual(1920d, transform.Width, 0.001d);
         Dictionary<string, JsonElement>? extensionData = sceneItems[0].ExtensionData;
         Assert.IsNotNull(extensionData);
         Assert.AreEqual("group-A", extensionData["customGroup"].GetString());
@@ -448,7 +448,7 @@ public class SerializerBehaviorTests
         Assert.AreEqual("Limiter", roundTrip.Filters[1].FilterName);
         Assert.AreEqual("limiter_filter_v2", roundTrip.Filters[1].FilterKind);
         Assert.AreEqual(1, roundTrip.Filters[1].FilterIndex);
-        Assert.IsFalse(roundTrip.Filters[1].FilterEnabled ?? true);
+        Assert.IsFalse(roundTrip.Filters[1].FilterEnabled);
         Assert.IsFalse(roundTrip.Filters[1].FilterSettings.HasValue);
     }
 
@@ -592,6 +592,53 @@ public class SerializerBehaviorTests
         return [.. buffer.WrittenSpan];
     }
 
+    /// <summary>
+    /// Writes a scene item transform with every field OBS sends. The stub names them required, so
+    /// a partial map is no longer a payload OBS would produce.
+    /// </summary>
+    private static void WriteTransform(ref MessagePackWriter writer, double width, double height)
+    {
+        writer.WriteMapHeader(19);
+        writer.Write("alignment");
+        writer.Write(5);
+        writer.Write("boundsAlignment");
+        writer.Write(0);
+        writer.Write("boundsHeight");
+        writer.Write(0d);
+        writer.Write("boundsType");
+        writer.Write("OBS_BOUNDS_NONE");
+        writer.Write("boundsWidth");
+        writer.Write(0d);
+        writer.Write("cropBottom");
+        writer.Write(0);
+        writer.Write("cropLeft");
+        writer.Write(0);
+        writer.Write("cropRight");
+        writer.Write(0);
+        writer.Write("cropToBounds");
+        writer.Write(false);
+        writer.Write("cropTop");
+        writer.Write(0);
+        writer.Write("height");
+        writer.Write(height);
+        writer.Write("positionX");
+        writer.Write(0d);
+        writer.Write("positionY");
+        writer.Write(0d);
+        writer.Write("rotation");
+        writer.Write(0d);
+        writer.Write("scaleX");
+        writer.Write(1d);
+        writer.Write("scaleY");
+        writer.Write(1d);
+        writer.Write("sourceHeight");
+        writer.Write(height);
+        writer.Write("sourceWidth");
+        writer.Write(width);
+        writer.Write("width");
+        writer.Write(width);
+    }
+
     private static byte[] BuildSceneItemListPayloadBytes()
     {
         ArrayBufferWriter<byte> buffer = new();
@@ -600,19 +647,21 @@ public class SerializerBehaviorTests
         writer.WriteMapHeader(1);
         writer.Write("sceneItems");
         writer.WriteArrayHeader(1);
-        writer.WriteMapHeader(6);
+        writer.WriteMapHeader(9);
         writer.Write("sceneItemId");
         writer.Write(42);
+        writer.Write("sceneItemIndex");
+        writer.Write(0);
         writer.Write("sourceName");
         writer.Write("Camera");
+        writer.Write("sourceUuid");
+        writer.Write("11111111-2222-3333-4444-555555555555");
         writer.Write("sceneItemEnabled");
         writer.Write(true);
+        writer.Write("sceneItemLocked");
+        writer.Write(false);
         writer.Write("sceneItemTransform");
-        writer.WriteMapHeader(2);
-        writer.Write("width");
-        writer.Write(1920d);
-        writer.Write("height");
-        writer.Write(1080d);
+        WriteTransform(ref writer, 1920d, 1080d);
         writer.Write("customGroup");
         writer.Write("group-A");
         writer.Write("customArray");
