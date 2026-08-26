@@ -714,8 +714,10 @@ public class ObsWebSocketClientConnectionTests
         mockFactory.Verify(f => f.CreateConnection(), Times.Exactly(maxAttempts));
     }
 
+    // Its own two signal waits total five seconds in the worst case, so the shared six second
+    // budget left no headroom and the test failed on a busy machine rather than on a defect.
     [TestMethod]
-    [Timeout(TestTimeout)]
+    [Timeout(20_000)]
     public async Task DisconnectAsync_DuringRetry_StopsRetriesAndDisconnectsGracefully()
     {
         // Arrange
