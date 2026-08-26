@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>General</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct GeneralRequestGroup
+public readonly partial struct GeneralGroup
 {
     /// <summary>
     /// Triggers an OBS hotkey by its canonical name (e.g., "OBSWebSocket.StartStream").
@@ -26,7 +26,8 @@ public readonly partial struct GeneralRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to trigger the hotkey (e.g., hotkey not found).</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task TriggerHotkeyAsync(string hotkeyName,
+    public async Task TriggerHotkeyAsync(
+        string hotkeyName,
         CancellationToken cancellationToken = default
     )
     {

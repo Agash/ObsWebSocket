@@ -69,7 +69,7 @@ public sealed partial record GetSceneItemIdRequestData
     /// </remarks>
     [JsonPropertyName("searchOffset")]
     [Key("searchOffset")]
-    public double? SearchOffset { get; init; }
+    public int? SearchOffset { get; init; }
 
     /// <summary>
     /// Name of the source to find
@@ -90,7 +90,7 @@ public sealed partial record GetSceneItemIdRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetSceneItemIdRequestData(string sourceName, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, double? searchOffset = null)
+    public GetSceneItemIdRequestData(string sourceName, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, int? searchOffset = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

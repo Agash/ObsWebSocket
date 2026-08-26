@@ -1,4 +1,5 @@
 using ObsWebSocket.Core.Protocol;
+using ObsWebSocket.Core.Protocol.Generated;
 
 namespace ObsWebSocket.Core;
 
@@ -53,6 +54,19 @@ public class ObsWebSocketRequestException : ObsWebSocketException
 
     /// <summary>The comment OBS attached, if any.</summary>
     public string? Comment { get; }
+
+    /// <summary>
+    /// The status OBS reported as
+    /// <see cref="ObsWebSocket.Core.Protocol.Generated.RequestStatusCode"/>, so a handler can
+    /// match on the reason rather than on the text of <see cref="Exception.Message"/>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// catch (ObsWebSocketRequestException ex)
+    ///     when (ex.StatusCode is RequestStatusCode.ResourceNotFound) { }
+    /// </code>
+    /// </example>
+    public RequestStatusCode? StatusCode => Status is null ? null : (RequestStatusCode)Status.Code;
 }
 
 /// <summary>

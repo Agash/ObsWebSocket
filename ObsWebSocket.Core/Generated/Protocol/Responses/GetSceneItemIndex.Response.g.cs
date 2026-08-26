@@ -33,7 +33,7 @@ public sealed partial record GetSceneItemIndexResponseData
     /// </summary>
     [JsonPropertyName("sceneItemIndex")]
     [Key("sceneItemIndex")]
-    public required double SceneItemIndex { get; init; }
+    public required int SceneItemIndex { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -44,7 +44,7 @@ public sealed partial record GetSceneItemIndexResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetSceneItemIndexResponseData(double sceneItemIndex)
+    public GetSceneItemIndexResponseData(int sceneItemIndex)
     {
         this.SceneItemIndex = sceneItemIndex;
     }

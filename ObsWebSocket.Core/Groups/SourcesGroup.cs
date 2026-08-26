@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Sources</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct SourcesRequestGroup
+public readonly partial struct SourcesGroup
 {
     /// <summary>
     /// Checks if an input or scene source with the given name exists in OBS.
@@ -27,7 +27,8 @@ public readonly partial struct SourcesRequestGroup
     /// <returns>True if a source (input or scene) with the specified name exists, false otherwise.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if an unexpected error occurs during API calls.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<bool> SourceExistsAsync(string sourceName,
+    public async Task<bool> SourceExistsAsync(
+        string sourceName,
         CancellationToken cancellationToken = default
     )
     {
@@ -46,7 +47,8 @@ public readonly partial struct SourcesRequestGroup
             if (
                 inputListResponse?.Inputs?.Any(i =>
                     string.Equals(i.InputName, sourceName, StringComparison.Ordinal)
-                ) ?? false
+                )
+                ?? false
             )
             {
                 return true;
@@ -59,7 +61,8 @@ public readonly partial struct SourcesRequestGroup
                     .ConfigureAwait(false);
             return sceneListResponse?.Scenes?.Any(s =>
                     string.Equals(s.SceneName, sourceName, StringComparison.Ordinal)
-                ) ?? false;
+                )
+                ?? false;
         }
         catch (ObsWebSocketException ex)
         {
@@ -86,7 +89,8 @@ public readonly partial struct SourcesRequestGroup
     /// <returns>A byte array containing the image data, or null if the source was not found or an error occurred.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound' or Base64 decoding errors.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<byte[]?> GetSourceScreenshotBytesAsync(string sourceName,
+    public async Task<byte[]?> GetSourceScreenshotBytesAsync(
+        string sourceName,
         string imageFormat = "png", // Common default
         int? width = null,
         int? height = null,
@@ -114,13 +118,8 @@ public readonly partial struct SourcesRequestGroup
                 )
                 .ConfigureAwait(false);
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-            )
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             client._logger.LogWarning(
                 "Source '{SourceName}' not found for screenshot.",
@@ -141,7 +140,7 @@ public readonly partial struct SourcesRequestGroup
 
         try
         {
-            return Convert.FromBase64String(response.ImageData);
+            return DecodeImageData(response.ImageData);
         }
         catch (FormatException formatEx)
         {
@@ -150,7 +149,6 @@ public readonly partial struct SourcesRequestGroup
                 "Failed to decode Base64 image data for screenshot of '{SourceName}'.",
                 sourceName
             );
-            // Wrap in ObsWebSocketException? Or just return null? Returning null seems reasonable for a helper.
             return null;
         }
     }
@@ -176,27 +174,32 @@ public readonly partial struct SourcesRequestGroup
     /// <returns>The decoded image bytes, or an empty array if OBS returned no data.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<byte[]> GetSourceScreenshotOnCanvasBytesAsync(string sourceName,
+    public async Task<byte[]> GetSourceScreenshotOnCanvasBytesAsync(
+        string sourceName,
         string imageFormat = "png",
         int? width = null,
         int? height = null,
         int compressionQuality = -1,
         string? sourceUuid = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         client.EnsureConnected();
 
-        GetSourceScreenshotResponseData? response = await client.Sources.GetSourceScreenshotAsync(
-            new GetSourceScreenshotRequestData(
-                imageFormat: imageFormat,
-                sourceName: sourceName,
-                sourceUuid: sourceUuid,
-                imageWidth: width,
-                imageHeight: height,
-                imageCompressionQuality: compressionQuality
-            ),
-            cancellationToken).ConfigureAwait(false);
+        GetSourceScreenshotResponseData? response = await client
+            .Sources.GetSourceScreenshotAsync(
+                new GetSourceScreenshotRequestData(
+                    imageFormat: imageFormat,
+                    sourceName: sourceName,
+                    sourceUuid: sourceUuid,
+                    imageWidth: width,
+                    imageHeight: height,
+                    imageCompressionQuality: compressionQuality
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
         string? b64 = response?.ImageData;
         if (string.IsNullOrEmpty(b64))
@@ -227,29 +230,46 @@ public readonly partial struct SourcesRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SaveSourceScreenshotToFileAsync(string sourceName,
+    public async Task SaveSourceScreenshotToFileAsync(
+        string sourceName,
         string filePath,
         string imageFormat = "png",
         int? width = null,
         int? height = null,
         int compressionQuality = -1,
         string? sourceUuid = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         client.EnsureConnected();
 
-        await client.Sources.SaveSourceScreenshotAsync(
-            new SaveSourceScreenshotRequestData(
-                imageFormat: imageFormat,
-                imageFilePath: filePath,
-                sourceName: sourceName,
-                sourceUuid: sourceUuid,
-                imageWidth: width,
-                imageHeight: height,
-                imageCompressionQuality: compressionQuality
-            ),
-            cancellationToken).ConfigureAwait(false);
+        await client
+            .Sources.SaveSourceScreenshotAsync(
+                new SaveSourceScreenshotRequestData(
+                    imageFormat: imageFormat,
+                    imageFilePath: filePath,
+                    sourceName: sourceName,
+                    sourceUuid: sourceUuid,
+                    imageWidth: width,
+                    imageHeight: height,
+                    imageCompressionQuality: compressionQuality
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Decodes the image OBS returns, which arrives as a data URI rather than bare Base64.
+    /// </summary>
+    /// <param name="imageData">The value of the response's image data field.</param>
+    internal static byte[] DecodeImageData(string imageData)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(imageData);
+
+        int comma = imageData.IndexOf(',', StringComparison.Ordinal);
+        return Convert.FromBase64String(comma >= 0 ? imageData[(comma + 1)..] : imageData);
     }
 }

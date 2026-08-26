@@ -19,7 +19,9 @@ internal static partial class Emitter
     {
         try
         {
-            StringBuilder builder = BuildSourceHeader("// Serialization Context: ObsWebSocketJsonContext");
+            StringBuilder builder = BuildSourceHeader(
+                "// Serialization Context: ObsWebSocketJsonContext"
+            );
 
             _ = builder.AppendLine("using System.Collections.Generic;");
             _ = builder.AppendLine("using System.Text.Json;");
@@ -34,16 +36,26 @@ internal static partial class Emitter
             _ = builder.AppendLine();
             _ = builder.AppendLine("[JsonSourceGenerationOptions(");
             _ = builder.AppendLine("    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,");
-            _ = builder.AppendLine("    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]");
+            _ = builder.AppendLine(
+                "    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]"
+            );
 
             // Fixed protocol wrapper and payload types.
             _ = builder.AppendLine("[JsonSerializable(typeof(OutgoingMessage<RequestPayload>))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(OutgoingMessage<IdentifyPayload>))]");
-            _ = builder.AppendLine("[JsonSerializable(typeof(OutgoingMessage<ReidentifyPayload>))]");
-            _ = builder.AppendLine("[JsonSerializable(typeof(OutgoingMessage<RequestBatchPayload>))]");
+            _ = builder.AppendLine(
+                "[JsonSerializable(typeof(OutgoingMessage<ReidentifyPayload>))]"
+            );
+            _ = builder.AppendLine(
+                "[JsonSerializable(typeof(OutgoingMessage<RequestBatchPayload>))]"
+            );
             _ = builder.AppendLine("[JsonSerializable(typeof(IncomingMessage<JsonElement>))]");
-            _ = builder.AppendLine("[JsonSerializable(typeof(RequestResponsePayload<JsonElement>))]");
-            _ = builder.AppendLine("[JsonSerializable(typeof(RequestBatchResponsePayload<JsonElement>))]");
+            _ = builder.AppendLine(
+                "[JsonSerializable(typeof(RequestResponsePayload<JsonElement>))]"
+            );
+            _ = builder.AppendLine(
+                "[JsonSerializable(typeof(RequestBatchResponsePayload<JsonElement>))]"
+            );
             _ = builder.AppendLine("[JsonSerializable(typeof(EventPayloadBase<JsonElement>))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(HelloPayload))]");
             _ = builder.AppendLine("[JsonSerializable(typeof(IdentifiedPayload))]");
@@ -111,7 +123,9 @@ internal static partial class Emitter
                 );
             }
 
-            _ = builder.AppendLine("internal sealed partial class ObsWebSocketJsonContext : JsonSerializerContext");
+            _ = builder.AppendLine(
+                "internal sealed partial class ObsWebSocketJsonContext : JsonSerializerContext"
+            );
             _ = builder.AppendLine("{");
             _ = builder.AppendLine("}");
 

@@ -48,7 +48,7 @@ public sealed partial record GetSceneItemIndexRequestData
     /// </remarks>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -81,7 +81,7 @@ public sealed partial record GetSceneItemIndexRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetSceneItemIndexRequestData(double sceneItemId, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
+    public GetSceneItemIndexRequestData(int sceneItemId, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

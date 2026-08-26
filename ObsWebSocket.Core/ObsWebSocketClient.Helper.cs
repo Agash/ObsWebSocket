@@ -1,36 +1,37 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using Microsoft.Extensions.Logging;
-using ObsWebSocket.Core.Events;
-using ObsWebSocket.Core.Events.Generated;
-using ObsWebSocket.Core.Protocol;
-using ObsWebSocket.Core.Protocol.Common.InputSettings;
-using ObsWebSocket.Core.Protocol.Generated; // Assuming generated enums are here
-using ObsWebSocket.Core.Protocol.Requests;
-using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
 
-namespace ObsWebSocket.Core; // Or ObsWebSocket.Core.Extensions
+namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Provides helpful extension methods for common OBS WebSocket tasks.
+/// Client level extensions that do not belong to one protocol category, alongside the generated
+/// <c>WaitForEventAsync</c>. Everything category scoped lives on the category group instead, so
+/// <c>client.Scenes</c>, <c>client.Inputs</c> and the rest are where those methods are found.
 /// </summary>
 public static partial class ObsWebSocketClientHelpers
 {
     private static readonly JsonSerializerOptions s_helperJsonOptions = CreateHelperOptions();
 
-    private static JsonSerializerOptions CreateHelperOptions()
-    {
-        JsonSerializerOptions options = new(ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default.Options)
+    private static JsonSerializerOptions CreateHelperOptions() =>
+        new(ObsWebSocketJsonContext.Default.Options)
         {
-            TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
-                ObsWebSocket.Core.Serialization.ObsWebSocketJsonContext.Default,
-                ObsWebSocket.Core.Serialization.ObsWebSocketSettingsJsonContext.Default
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(
+                ObsWebSocketJsonContext.Default,
+                ObsWebSocketSettingsJsonContext.Default
             ),
         };
-        return options;
-    }
 
-    internal static JsonTypeInfo<T> GetRegisteredTypeInfo<T>() where T : class
+    /// <summary>
+    /// Resolves the source generated metadata for a settings type the library knows about.
+    /// </summary>
+    /// <typeparam name="T">The settings type to resolve.</typeparam>
+    /// <exception cref="ObsWebSocketException">
+    /// Thrown when the type is not registered in either generated context, since serializing it
+    /// would otherwise fall back to reflection and break under trimming.
+    /// </exception>
+    internal static JsonTypeInfo<T> GetRegisteredTypeInfo<T>()
+        where T : class
     {
         JsonTypeInfo<T>? typeInfo;
         try
@@ -39,139 +40,13 @@ public static partial class ObsWebSocketClientHelpers
         }
         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
         {
-            throw new ObsWebSocketException(
-                $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.",
-                ex
-            );
+            throw new ObsWebSocketException(NotRegistered<T>(), ex);
         }
-        return typeInfo ?? throw new ObsWebSocketException(
-            $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. Pass an explicit JsonTypeInfo<T> or use a library-registered settings type."
-        );
+
+        return typeInfo ?? throw new ObsWebSocketException(NotRegistered<T>());
     }
 
-
-
-
-
-
-
-
-
-    // Helper #4 (SwitchSceneAndWaitAsync) - Deferred due to complexity without reflection
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Generic input settings helpers
-    // ────────────────────────────────────────────────────────────────────────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // -------------------------------------------------------------------------
-    // Transition Settings helpers
-    // -------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-    // -------------------------------------------------------------------------
-    // Output Settings helpers
-    // -------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-    // -------------------------------------------------------------------------
-    // Stream Service Settings helpers
-    // -------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-    // -------------------------------------------------------------------------
-    // Default Settings helpers (read-only)
-    // -------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // Helper #14 (WaitForEventAsync<TEventArgs>) - Deferred due to complexity/reflection constraints.
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Virtualcam helpers
-    // ────────────────────────────────────────────────────────────────────────
-
-
-
-
-
-    // ────────────────────────────────────────────────────────────────────────
-    // Canvas-aware screenshot helpers
-    // ────────────────────────────────────────────────────────────────────────
-
-
-
-
-
-
+    private static string NotRegistered<T>() =>
+        $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. "
+        + "Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.";
 }
-
-

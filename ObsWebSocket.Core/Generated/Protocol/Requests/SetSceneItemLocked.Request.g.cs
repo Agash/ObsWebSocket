@@ -46,7 +46,7 @@ public sealed partial record SetSceneItemLockedRequestData
     /// </remarks>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// New lock state of the scene item
@@ -89,7 +89,7 @@ public sealed partial record SetSceneItemLockedRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetSceneItemLockedRequestData(double sceneItemId, bool sceneItemLocked, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
+    public SetSceneItemLockedRequestData(int sceneItemId, bool sceneItemLocked, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

@@ -5,10 +5,10 @@
 namespace ObsWebSocket.Core.Protocol.Generated;
 
 /// <summary>
-/// Represents the RequestStatus options defined in the OBS WebSocket protocol.
+/// Represents the RequestStatusCode options defined in the OBS WebSocket protocol.
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
-public enum RequestStatus : int
+public enum RequestStatusCode : int
 {
     /// <summary>
     /// Unknown status, should never be used.

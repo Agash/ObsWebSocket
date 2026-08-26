@@ -31,7 +31,7 @@ public sealed partial record GetInputAudioSyncOffsetResponseData
     /// </summary>
     [JsonPropertyName("inputAudioSyncOffset")]
     [Key("inputAudioSyncOffset")]
-    public required double InputAudioSyncOffset { get; init; }
+    public required int InputAudioSyncOffset { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -42,7 +42,7 @@ public sealed partial record GetInputAudioSyncOffsetResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetInputAudioSyncOffsetResponseData(double inputAudioSyncOffset)
+    public GetInputAudioSyncOffsetResponseData(int inputAudioSyncOffset)
     {
         this.InputAudioSyncOffset = inputAudioSyncOffset;
     }

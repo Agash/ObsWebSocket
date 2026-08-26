@@ -41,7 +41,7 @@ public sealed partial record OpenVideoMixProjectorRequestData
     /// </remarks>
     [JsonPropertyName("monitorIndex")]
     [Key("monitorIndex")]
-    public double? MonitorIndex { get; init; }
+    public int? MonitorIndex { get; init; }
 
     /// <summary>
     /// Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex`
@@ -73,7 +73,7 @@ public sealed partial record OpenVideoMixProjectorRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public OpenVideoMixProjectorRequestData(string videoMixType, double? monitorIndex = null, string? projectorGeometry = null)
+    public OpenVideoMixProjectorRequestData(string videoMixType, int? monitorIndex = null, string? projectorGeometry = null)
     {
         this.VideoMixType = videoMixType;
         this.MonitorIndex = monitorIndex;

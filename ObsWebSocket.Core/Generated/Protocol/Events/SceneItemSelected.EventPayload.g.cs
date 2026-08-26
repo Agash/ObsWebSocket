@@ -29,7 +29,7 @@ public sealed partial record SceneItemSelectedPayload
     /// </summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required double SceneItemId { get; init; }
+    public required int SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -54,7 +54,7 @@ public sealed partial record SceneItemSelectedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemSelectedPayload(double sceneItemId, string? sceneName = null, string? sceneUuid = null)
+    public SceneItemSelectedPayload(int sceneItemId, string? sceneName = null, string? sceneUuid = null)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

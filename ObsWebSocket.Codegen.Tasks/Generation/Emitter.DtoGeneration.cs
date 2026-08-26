@@ -729,6 +729,7 @@ internal static partial class Emitter
             || f.ValueName.EndsWith("." + objectNode.Name)
         );
     }
+
     /// <summary>
     /// Reports whether a field's description says it can be null, which the protocol states in
     /// prose for fields it does not otherwise mark optional.
@@ -736,5 +737,4 @@ internal static partial class Emitter
     private static bool DescriptionAllowsNull(string? description) =>
         !string.IsNullOrEmpty(description)
         && description.IndexOf("null", StringComparison.OrdinalIgnoreCase) >= 0;
-
 }

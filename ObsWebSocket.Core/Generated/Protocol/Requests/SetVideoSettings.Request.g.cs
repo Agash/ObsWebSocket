@@ -36,7 +36,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("baseHeight")]
     [Key("baseHeight")]
-    public double? BaseHeight { get; init; }
+    public int? BaseHeight { get; init; }
 
     /// <summary>
     /// Width of the base (canvas) resolution in pixels
@@ -48,7 +48,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("baseWidth")]
     [Key("baseWidth")]
-    public double? BaseWidth { get; init; }
+    public int? BaseWidth { get; init; }
 
     /// <summary>
     /// Denominator of the fractional FPS value
@@ -60,7 +60,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("fpsDenominator")]
     [Key("fpsDenominator")]
-    public double? FpsDenominator { get; init; }
+    public int? FpsDenominator { get; init; }
 
     /// <summary>
     /// Numerator of the fractional FPS value
@@ -72,7 +72,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("fpsNumerator")]
     [Key("fpsNumerator")]
-    public double? FpsNumerator { get; init; }
+    public int? FpsNumerator { get; init; }
 
     /// <summary>
     /// Height of the output resolution in pixels
@@ -84,7 +84,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("outputHeight")]
     [Key("outputHeight")]
-    public double? OutputHeight { get; init; }
+    public int? OutputHeight { get; init; }
 
     /// <summary>
     /// Width of the output resolution in pixels
@@ -96,7 +96,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// </remarks>
     [JsonPropertyName("outputWidth")]
     [Key("outputWidth")]
-    public double? OutputWidth { get; init; }
+    public int? OutputWidth { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -106,7 +106,7 @@ public sealed partial record SetVideoSettingsRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SetVideoSettingsRequestData(double? fpsNumerator = null, double? fpsDenominator = null, double? baseWidth = null, double? baseHeight = null, double? outputWidth = null, double? outputHeight = null)
+    public SetVideoSettingsRequestData(int? fpsNumerator = null, int? fpsDenominator = null, int? baseWidth = null, int? baseHeight = null, int? outputWidth = null, int? outputHeight = null)
     {
         this.FpsNumerator = fpsNumerator;
         this.FpsDenominator = fpsDenominator;

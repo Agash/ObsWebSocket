@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,25 +13,44 @@ namespace ObsWebSocket.Core;
 /// <param name="client">The client to manage.</param>
 /// <param name="options">Monitored options, watched for endpoint changes.</param>
 /// <param name="logger">Logger for connection outcomes.</param>
+/// <param name="name">The key this client is registered under, or null for the unnamed client.</param>
 internal sealed class ObsWebSocketConnectionService(
     ObsWebSocketClient client,
     IOptionsMonitor<ObsWebSocketClientOptions> options,
-    ILogger<ObsWebSocketConnectionService> logger
+    ILogger<ObsWebSocketConnectionService> logger,
+    string? name = null
 ) : IHostedService, IDisposable
 {
     private IDisposable? _optionsWatch;
     private (Uri? Uri, string? Password, SerializationFormat Format) _connectedWith;
 
+    private string OptionsName => name ?? Options.DefaultName;
+
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _optionsWatch = options.OnChange(OnOptionsChanged);
+        _optionsWatch = options.OnChange(
+            (updated, changedName) =>
+            {
+                // OnChange fires for every named instance, so ignore the ones that are not ours.
+                if (
+                    string.Equals(
+                        changedName ?? Options.DefaultName,
+                        OptionsName,
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    OnOptionsChanged(updated);
+                }
+            }
+        );
         await ConnectAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ConnectAsync(CancellationToken cancellationToken)
     {
-        ObsWebSocketClientOptions current = options.CurrentValue;
+        ObsWebSocketClientOptions current = options.Get(OptionsName);
         _connectedWith = (current.ServerUri, current.Password, current.Format);
 
         try
@@ -95,7 +114,9 @@ internal sealed class ObsWebSocketConnectionService(
     {
         if (client.IsConnected)
         {
-            await client.DisconnectAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            await client
+                .DisconnectAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }
@@ -133,6 +154,9 @@ public static class ObsWebSocketHostingExtensions
     /// </remarks>
     /// <param name="services">The service collection the client was added to.</param>
     /// <returns>The same collection, for chaining.</returns>
+    [Obsolete(
+        "Chain WithAutoConnect off AddObsWebSocketClient instead, which also works for a named client. This forwarder will be removed in a future release."
+    )]
     public static IServiceCollection WithAutoConnect(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -151,9 +175,9 @@ public static class ObsWebSocketHostingExtensions
     /// <param name="builder">The host application builder.</param>
     /// <param name="connectionName">The connection string name, also the key for the client.</param>
     /// <param name="configureOptions">An optional action to configure the remaining options.</param>
-    /// <returns>The same builder, for chaining.</returns>
+    /// <returns>A builder for configuring this client.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the connection string is missing.</exception>
-    public static IHostApplicationBuilder AddObsWebSocketClient(
+    public static IObsWebSocketClientBuilder AddObsWebSocketClient(
         this IHostApplicationBuilder builder,
         string connectionName,
         Action<ObsWebSocketClientOptions>? configureOptions = null
@@ -168,13 +192,11 @@ public static class ObsWebSocketHostingExtensions
                 $"No connection string named '{connectionName}' was found. Add ConnectionStrings:{connectionName}, for example ws://localhost:4455."
             );
 
-        _ = builder.Services.AddObsWebSocketClient(options =>
+        return builder.Services.AddObsWebSocketClient(options =>
         {
             ApplyConnectionString(options, connectionString);
             configureOptions?.Invoke(options);
         });
-
-        return builder;
     }
 
     /// <summary>

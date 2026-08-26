@@ -238,16 +238,33 @@ internal static partial class Emitter
                     // Map specifically named 'Object' field to Stub record
                     // Use the fully qualified name to avoid potential namespace conflicts
                     return ($"{GeneratedCommonNamespace}.SceneItemTransformStub?", false);
-                    // Add other specific 'Object' mappings here if needed in the future
+                // Add other specific 'Object' mappings here if needed in the future
             }
             // If not handled above, it falls through to the general 'Object'/'Any' handling below
         }
 
         // --- Basic Type Mapping ---
+        string? numberType = null;
+        if (obsType == "Number")
+        {
+            numberType = NumericFieldTable.MapNumber(fieldName, out bool classified);
+            if (!classified)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.UnclassifiedNumberField,
+                        Location.None,
+                        fieldName,
+                        parentDtoName
+                    )
+                );
+            }
+        }
+
         string? mappedType = obsType switch
         {
             "String" => "string",
-            "Number" => "double",
+            "Number" => numberType,
             "Boolean" => "bool",
             "Uuid" => "string",
             "Object" or "Any" => "System.Text.Json.JsonElement?", // Fallback for unhandled Object/Any

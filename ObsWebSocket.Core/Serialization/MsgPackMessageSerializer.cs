@@ -123,7 +123,11 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogMessagepackFailedToDeserializePayloadObjectTo(ex, typeof(TPayload).Name, rawPayloadData.GetType().Name);
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo(
+                ex,
+                typeof(TPayload).Name,
+                rawPayloadData.GetType().Name
+            );
             return default;
         }
     }
@@ -143,7 +147,11 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         }
         catch (Exception ex)
         {
-            _logger.LogMessagepackFailedToDeserializePayloadObjectTo2(ex, typeof(TPayload).Name, rawPayloadData.GetType().Name);
+            _logger.LogMessagepackFailedToDeserializePayloadObjectTo2(
+                ex,
+                typeof(TPayload).Name,
+                rawPayloadData.GetType().Name
+            );
             return default;
         }
     }
@@ -198,7 +206,11 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             return [.. buffer.WrittenSpan];
         }
 
-        byte[] payloadBytes = MessagePackSerializer.Serialize(message.D, s_msgPackOptions, cancellationToken);
+        byte[] payloadBytes = MessagePackSerializer.Serialize(
+            message.D,
+            s_msgPackOptions,
+            cancellationToken
+        );
         writer.WriteRaw(payloadBytes);
         writer.Flush();
 
@@ -248,7 +260,8 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
         return new EventPayloadBase<object>(eventType ?? string.Empty, eventIntent, eventData);
     }
 
-    private static IFormatterResolver[] CreateResolverChain() => [
+    private static IFormatterResolver[] CreateResolverChain() =>
+        [
             MsgPackJsonElementResolver.Instance,
             MsgPackStubExtensionDataResolver.Instance,
             ObsWebSocketMsgPackResolver.Instance,

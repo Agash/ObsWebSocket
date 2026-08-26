@@ -265,8 +265,9 @@ public class ObsWebSocketDiTests
     /// Verifies that omitting ServerUri fails when the client is resolved, rather than later
     /// when a connection is attempted.
     /// </summary>
+    // No timeout: nothing here waits on anything, so a wall clock limit only fails the test when
+    // the machine is busy.
     [TestMethod]
-    [Timeout(1000)]
     public void Resolve_WithoutServerUri_FailsValidation()
     {
         ServiceCollection services = CreateServiceCollectionWithLogging();
@@ -274,7 +275,7 @@ public class ObsWebSocketDiTests
         {
             opts.Password = "abc";
         });
-        ServiceProvider provider = services.BuildServiceProvider();
+        using ServiceProvider provider = services.BuildServiceProvider();
 
         OptionsValidationException ex = Assert.ThrowsExactly<OptionsValidationException>(() =>
             provider.GetRequiredService<ObsWebSocketClient>()
@@ -286,4 +287,3 @@ public class ObsWebSocketDiTests
         );
     }
 }
-

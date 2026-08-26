@@ -63,8 +63,8 @@ public sealed class HostingTests
     {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
-        InvalidOperationException ex = Assert.ThrowsExactly<InvalidOperationException>(
-            () => builder.AddObsWebSocketClient("obs")
+        InvalidOperationException ex = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            builder.AddObsWebSocketClient("obs")
         );
 
         StringAssert.Contains(ex.Message, "ConnectionStrings:obs");
@@ -81,7 +81,9 @@ public sealed class HostingTests
         await using ServiceProvider provider = services.BuildServiceProvider();
         HealthCheckService checks = provider.GetRequiredService<HealthCheckService>();
 
-        HealthReport report = await checks.CheckHealthAsync(TestContext.CancellationTokenSource.Token);
+        HealthReport report = await checks.CheckHealthAsync(
+            TestContext.CancellationTokenSource.Token
+        );
 
         Assert.AreEqual(HealthStatus.Unhealthy, report.Status);
         Assert.IsTrue(report.Entries.ContainsKey("obs-websocket"));
@@ -94,13 +96,14 @@ public sealed class HostingTests
         // survivable rather than fatal.
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Logging.SetMinimumLevel(LogLevel.Critical);
-        _ = builder.Services.AddObsWebSocketClient(o =>
-        {
-            o.ServerUri = new Uri("ws://127.0.0.1:59999");
-            o.AutoReconnectEnabled = false;
-            o.HandshakeTimeoutMs = 200;
-        });
-        _ = builder.Services.WithAutoConnect();
+        _ = builder
+            .Services.AddObsWebSocketClient(o =>
+            {
+                o.ServerUri = new Uri("ws://127.0.0.1:59999");
+                o.AutoReconnectEnabled = false;
+                o.HandshakeTimeoutMs = 200;
+            })
+            .WithAutoConnect();
 
         using IHost host = builder.Build();
 

@@ -26,5 +26,11 @@ public sealed class ConnectionAttemptFailedException : ObsWebSocketException
     /// with a specified error message and a reference to the inner exception that caused this one.
     /// </summary>
     public ConnectionAttemptFailedException(string message, Exception? innerException)
-        : base(message, innerException ?? new InvalidOperationException("OBS connection attempt failed without a more specific cause.")) { }
+        : base(
+            message,
+            innerException
+                ?? new InvalidOperationException(
+                    "OBS connection attempt failed without a more specific cause."
+                )
+        ) { }
 }

@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Inputs</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct InputsRequestGroup
+public readonly partial struct InputsGroup
 {
     /// <summary>
     /// Sets the text content of a Text (GDI+, Freetype 2, Pango) source.
@@ -27,7 +27,8 @@ public readonly partial struct InputsRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to set the text (e.g., input not found, not a text source).</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetInputTextAsync(string inputName,
+    public async Task SetInputTextAsync(
+        string inputName,
         string text,
         CancellationToken cancellationToken = default
     )
@@ -37,7 +38,8 @@ public readonly partial struct InputsRequestGroup
         client.EnsureConnected();
 
         await client
-            .Inputs.SetInputSettingsAsync(inputName: inputName,
+            .Inputs.SetInputSettingsAsync(
+                inputName: inputName,
                 settings: new TextGdiPlusInputSettings(Text: text),
                 overlay: true,
                 cancellationToken: cancellationToken
@@ -47,64 +49,66 @@ public readonly partial struct InputsRequestGroup
     }
 
     /// <summary>
-    /// Sets the mute state for multiple audio inputs using a single batch request.
+    /// Sets the mute state for several audio inputs in one batch.
     /// </summary>
-    /// <param name="inputMutes">An enumerable of tuples, where each tuple contains the input name (string) and desired mute state (bool: true=muted, false=unmuted).</param>
+    /// <param name="inputMutes">The inputs to change, each with the mute state to apply.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A Task representing the completion of the batch request submission. Inspect logs for individual item failures.</returns>
-    /// <exception cref="ObsWebSocketException">Thrown if the batch request itself fails (e.g., timeout).</exception>
+    /// <returns>
+    /// One result per input, in the order given, so a caller can see which inputs OBS rejected.
+    /// The batch does not halt on a failure, so one unknown input does not skip the rest.
+    /// </returns>
+    /// <exception cref="ObsWebSocketException">Thrown if the batch itself fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    /// <exception cref="ArgumentNullException">Thrown if inputMutes is null.</exception>
-    public async Task SetInputMutesAsync(IEnumerable<(string InputName, bool IsMuted)> inputMutes,
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="inputMutes"/> is null.</exception>
+    public async Task<BatchResults> SetInputMutesAsync(
+        IEnumerable<(string InputName, bool IsMuted)> inputMutes,
         CancellationToken cancellationToken = default
     )
     {
         ArgumentNullException.ThrowIfNull(inputMutes);
         client.EnsureConnected();
 
-        List<BatchRequestItem> batchItems =
-        [
-            .. inputMutes.Select(im => new BatchRequestItem(
-                RequestType: "SetInputMute",
-                RequestData: new SetInputMuteRequestData(
-                    inputName: im.InputName,
-                    inputMuted: im.IsMuted
-                )
-            )),
-        ];
-
-        if (batchItems.Count == 0)
+        ObsBatchBuilder batch = new();
+        List<string> names = [];
+        foreach ((string inputName, bool isMuted) in inputMutes)
         {
-            client._logger.LogDebug("SetInputMutesAsync called with empty list, nothing to do.");
-            return; // Nothing to send
+            _ = batch.Inputs.SetInputMute(
+                new SetInputMuteRequestData(inputName: inputName, inputMuted: isMuted)
+            );
+            names.Add(inputName);
         }
 
-        // Send batch, don't halt on failure
-        List<RequestResponsePayload<object>> results = await client
+        if (names.Count == 0)
+        {
+            client._logger.LogDebug("SetInputMutesAsync called with an empty list, nothing to do.");
+            return new BatchResults([]);
+        }
+
+        BatchResults results = await client
             .CallBatchAsync(
-                requests: batchItems,
+                batch,
+                // Serial keeps each result paired with the input at the same position.
+                executionType: RequestBatchExecutionType.SerialRealtime,
                 haltOnFailure: false,
-                executionType: RequestBatchExecutionType.SerialRealtime, // Appropriate for simple state changes
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        // Optional: Log failures from results
-        foreach (RequestResponsePayload<object> result in results)
+        for (int i = 0; i < results.Count; i++)
         {
+            RequestResponsePayload<object> result = results[i];
             if (!result.RequestStatus.Result)
             {
-                // Attempt to find original input name (requires parsing RequestId or matching RequestData - complex)
-                // For now, log the failed request type and ID
                 client._logger.LogWarning(
-                    "Failed batch item in SetInputMutesAsync: RequestType={ReqType}, RequestId={ReqId}, Code={Code}, Comment={Comment}",
-                    result.RequestType,
-                    result.RequestId,
+                    "Failed to set mute state for input '{InputName}': code {Code}, {Comment}",
+                    names[i],
                     result.RequestStatus.Code,
-                    result.RequestStatus.Comment ?? "N/A"
+                    result.RequestStatus.Comment ?? "no comment"
                 );
             }
         }
+
+        return results;
     }
 
     /// <summary>
@@ -118,7 +122,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The deserialized settings, or null if the input is not found or deserialization fails.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for unexpected OBS errors.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetInputSettingsAsync<T>(string inputName,
+    public async Task<T?> GetInputSettingsAsync<T>(
+        string inputName,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
@@ -132,18 +137,14 @@ public readonly partial struct InputsRequestGroup
         try
         {
             response = await client
-                .Inputs.GetInputSettingsAsync(new GetInputSettingsRequestData(inputName: inputName),
+                .Inputs.GetInputSettingsAsync(
+                    new GetInputSettingsRequestData(inputName: inputName),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-            )
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             return null;
         }
@@ -178,7 +179,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The deserialized settings, or null if the input is not found or deserialization fails.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered or OBS returns an error.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetInputSettingsAsync<T>(string inputName,
+    public Task<T?> GetInputSettingsAsync<T>(
+        string inputName,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -199,7 +201,8 @@ public readonly partial struct InputsRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetInputSettingsAsync<T>(string inputName,
+    public async Task SetInputSettingsAsync<T>(
+        string inputName,
         T settings,
         JsonTypeInfo<T> typeInfo,
         bool overlay = true,
@@ -226,7 +229,8 @@ public readonly partial struct InputsRequestGroup
         }
 
         await client
-            .Inputs.SetInputSettingsAsync(new SetInputSettingsRequestData(
+            .Inputs.SetInputSettingsAsync(
+                new SetInputSettingsRequestData(
                     inputSettings: settingsElement,
                     inputName: inputName,
                     overlay: overlay
@@ -246,7 +250,8 @@ public readonly partial struct InputsRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task SetInputSettingsAsync<T>(string inputName,
+    public Task SetInputSettingsAsync<T>(
+        string inputName,
         T settings,
         bool overlay = true,
         CancellationToken cancellationToken = default
@@ -254,7 +259,13 @@ public readonly partial struct InputsRequestGroup
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Inputs.SetInputSettingsAsync(inputName, settings, typeInfo, overlay, cancellationToken);
+        return client.Inputs.SetInputSettingsAsync(
+            inputName,
+            settings,
+            typeInfo,
+            overlay,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -273,7 +284,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The response data containing the new scene item ID, or null on failure.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<CreateInputResponseData?> CreateInputAsync<T>(string inputKind,
+    public async Task<CreateInputResponseData?> CreateInputAsync<T>(
+        string inputKind,
         string inputName,
         T settings,
         JsonTypeInfo<T> typeInfo,
@@ -304,7 +316,8 @@ public readonly partial struct InputsRequestGroup
         }
 
         return await client
-            .Inputs.CreateInputAsync(new CreateInputRequestData(
+            .Inputs.CreateInputAsync(
+                new CreateInputRequestData(
                     inputName: inputName,
                     inputKind: inputKind,
                     sceneName: sceneName,
@@ -331,7 +344,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The response data containing the new scene item ID, or null on failure.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<CreateInputResponseData?> CreateInputAsync<T>(string inputKind,
+    public Task<CreateInputResponseData?> CreateInputAsync<T>(
+        string inputKind,
         string inputName,
         T settings,
         string? sceneName = null,
@@ -342,7 +356,16 @@ public readonly partial struct InputsRequestGroup
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Inputs.CreateInputAsync(inputKind, inputName, settings, typeInfo, sceneName, sceneUuid, sceneItemEnabled, cancellationToken);
+        return client.Inputs.CreateInputAsync(
+            inputKind,
+            inputName,
+            settings,
+            typeInfo,
+            sceneName,
+            sceneUuid,
+            sceneItemEnabled,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -355,7 +378,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetInputDefaultSettingsAsync<T>(string inputKind,
+    public async Task<T?> GetInputDefaultSettingsAsync<T>(
+        string inputKind,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
@@ -366,12 +390,15 @@ public readonly partial struct InputsRequestGroup
         client.EnsureConnected();
 
         GetInputDefaultSettingsResponseData? response = await client
-            .Inputs.GetInputDefaultSettingsAsync(new GetInputDefaultSettingsRequestData(inputKind: inputKind),
+            .Inputs.GetInputDefaultSettingsAsync(
+                new GetInputDefaultSettingsRequestData(inputKind: inputKind),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response?.DefaultInputSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.DefaultInputSettings is not { } element
+            ? null
+            : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -383,7 +410,8 @@ public readonly partial struct InputsRequestGroup
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetInputDefaultSettingsAsync<T>(string inputKind,
+    public Task<T?> GetInputDefaultSettingsAsync<T>(
+        string inputKind,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -392,54 +420,54 @@ public readonly partial struct InputsRequestGroup
         return client.Inputs.GetInputDefaultSettingsAsync(inputKind, typeInfo, cancellationToken);
     }
 
-        /// <summary>
-        /// Sets an input's volume in decibels. The underlying request accepts either decibels or
-        /// a multiplier and fails when given neither.
-        /// </summary>
-        /// <param name="inputName">The name of the input.</param>
-        /// <param name="volumeDb">The desired volume in dB. OBS accepts -100 through 26.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-        public async Task SetInputVolumeDbAsync(
-            string inputName,
-            double volumeDb,
-            CancellationToken cancellationToken = default
-        )
-        {
-            ArgumentException.ThrowIfNullOrEmpty(inputName);
-            client.EnsureConnected();
+    /// <summary>
+    /// Sets an input's volume in decibels. The underlying request accepts either decibels or
+    /// a multiplier and fails when given neither.
+    /// </summary>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="volumeDb">The desired volume in dB. OBS accepts -100 through 26.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task SetInputVolumeDbAsync(
+        string inputName,
+        double volumeDb,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputName);
+        client.EnsureConnected();
 
-            await client
-                .Inputs.SetInputVolumeAsync(
-                    new SetInputVolumeRequestData { InputName = inputName, InputVolumeDb = volumeDb },
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
+        await client
+            .Inputs.SetInputVolumeAsync(
+                new SetInputVolumeRequestData { InputName = inputName, InputVolumeDb = volumeDb },
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 
-        /// <summary>
-        /// Sets an input's volume as a linear multiplier, where <c>1.0</c> is unity gain.
-        /// </summary>
-        /// <param name="inputName">The name of the input.</param>
-        /// <param name="volumeMul">The desired volume multiplier. OBS accepts 0 through 20.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-        public async Task SetInputVolumeMulAsync(
-            string inputName,
-            double volumeMul,
-            CancellationToken cancellationToken = default
-        )
-        {
-            ArgumentException.ThrowIfNullOrEmpty(inputName);
-            client.EnsureConnected();
+    /// <summary>
+    /// Sets an input's volume as a linear multiplier, where <c>1.0</c> is unity gain.
+    /// </summary>
+    /// <param name="inputName">The name of the input.</param>
+    /// <param name="volumeMul">The desired volume multiplier. OBS accepts 0 through 20.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS rejects the request.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task SetInputVolumeMulAsync(
+        string inputName,
+        double volumeMul,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputName);
+        client.EnsureConnected();
 
-            await client
-                .Inputs.SetInputVolumeAsync(
-                    new SetInputVolumeRequestData { InputName = inputName, InputVolumeMul = volumeMul },
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        }
+        await client
+            .Inputs.SetInputVolumeAsync(
+                new SetInputVolumeRequestData { InputName = inputName, InputVolumeMul = volumeMul },
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 }

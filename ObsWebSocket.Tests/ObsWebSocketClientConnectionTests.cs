@@ -213,7 +213,8 @@ public class ObsWebSocketClientConnectionTests
         // Mock WebSocket Connection
         _ = mockConnection
             .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
-            .Callback(() => mockConnection.SetupGet(conn => conn.State).Returns(WebSocketState.Open)
+            .Callback(() =>
+                mockConnection.SetupGet(conn => conn.State).Returns(WebSocketState.Open)
             )
             .Returns(Task.CompletedTask);
 
@@ -665,7 +666,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
@@ -677,14 +680,16 @@ public class ObsWebSocketClientConnectionTests
 
         // Act & Assert
         ObsWebSocketException thrownException =
-            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(
-                () => PumpAsync(client.ConnectAsync(), time)
+            await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+                PumpAsync(client.ConnectAsync(), time)
             );
 
         Assert.IsTrue(
             thrownException.Message.Contains($"Failed to connect after {maxAttempts} attempts")
         );
-        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(thrownException.InnerException);
+        _ = Assert.IsInstanceOfType<ConnectionAttemptFailedException>(
+            thrownException.InnerException
+        );
         Assert.AreEqual(connectException, thrownException.InnerException!.InnerException);
 
         _ = await Task.WhenAny(disconnectedSignal.Task, Task.Delay(1000))
@@ -715,13 +720,20 @@ public class ObsWebSocketClientConnectionTests
     {
         // Arrange
         WebSocketException connectException = new("Server unavailable");
+        // The retry delay comes from the fake clock, so the client is definitively still waiting
+        // it out when DisconnectAsync is called. Racing a real delay makes the condition this
+        // test is about depend on how loaded the machine is.
+        FakeTimeProvider time = new();
         (ObsWebSocketClient? client, _, _, Mock<IWebSocketConnectionFactory>? mockFactory) =
-            BuildMockedInfrastructure(opts =>
-            {
-                opts.AutoReconnectEnabled = true;
-                opts.MaxReconnectAttempts = 5; // Allow multiple retries
-                opts.InitialReconnectDelayMs = 300; // Longer delay to allow disconnect call
-            });
+            BuildMockedInfrastructure(
+                opts =>
+                {
+                    opts.AutoReconnectEnabled = true;
+                    opts.MaxReconnectAttempts = 5; // Allow multiple retries
+                    opts.InitialReconnectDelayMs = 300;
+                },
+                time
+            );
 
         List<string> eventLog = [];
         Exception? disconnectedReason = new("Placeholder"); // Start non-null for check later (Simplified 'new')
@@ -756,7 +768,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
@@ -769,20 +783,21 @@ public class ObsWebSocketClientConnectionTests
         // Act
         Task connectTask = client.ConnectAsync(); // Start connection attempts in background
 
-        // Wait for the first connection attempt to fail
-        bool firstFailed =
-            await Task.WhenAny(firstFailSignal.Task, Task.Delay(TimeSpan.FromSeconds(2)))
-            == firstFailSignal.Task;
-        Assert.IsTrue(firstFailed, "First connection attempt did not fail within timeout.");
+        // Wait for the first connection attempt to fail. The attempt itself does not wait on the
+        // clock, so this completes without advancing it.
+        await firstFailSignal
+            .Task.WaitAsync(TimeSpan.FromSeconds(2))
+            .ConfigureAwait(ConfigureAwaitOptions.None);
 
-        // Request disconnect *while* the client is likely in the retry delay
+        // The clock has not moved, so the client is still inside the retry delay here.
         await client.DisconnectAsync();
 
-        // Wait for the Disconnected event
-        bool disconnected =
-            await Task.WhenAny(disconnectedSignal.Task, Task.Delay(TimeSpan.FromSeconds(3)))
-            == disconnectedSignal.Task;
-        Assert.IsTrue(disconnected, "Disconnect event did not fire after calling DisconnectAsync.");
+        // Wait for the Disconnected event. Disconnecting cancels the delay rather than waiting
+        // it out, so this also needs no clock advance; a regression that waits shows up as the
+        // timeout below rather than as a pass.
+        await disconnectedSignal
+            .Task.WaitAsync(TimeSpan.FromSeconds(3))
+            .ConfigureAwait(ConfigureAwaitOptions.None);
 
         // Allow original ConnectAsync task to complete/be observed (it should have been cancelled by DisconnectAsync)
         await connectTask
@@ -801,7 +816,7 @@ public class ObsWebSocketClientConnectionTests
     }
 
     [TestMethod]
-    [Timeout(3000)] // Slightly increased timeout
+    [Timeout(TestTimeout)]
     public async Task ConnectAsync_InfiniteRetries_AttemptsMultipleTimes()
     {
         // Arrange
@@ -823,11 +838,18 @@ public class ObsWebSocketClientConnectionTests
 
         int attemptCounter = 0;
         object counterLock = new();
+        TaskCompletionSource attemptsReached = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         client.Connecting += (_, _) =>
         {
             lock (counterLock)
             {
                 attemptCounter++;
+                if (attemptCounter >= minExpectedAttempts)
+                {
+                    _ = attemptsReached.TrySetResult();
+                }
             }
         };
 
@@ -839,7 +861,9 @@ public class ObsWebSocketClientConnectionTests
                 _ = mockConnFailing.SetupGet(c => c.State).Returns(WebSocketState.None);
                 _ = mockConnFailing.SetupGet(c => c.Options).Returns(new ClientWebSocket().Options);
                 _ = mockConnFailing.SetupGet(c => c.SubProtocol).Returns("obswebsocket.json");
-                _ = mockConnFailing.SetupGet(c => c.CloseStatus).Returns((WebSocketCloseStatus?)null);
+                _ = mockConnFailing
+                    .SetupGet(c => c.CloseStatus)
+                    .Returns((WebSocketCloseStatus?)null);
                 _ = mockConnFailing.SetupGet(c => c.CloseStatusDescription).Returns((string?)null);
                 _ = mockConnFailing
                     .Setup(c => c.ConnectAsync(s_testServerUri, It.IsAny<CancellationToken>()))
@@ -852,12 +876,13 @@ public class ObsWebSocketClientConnectionTests
         // Act
         Task connectTask = client.ConnectAsync(cts.Token); // Pass the cancellation token
 
-        // Advance the fake clock until enough attempts have occurred or the task completes.
+        // Advance the fake clock until enough attempts have occurred, waiting on a signal rather
+        // than a fixed iteration count. The reconnect delay comes from the fake clock, but the
+        // continuation after it still needs the scheduler, so each advance is followed by a real
+        // yield. Bounded so a regression fails here with a count rather than hanging.
         for (
             int i = 0;
-            i < 2000
-                && Volatile.Read(ref attemptCounter) < minExpectedAttempts
-                && !connectTask.IsCompleted;
+            i < 200 && !attemptsReached.Task.IsCompleted && !connectTask.IsCompleted;
             i++
         )
         {

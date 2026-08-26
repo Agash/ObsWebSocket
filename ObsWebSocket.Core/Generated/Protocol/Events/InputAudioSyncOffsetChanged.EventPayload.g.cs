@@ -29,7 +29,7 @@ public sealed partial record InputAudioSyncOffsetChangedPayload
     /// </summary>
     [JsonPropertyName("inputAudioSyncOffset")]
     [Key("inputAudioSyncOffset")]
-    public required double InputAudioSyncOffset { get; init; }
+    public required int InputAudioSyncOffset { get; init; }
 
     /// <summary>
     /// Name of the input
@@ -54,7 +54,7 @@ public sealed partial record InputAudioSyncOffsetChangedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public InputAudioSyncOffsetChangedPayload(double inputAudioSyncOffset, string? inputName = null, string? inputUuid = null)
+    public InputAudioSyncOffsetChangedPayload(int inputAudioSyncOffset, string? inputName = null, string? inputUuid = null)
     {
         this.InputName = inputName;
         this.InputUuid = inputUuid;

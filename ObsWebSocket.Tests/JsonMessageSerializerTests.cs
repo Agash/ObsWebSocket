@@ -32,9 +32,8 @@ public class JsonMessageSerializerTests
             )
             .RootElement.Clone();
 
-        EventPayloadBase<object>? result = CreateSerializer().DeserializePayload<
-            EventPayloadBase<object>
-        >(payload);
+        EventPayloadBase<object>? result = CreateSerializer()
+            .DeserializePayload<EventPayloadBase<object>>(payload);
 
         Assert.IsNotNull(result);
         Assert.AreEqual("SceneListChanged", result.EventType);
@@ -60,9 +59,8 @@ public class JsonMessageSerializerTests
             )
             .RootElement.Clone();
 
-        RequestResponsePayload<object>? result = CreateSerializer().DeserializePayload<
-            RequestResponsePayload<object>
-        >(payload);
+        RequestResponsePayload<object>? result = CreateSerializer()
+            .DeserializePayload<RequestResponsePayload<object>>(payload);
 
         Assert.IsNotNull(result);
         Assert.AreEqual("GetVersion", result.RequestType);
@@ -87,9 +85,8 @@ public class JsonMessageSerializerTests
             )
             .RootElement.Clone();
 
-        SceneListChangedPayload? result = CreateSerializer().DeserializePayload<SceneListChangedPayload>(
-            payload
-        );
+        SceneListChangedPayload? result = CreateSerializer()
+            .DeserializePayload<SceneListChangedPayload>(payload);
 
         Assert.IsNotNull(result);
         Assert.IsNotNull(result.Scenes);
@@ -122,9 +119,8 @@ public class JsonMessageSerializerTests
             )
             .RootElement.Clone();
 
-        RequestBatchResponsePayload<object>? result = CreateSerializer().DeserializePayload<
-            RequestBatchResponsePayload<object>
-        >(payload);
+        RequestBatchResponsePayload<object>? result = CreateSerializer()
+            .DeserializePayload<RequestBatchResponsePayload<object>>(payload);
 
         Assert.IsNotNull(result);
         Assert.AreEqual("batch-1", result.RequestId);
@@ -156,8 +152,7 @@ public class JsonMessageSerializerTests
     [TestMethod]
     public async Task DeserializeAsync_ValidIncomingEnvelope_ReturnsIncomingMessage()
     {
-        const string incomingJson =
-            """
+        const string incomingJson = """
             {
               "op": 5,
               "d": {
@@ -187,9 +182,8 @@ public class JsonMessageSerializerTests
     {
         JsonElement payload = JsonDocument.Parse("5").RootElement.Clone();
 
-        WebSocketOpCode? result = CreateSerializer().DeserializeValuePayload<WebSocketOpCode>(
-            payload
-        );
+        WebSocketOpCode? result = CreateSerializer()
+            .DeserializeValuePayload<WebSocketOpCode>(payload);
 
         Assert.IsTrue(result.HasValue);
         Assert.AreEqual(WebSocketOpCode.Event, result.Value);
@@ -210,9 +204,8 @@ public class JsonMessageSerializerTests
             )
             .RootElement.Clone();
 
-        ObsWebSocket.Core.Protocol.RequestStatus? result = CreateSerializer().DeserializePayload<
-            ObsWebSocket.Core.Protocol.RequestStatus
-        >(payload);
+        ObsWebSocket.Core.Protocol.RequestStatus? result = CreateSerializer()
+            .DeserializePayload<ObsWebSocket.Core.Protocol.RequestStatus>(payload);
 
         Assert.IsNotNull(result);
         Assert.IsTrue(result.Result);

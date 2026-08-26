@@ -52,6 +52,11 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore ObsWebSocket.sln
 
+    - name: Check formatting
+      run: |
+        dotnet tool restore
+        dotnet csharpier check .
+
     - name: Build Solution
       run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
 

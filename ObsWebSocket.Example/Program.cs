@@ -7,12 +7,7 @@ using ObsWebSocket.Example;
 using Spectre.Console;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
-AnsiConsole.Write(
-    new Rule("[cyan]ObsWebSocket Example Tool[/]")
-    {
-        Justification = Justify.Left,
-    }
-);
+AnsiConsole.Write(new Rule("[cyan]ObsWebSocket Example Tool[/]") { Justification = Justify.Left });
 
 // Reads appsettings.json, environment variables, command-line args
 builder
@@ -39,8 +34,7 @@ builder.Services.AddSingleton(
 // Add the ObsWebSocketClient and its dependencies. The Worker drives the connection itself so
 // that it can demonstrate connect and disconnect, which is why WithAutoConnect is not used here;
 // an ordinary application would call it and skip the ceremony.
-builder.Services.AddObsWebSocketClient();
-builder.Services.AddHealthChecks().AddObsWebSocket();
+builder.Services.AddObsWebSocketClient().WithHealthCheck();
 
 // Add our background service
 builder.Services.AddHostedService<Worker>();

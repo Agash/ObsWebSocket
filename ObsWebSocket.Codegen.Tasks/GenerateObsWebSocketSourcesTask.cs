@@ -14,7 +14,8 @@ public sealed class GenerateObsWebSocketSourcesTask : Microsoft.Build.Utilities.
 
     public override bool Execute()
     {
-        int exitCode = ProtocolCodegenRunner.GenerateAsync(
+        int exitCode = ProtocolCodegenRunner
+            .GenerateAsync(
                 protocolPath: ProtocolPath,
                 outputDirectory: OutputDirectory,
                 downloadIfMissing: DownloadIfMissing,

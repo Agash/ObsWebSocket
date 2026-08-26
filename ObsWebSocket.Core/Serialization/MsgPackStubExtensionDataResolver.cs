@@ -23,13 +23,14 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
 
         if (type == typeof(SceneItemTransformStub))
         {
-            return (IMessagePackFormatter<T>)(object)
-                new MsgPackJsonBridgeFormatter<SceneItemTransformStub>();
+            return (IMessagePackFormatter<T>)
+                (object)new MsgPackJsonBridgeFormatter<SceneItemTransformStub>();
         }
 
         if (type == typeof(SceneItemStub))
         {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<SceneItemStub>();
+            return (IMessagePackFormatter<T>)
+                (object)new MsgPackJsonBridgeFormatter<SceneItemStub>();
         }
 
         if (type == typeof(FilterStub))
@@ -44,40 +45,52 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
 
         if (type == typeof(TransitionStub))
         {
-            return (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<TransitionStub>();
+            return (IMessagePackFormatter<T>)
+                (object)new MsgPackJsonBridgeFormatter<TransitionStub>();
         }
 
         return type == typeof(List<SceneStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<SceneStub>>()
             : type == typeof(List<SceneItemStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<SceneItemStub>>()
             : type == typeof(List<FilterStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<FilterStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<FilterStub>>()
             : type == typeof(List<InputStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<InputStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<InputStub>>()
             : type == typeof(List<TransitionStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<TransitionStub>>()
             : type == typeof(List<OutputStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<OutputStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<OutputStub>>()
             : type == typeof(List<MonitorStub>)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<MonitorStub>>()
             : type == typeof(List<PropertyItemStub>)
-            ? (IMessagePackFormatter<T>)(object)
-                new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<List<PropertyItemStub>>()
             : type == typeof(OutputStub)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>()
+                ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<OutputStub>()
             : type == typeof(MonitorStub)
-            ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>()
+                ? (IMessagePackFormatter<T>)(object)new MsgPackJsonBridgeFormatter<MonitorStub>()
             : type == typeof(PropertyItemStub)
-            ? (IMessagePackFormatter<T>)(object)
-                new MsgPackJsonBridgeFormatter<PropertyItemStub>()
+                ? (IMessagePackFormatter<T>)
+                    (object)new MsgPackJsonBridgeFormatter<PropertyItemStub>()
             : null;
     }
 
     private sealed class MsgPackJsonBridgeFormatter<T> : IMessagePackFormatter<T?>
         where T : class
     {
-        public void Serialize(ref MessagePackWriter writer, T? value, MessagePackSerializerOptions options)
+        public void Serialize(
+            ref MessagePackWriter writer,
+            T? value,
+            MessagePackSerializerOptions options
+        )
         {
             if (value is null)
             {
@@ -85,8 +98,8 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
                 return;
             }
 
-            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)
-                ObsWebSocketJsonContext.Default.Options.GetTypeInfo(typeof(T));
+            JsonTypeInfo<T> typeInfo =
+                (JsonTypeInfo<T>)ObsWebSocketJsonContext.Default.Options.GetTypeInfo(typeof(T));
             string json = JsonSerializer.Serialize(value, typeInfo);
             byte[] raw = MessagePackSerializer.ConvertFromJson(json);
             writer.WriteRaw(raw);
@@ -104,8 +117,8 @@ internal sealed class MsgPackStubExtensionDataResolver : IFormatterResolver
             byte[] raw = ReadRawValue(ref reader);
             string json = MessagePackSerializer.ConvertToJson(raw);
 
-            JsonTypeInfo<T> typeInfo = (JsonTypeInfo<T>)
-                ObsWebSocketJsonContext.Default.Options.GetTypeInfo(typeof(T));
+            JsonTypeInfo<T> typeInfo =
+                (JsonTypeInfo<T>)ObsWebSocketJsonContext.Default.Options.GetTypeInfo(typeof(T));
             T? result = JsonSerializer.Deserialize(json, typeInfo);
 
             reader.Depth--;

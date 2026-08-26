@@ -25,9 +25,7 @@ public sealed record CropPadFilterSettings(
 );
 
 /// <summary>Settings for the 'gain_filter' filter.</summary>
-public sealed record GainFilterSettings(
-    [property: JsonPropertyName("db")] double? Db = null
-);
+public sealed record GainFilterSettings([property: JsonPropertyName("db")] double? Db = null);
 
 /// <summary>Settings for the 'basic_eq_filter' (3-Band EQ) filter.</summary>
 public sealed record BasicEqFilterSettings(
@@ -182,6 +180,7 @@ public sealed record ExpanderFilterSettings(
     {
         /// <summary>Root Mean Square level detection.</summary>
         public const string Rms = "RMS";
+
         /// <summary>Peak level detection.</summary>
         public const string Peak = "Peak";
     }
@@ -191,6 +190,7 @@ public sealed record ExpanderFilterSettings(
     {
         /// <summary>Expander — increases dynamic range below the threshold.</summary>
         public const string Expander = "expander";
+
         /// <summary>Gate — silences audio below the threshold.</summary>
         public const string Gate = "gate";
     }
@@ -212,6 +212,7 @@ public sealed record UpwardCompressorFilterSettings(
     {
         /// <summary>Root Mean Square level detection.</summary>
         public const string Rms = "RMS";
+
         /// <summary>Peak level detection.</summary>
         public const string Peak = "Peak";
     }

@@ -64,42 +64,42 @@ public sealed partial record GetStatsResponseData
     /// </summary>
     [JsonPropertyName("outputSkippedFrames")]
     [Key("outputSkippedFrames")]
-    public required double OutputSkippedFrames { get; init; }
+    public required int OutputSkippedFrames { get; init; }
 
     /// <summary>
     /// Total number of frames outputted by the output thread
     /// </summary>
     [JsonPropertyName("outputTotalFrames")]
     [Key("outputTotalFrames")]
-    public required double OutputTotalFrames { get; init; }
+    public required int OutputTotalFrames { get; init; }
 
     /// <summary>
     /// Number of frames skipped by OBS in the render thread
     /// </summary>
     [JsonPropertyName("renderSkippedFrames")]
     [Key("renderSkippedFrames")]
-    public required double RenderSkippedFrames { get; init; }
+    public required int RenderSkippedFrames { get; init; }
 
     /// <summary>
     /// Total number of frames outputted by the render thread
     /// </summary>
     [JsonPropertyName("renderTotalFrames")]
     [Key("renderTotalFrames")]
-    public required double RenderTotalFrames { get; init; }
+    public required int RenderTotalFrames { get; init; }
 
     /// <summary>
     /// Total number of messages received by obs-websocket from the client
     /// </summary>
     [JsonPropertyName("webSocketSessionIncomingMessages")]
     [Key("webSocketSessionIncomingMessages")]
-    public required double WebSocketSessionIncomingMessages { get; init; }
+    public required int WebSocketSessionIncomingMessages { get; init; }
 
     /// <summary>
     /// Total number of messages sent by obs-websocket to the client
     /// </summary>
     [JsonPropertyName("webSocketSessionOutgoingMessages")]
     [Key("webSocketSessionOutgoingMessages")]
-    public required double WebSocketSessionOutgoingMessages { get; init; }
+    public required int WebSocketSessionOutgoingMessages { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -110,7 +110,7 @@ public sealed partial record GetStatsResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetStatsResponseData(double cpuUsage, double memoryUsage, double availableDiskSpace, double activeFps, double averageFrameRenderTime, double renderSkippedFrames, double renderTotalFrames, double outputSkippedFrames, double outputTotalFrames, double webSocketSessionIncomingMessages, double webSocketSessionOutgoingMessages)
+    public GetStatsResponseData(double cpuUsage, double memoryUsage, double availableDiskSpace, double activeFps, double averageFrameRenderTime, int renderSkippedFrames, int renderTotalFrames, int outputSkippedFrames, int outputTotalFrames, int webSocketSessionIncomingMessages, int webSocketSessionOutgoingMessages)
     {
         this.CpuUsage = cpuUsage;
         this.MemoryUsage = memoryUsage;

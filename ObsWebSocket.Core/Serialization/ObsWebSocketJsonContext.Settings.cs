@@ -56,5 +56,6 @@ namespace ObsWebSocket.Core.Serialization;
 [JsonSerializable(typeof(RtmpCustomStreamServiceSettings))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+)]
 internal sealed partial class ObsWebSocketSettingsJsonContext : JsonSerializerContext { }

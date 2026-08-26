@@ -49,7 +49,9 @@ public class ObsWebSocketClientIntegrationTests
         _ = services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(minLogLevel));
 
         // Bind the "ObsIntegration" section from configuration to the options class
-        _ = services.Configure<ObsIntegrationTestOptions>(configuration.GetSection("ObsIntegration"));
+        _ = services.Configure<ObsIntegrationTestOptions>(
+            configuration.GetSection("ObsIntegration")
+        );
 
         // Configure ObsWebSocketClientOptions based on ObsIntegrationTestOptions
         _ = services
@@ -112,15 +114,13 @@ public class ObsWebSocketClientIntegrationTests
         ILogger<ObsWebSocketClient> logger = s_serviceProvider.GetRequiredService<
             ILogger<ObsWebSocketClient>
         >();
-        IWebSocketMessageSerializer serializer = s_serviceProvider.GetRequiredService<
-            IWebSocketMessageSerializer
-        >();
+        IWebSocketMessageSerializer serializer =
+            s_serviceProvider.GetRequiredService<IWebSocketMessageSerializer>();
         IOptions<ObsWebSocketClientOptions> options = s_serviceProvider.GetRequiredService<
             IOptions<ObsWebSocketClientOptions>
         >();
-        IWebSocketConnectionFactory connectionFactory = s_serviceProvider.GetRequiredService<
-            IWebSocketConnectionFactory
-        >();
+        IWebSocketConnectionFactory connectionFactory =
+            s_serviceProvider.GetRequiredService<IWebSocketConnectionFactory>();
 
         return new ObsWebSocketClient(logger, serializer, options, connectionFactory);
     }
@@ -445,12 +445,15 @@ public class ObsWebSocketClientIntegrationTests
             idResponse,
             $"Could not get SceneItemId for '{s_testOptions.TestInputName}' in scene '{s_testOptions.TestSceneName}'. Ensure it exists."
         );
-        double sceneItemId = idResponse.SceneItemId;
+        int sceneItemId = idResponse.SceneItemId;
 
         // Get the transform
         GetSceneItemTransformResponseData? transformResponse =
             await client.SceneItems.GetSceneItemTransformAsync(
-                new GetSceneItemTransformRequestData(sceneItemId, sceneName: s_testOptions.TestSceneName!)
+                new GetSceneItemTransformRequestData(
+                    sceneItemId,
+                    sceneName: s_testOptions.TestSceneName!
+                )
             );
 
         Assert.IsNotNull(transformResponse, "GetSceneItemTransform response was null.");
@@ -526,7 +529,8 @@ public class ObsWebSocketClientIntegrationTests
         GetInputSettingsResponseData? response;
         try
         {
-            response = await client.Inputs.GetInputSettingsAsync(new GetInputSettingsRequestData(s_testOptions.TestInputName!)
+            response = await client.Inputs.GetInputSettingsAsync(
+                new GetInputSettingsRequestData(s_testOptions.TestInputName!)
             );
         }
         catch (ObsWebSocketException ex) when (ex.Message.Contains("ResourceNotFound"))
@@ -636,7 +640,8 @@ public class ObsWebSocketClientIntegrationTests
         await client.ConnectAsync(TestContext.CancellationToken);
         Assert.IsTrue(client.IsConnected);
 
-        GetSceneTransitionListResponseData? response = await client.Transitions.GetSceneTransitionListAsync();
+        GetSceneTransitionListResponseData? response =
+            await client.Transitions.GetSceneTransitionListAsync();
 
         Assert.IsNotNull(response, "GetSceneTransitionList response was null.");
         Assert.IsNotNull(response.Transitions, "Transitions list was null.");
@@ -680,7 +685,10 @@ public class ObsWebSocketClientIntegrationTests
 
         Assert.IsNotNull(response, "GetOutputList response was null.");
         Assert.IsNotNull(response.Outputs, "Outputs list was null.");
-        Assert.IsNotEmpty(response.Outputs, "Expected at least one output (e.g., Simple Output or Advanced).");
+        Assert.IsNotEmpty(
+            response.Outputs,
+            "Expected at least one output (e.g., Simple Output or Advanced)."
+        );
 
         OutputStub? firstOutput = response.Outputs.FirstOrDefault();
         Assert.IsNotNull(firstOutput, "First output stub was null.");
@@ -812,7 +820,8 @@ public class ObsWebSocketClientIntegrationTests
         GetInputDefaultSettingsResponseData? response;
         try
         {
-            response = await client.Inputs.GetInputDefaultSettingsAsync(new GetInputDefaultSettingsRequestData(inputKind)
+            response = await client.Inputs.GetInputDefaultSettingsAsync(
+                new GetInputDefaultSettingsRequestData(inputKind)
             );
         }
         catch (ObsWebSocketException ex) when (ex.Message.Contains("InvalidInputKind"))
@@ -851,10 +860,7 @@ public class ObsWebSocketClientIntegrationTests
         );
 
         // Assert some known default properties for text_gdiplus_v3 exist
-        Assert.IsTrue(
-            defaultSettingsDict.ContainsKey("font"),
-            "Expected 'font' default setting."
-        );
+        Assert.IsTrue(defaultSettingsDict.ContainsKey("font"), "Expected 'font' default setting.");
         Assert.AreEqual(
             JsonValueKind.Object,
             defaultSettingsDict["font"].ValueKind,

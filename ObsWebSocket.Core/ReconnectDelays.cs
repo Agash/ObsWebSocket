@@ -67,7 +67,5 @@ internal sealed class ReconnectDelays
     /// recovering from one outage do not retry in lockstep.
     /// </summary>
     private static TimeSpan ApplyJitter(TimeSpan delay) =>
-        delay <= TimeSpan.Zero
-            ? delay
-            : delay * (0.75 + (Random.Shared.NextDouble() * 0.5));
+        delay <= TimeSpan.Zero ? delay : delay * (0.75 + (Random.Shared.NextDouble() * 0.5));
 }

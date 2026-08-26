@@ -48,8 +48,12 @@ internal static partial class Emitter
                 {
                     string suffix =
                         valueKind == EnumValueKind.Numeric ? ".Enum.g.cs" : ".Class.g.cs";
+                    string fileStem =
+                        valueKind == EnumValueKind.Numeric
+                            ? MapEnumTypeName(SanitizeIdentifier(enumDef.EnumType))
+                            : SanitizeIdentifier(enumDef.EnumType);
                     context.AddSource(
-                        $"{SanitizeIdentifier(enumDef.EnumType)}{suffix}",
+                        $"{fileStem}{suffix}",
                         SourceText.From(source, Encoding.UTF8)
                     );
                 }
@@ -88,7 +92,7 @@ internal static partial class Emitter
     /// </summary>
     private static string? GenerateNumericEnumSource(EnumDefinition enumDef, string underlyingType)
     {
-        string enumName = SanitizeIdentifier(enumDef.EnumType);
+        string enumName = MapEnumTypeName(SanitizeIdentifier(enumDef.EnumType));
         StringBuilder builder = BuildSourceHeader($"// Type: Numeric Enum ({underlyingType})");
         builder.AppendLine($"namespace {GeneratedEnumsNamespace};");
         builder.AppendLine();
@@ -223,6 +227,19 @@ internal static partial class Emitter
     }
 
     /// <summary>
+    /// Renames protocol enums whose name already belongs to a message type, so a caller writing a
+    /// catch filter does not have to disambiguate two types called <c>RequestStatus</c> in
+    /// neighbouring namespaces.
+    /// </summary>
+    private static string MapEnumTypeName(string enumTypeName) =>
+        enumTypeName switch
+        {
+            // Protocol.RequestStatus is the record carried on a response; this is the code on it.
+            "RequestStatus" => "RequestStatusCode",
+            _ => enumTypeName,
+        };
+
+    /// <summary>
     /// Drops the leading <c>Obs</c> from a protocol enum type name, so <c>ObsMediaInputAction</c>
     /// yields <c>MediaInputAction</c> and does not collide with the string-constant class.
     /// </summary>
@@ -248,7 +265,11 @@ internal static partial class Emitter
         {
             string[] parts = identifier.Split('_');
             int i = 0;
-            while (i < shared && i < parts.Length && string.Equals(parts[i], first[i], StringComparison.Ordinal))
+            while (
+                i < shared
+                && i < parts.Length
+                && string.Equals(parts[i], first[i], StringComparison.Ordinal)
+            )
             {
                 i++;
             }
@@ -317,7 +338,9 @@ internal static partial class Emitter
 
         string prefix = FindCommonMemberPrefix([.. members.Select(m => m.Member)]);
 
-        StringBuilder builder = BuildSourceHeader("// Type: Typed Enum for a string-valued protocol enum");
+        StringBuilder builder = BuildSourceHeader(
+            "// Type: Typed Enum for a string-valued protocol enum"
+        );
         builder.AppendLine("using System;");
         builder.AppendLine("using System.Text.Json.Serialization;");
         builder.AppendLine();
@@ -328,7 +351,9 @@ internal static partial class Emitter
             $"Typed form of the {constantsClass} protocol enum. Use <see cref=\"{enumName}Extensions.ToWireValue\"/> to obtain the string OBS expects.",
             0
         );
-        builder.AppendLine("/// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>");
+        builder.AppendLine(
+            "/// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>"
+        );
         builder.AppendLine($"public enum {enumName}");
         builder.AppendLine("{");
         foreach ((string memberIdentifier, string wire) in members)
@@ -340,7 +365,9 @@ internal static partial class Emitter
             }
 
             string memberName = SnakeToPascalCase(shortName);
-            builder.AppendLine($"    /// <summary>Maps to <c>{System.Security.SecurityElement.Escape(wire)}</c>.</summary>");
+            builder.AppendLine(
+                $"    /// <summary>Maps to <c>{System.Security.SecurityElement.Escape(wire)}</c>.</summary>"
+            );
             builder.AppendLine($"    [JsonStringEnumMemberName(\"{wire}\")]");
             builder.AppendLine($"    {memberName},");
             builder.AppendLine();
@@ -352,8 +379,12 @@ internal static partial class Emitter
         AppendXmlDocSummary(builder, $"Wire-value conversions for <see cref=\"{enumName}\"/>.", 0);
         builder.AppendLine($"public static class {enumName}Extensions");
         builder.AppendLine("{");
-        builder.AppendLine($"    /// <summary>Returns the protocol string OBS expects for this value.</summary>");
-        builder.AppendLine($"    public static string ToWireValue(this {enumName} value) => value switch");
+        builder.AppendLine(
+            $"    /// <summary>Returns the protocol string OBS expects for this value.</summary>"
+        );
+        builder.AppendLine(
+            $"    public static string ToWireValue(this {enumName} value) => value switch"
+        );
         builder.AppendLine("    {");
         foreach ((string memberIdentifier, string wire) in members)
         {
@@ -363,14 +394,22 @@ internal static partial class Emitter
                 shortName = shortName.Substring(prefix.Length);
             }
 
-            builder.AppendLine($"        {enumName}.{SnakeToPascalCase(shortName)} => {constantsClass}.{memberIdentifier},");
+            builder.AppendLine(
+                $"        {enumName}.{SnakeToPascalCase(shortName)} => {constantsClass}.{memberIdentifier},"
+            );
         }
 
-        builder.AppendLine($"        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),");
+        builder.AppendLine(
+            $"        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),"
+        );
         builder.AppendLine("    };");
         builder.AppendLine();
-        builder.AppendLine($"    /// <summary>Parses a protocol string into a <see cref=\"{enumName}\"/>, returning null when unrecognised.</summary>");
-        builder.AppendLine($"    public static {enumName}? FromWireValue(string? value) => value switch");
+        builder.AppendLine(
+            $"    /// <summary>Parses a protocol string into a <see cref=\"{enumName}\"/>, returning null when unrecognised.</summary>"
+        );
+        builder.AppendLine(
+            $"    public static {enumName}? FromWireValue(string? value) => value switch"
+        );
         builder.AppendLine("    {");
         foreach ((string memberIdentifier, string wire) in members)
         {
@@ -380,7 +419,9 @@ internal static partial class Emitter
                 shortName = shortName.Substring(prefix.Length);
             }
 
-            builder.AppendLine($"        {constantsClass}.{memberIdentifier} => {enumName}.{SnakeToPascalCase(shortName)},");
+            builder.AppendLine(
+                $"        {constantsClass}.{memberIdentifier} => {enumName}.{SnakeToPascalCase(shortName)},"
+            );
         }
 
         builder.AppendLine("        _ => null,");
@@ -712,9 +753,11 @@ internal static partial class Emitter
                 $"/// Requests in the <c>{System.Security.SecurityElement.Escape(group.Key)}</c> category."
             );
             builder.AppendLine("/// </summary>");
-            builder.AppendLine("/// <param name=\"client\">The client these requests are sent on.</param>");
             builder.AppendLine(
-                $"public readonly partial struct {groupName}RequestGroup(ObsWebSocketClient client)"
+                "/// <param name=\"client\">The client these requests are sent on.</param>"
+            );
+            builder.AppendLine(
+                $"public readonly partial struct {groupName}Group(ObsWebSocketClient client)"
             );
             builder.AppendLine("{");
 
@@ -744,7 +787,9 @@ internal static partial class Emitter
         }
 
         builder.AppendLine("/// <summary>");
-        builder.AppendLine("/// Exposes the request categories defined by the OBS WebSocket protocol.");
+        builder.AppendLine(
+            "/// Exposes the request categories defined by the OBS WebSocket protocol."
+        );
         builder.AppendLine("/// </summary>");
         builder.AppendLine("public static class ObsWebSocketClientExtensions");
         builder.AppendLine("{");
@@ -757,9 +802,7 @@ internal static partial class Emitter
                 $"        /// Requests in the <c>{System.Security.SecurityElement.Escape(category)}</c> category."
             );
             builder.AppendLine("        /// </summary>");
-            builder.AppendLine(
-                $"        public {groupName}RequestGroup {groupName} => new(client);"
-            );
+            builder.AppendLine($"        public {groupName}Group {groupName} => new(client);");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -828,15 +871,11 @@ internal static partial class Emitter
         {
             if (baseCallMethod == "CallAsyncValue")
             {
-                builder.Append(
-                    $"Yields the <see cref=\"{responseDtoType}\"/> response data."
-                );
+                builder.Append($"Yields the <see cref=\"{responseDtoType}\"/> response data.");
             }
             else // Assumed CallAsync (reference type)
             {
-                builder.Append(
-                    $"Yields the <see cref=\"{responseDtoType}\"/> response data."
-                );
+                builder.Append($"Yields the <see cref=\"{responseDtoType}\"/> response data.");
             }
         }
         else // No response data
@@ -876,9 +915,7 @@ internal static partial class Emitter
             );
         }
 
-        builder.AppendLine(
-            $"    public async {returnType} {methodName}({parameterList})"
-        );
+        builder.AppendLine($"    public async {returnType} {methodName}({parameterList})");
         builder.AppendLine("    {");
         // Method Body
         string callParams = hasRequestData ? requestParamName : "null";

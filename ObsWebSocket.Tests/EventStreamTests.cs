@@ -59,10 +59,11 @@ public sealed class EventStreamTests
         List<string> seen = [];
 
         IAsyncEnumerator<CurrentProgramSceneChangedEventArgs> enumerator = StreamOf(
-            source,
-            capacity: 8,
-            cts.Token
-        ).GetAsyncEnumerator(cts.Token);
+                source,
+                capacity: 8,
+                cts.Token
+            )
+            .GetAsyncEnumerator(cts.Token);
 
         try
         {
@@ -91,10 +92,11 @@ public sealed class EventStreamTests
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
 
         IAsyncEnumerator<CurrentProgramSceneChangedEventArgs> enumerator = StreamOf(
-            source,
-            capacity: 4,
-            cts.Token
-        ).GetAsyncEnumerator(cts.Token);
+                source,
+                capacity: 4,
+                cts.Token
+            )
+            .GetAsyncEnumerator(cts.Token);
 
         ValueTask<bool> pending = enumerator.MoveNextAsync();
         source.Raise("One");
@@ -112,10 +114,11 @@ public sealed class EventStreamTests
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
 
         IAsyncEnumerator<CurrentProgramSceneChangedEventArgs> enumerator = StreamOf(
-            source,
-            capacity: 2,
-            cts.Token
-        ).GetAsyncEnumerator(cts.Token);
+                source,
+                capacity: 2,
+                cts.Token
+            )
+            .GetAsyncEnumerator(cts.Token);
 
         try
         {
@@ -148,10 +151,11 @@ public sealed class EventStreamTests
         using CancellationTokenSource cts = new();
 
         IAsyncEnumerator<CurrentProgramSceneChangedEventArgs> enumerator = StreamOf(
-            source,
-            capacity: 4,
-            cts.Token
-        ).GetAsyncEnumerator(cts.Token);
+                source,
+                capacity: 4,
+                cts.Token
+            )
+            .GetAsyncEnumerator(cts.Token);
 
         ValueTask<bool> pending = enumerator.MoveNextAsync();
         await cts.CancelAsync();
@@ -165,10 +169,6 @@ public sealed class EventStreamTests
     [TestMethod]
     public void Create_WithInvalidCapacity_Throws() =>
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
-            EventStream.Create<CurrentProgramSceneChangedEventArgs>(
-                _ => { },
-                _ => { },
-                capacity: 0
-            )
+            EventStream.Create<CurrentProgramSceneChangedEventArgs>(_ => { }, _ => { }, capacity: 0)
         );
 }

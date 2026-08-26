@@ -31,42 +31,42 @@ public sealed partial record GetVideoSettingsResponseData
     /// </summary>
     [JsonPropertyName("baseHeight")]
     [Key("baseHeight")]
-    public required double BaseHeight { get; init; }
+    public required int BaseHeight { get; init; }
 
     /// <summary>
     /// Width of the base (canvas) resolution in pixels
     /// </summary>
     [JsonPropertyName("baseWidth")]
     [Key("baseWidth")]
-    public required double BaseWidth { get; init; }
+    public required int BaseWidth { get; init; }
 
     /// <summary>
     /// Denominator of the fractional FPS value
     /// </summary>
     [JsonPropertyName("fpsDenominator")]
     [Key("fpsDenominator")]
-    public required double FpsDenominator { get; init; }
+    public required int FpsDenominator { get; init; }
 
     /// <summary>
     /// Numerator of the fractional FPS value
     /// </summary>
     [JsonPropertyName("fpsNumerator")]
     [Key("fpsNumerator")]
-    public required double FpsNumerator { get; init; }
+    public required int FpsNumerator { get; init; }
 
     /// <summary>
     /// Height of the output resolution in pixels
     /// </summary>
     [JsonPropertyName("outputHeight")]
     [Key("outputHeight")]
-    public required double OutputHeight { get; init; }
+    public required int OutputHeight { get; init; }
 
     /// <summary>
     /// Width of the output resolution in pixels
     /// </summary>
     [JsonPropertyName("outputWidth")]
     [Key("outputWidth")]
-    public required double OutputWidth { get; init; }
+    public required int OutputWidth { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -77,7 +77,7 @@ public sealed partial record GetVideoSettingsResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetVideoSettingsResponseData(double fpsNumerator, double fpsDenominator, double baseWidth, double baseHeight, double outputWidth, double outputHeight)
+    public GetVideoSettingsResponseData(int fpsNumerator, int fpsDenominator, int baseWidth, int baseHeight, int outputWidth, int outputHeight)
     {
         this.FpsNumerator = fpsNumerator;
         this.FpsDenominator = fpsDenominator;

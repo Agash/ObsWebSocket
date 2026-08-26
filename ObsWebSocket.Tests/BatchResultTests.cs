@@ -18,13 +18,12 @@ public sealed class BatchResultTests
 
     private static RequestResponsePayload<object> JsonResult(string type, object? payload)
     {
-        JsonElement element =
-            payload is null
-                ? default
-                : JsonSerializer.SerializeToElement(
-                    payload,
-                    ObsWebSocketJsonContext.Default.Options.GetTypeInfo(payload.GetType())
-                );
+        JsonElement element = payload is null
+            ? default
+            : JsonSerializer.SerializeToElement(
+                payload,
+                ObsWebSocketJsonContext.Default.Options.GetTypeInfo(payload.GetType())
+            );
 
         return new RequestResponsePayload<object>(type, $"{type}_0", Ok, element);
     }
@@ -87,10 +86,9 @@ public sealed class BatchResultTests
             null
         );
 
-        ObsWebSocketRequestException ex =
-            Assert.ThrowsExactly<ObsWebSocketRequestException>(
-                () => result.GetRequiredData<GetSceneItemListResponseData>()
-            );
+        ObsWebSocketRequestException ex = Assert.ThrowsExactly<ObsWebSocketRequestException>(() =>
+            result.GetRequiredData<GetSceneItemListResponseData>()
+        );
 
         Assert.AreEqual(600, ex.Status?.Code);
         Assert.AreEqual("GetSceneItemList", ex.RequestType);
@@ -115,7 +113,10 @@ public sealed class BatchResultTests
     {
         List<RequestResponsePayload<object>> results =
         [
-            JsonResult("GetVersion", new GetVersionResponseData { ObsVersion = "1", RpcVersion = 1 }),
+            JsonResult(
+                "GetVersion",
+                new GetVersionResponseData { ObsVersion = "1", RpcVersion = 1 }
+            ),
             new("GetStats", "GetStats_1", new RequestStatus(false, 604, "nope"), null),
         ];
 

@@ -34,7 +34,7 @@ public sealed partial record SleepRequestData
     /// </remarks>
     [JsonPropertyName("sleepFrames")]
     [Key("sleepFrames")]
-    public double? SleepFrames { get; init; }
+    public int? SleepFrames { get; init; }
 
     /// <summary>
     /// Number of milliseconds to sleep for (if `SERIAL_REALTIME` mode)
@@ -46,7 +46,7 @@ public sealed partial record SleepRequestData
     /// </remarks>
     [JsonPropertyName("sleepMillis")]
     [Key("sleepMillis")]
-    public double? SleepMillis { get; init; }
+    public int? SleepMillis { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -56,7 +56,7 @@ public sealed partial record SleepRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SleepRequestData(double? sleepMillis = null, double? sleepFrames = null)
+    public SleepRequestData(int? sleepMillis = null, int? sleepFrames = null)
     {
         this.SleepMillis = sleepMillis;
         this.SleepFrames = sleepFrames;

@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Filters</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct FiltersRequestGroup
+public readonly partial struct FiltersGroup
 {
     /// <summary>
     /// Retrieves the settings for a specific filter on a source and deserializes them using an explicit <see cref="JsonTypeInfo{T}"/>.
@@ -31,7 +31,8 @@ public readonly partial struct FiltersRequestGroup
     /// <returns>The deserialized settings, or null if the source/filter is not found or deserialization fails.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetSourceFilterSettingsAsync<T>(string sourceName,
+    public async Task<T?> GetSourceFilterSettingsAsync<T>(
+        string sourceName,
         string filterName,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
@@ -53,13 +54,8 @@ public readonly partial struct FiltersRequestGroup
                 )
                 .ConfigureAwait(false);
         }
-        catch (ObsWebSocketException ex)
-            when (ex.Message.Contains("NotFound", StringComparison.OrdinalIgnoreCase)
-                || ex.Message.Contains(
-                    $"code {(int)Core.Protocol.Generated.RequestStatus.ResourceNotFound}:",
-                    StringComparison.Ordinal
-                )
-            )
+        catch (ObsWebSocketRequestException ex)
+            when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
             return null;
         }
@@ -96,14 +92,20 @@ public readonly partial struct FiltersRequestGroup
     /// <returns>The deserialized settings, or null if the source/filter is not found or deserialization fails.</returns>
     /// <exception cref="ObsWebSocketException">Thrown for OBS errors other than 'ResourceNotFound'.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetSourceFilterSettingsAsync<T>(string sourceName,
+    public Task<T?> GetSourceFilterSettingsAsync<T>(
+        string sourceName,
         string filterName,
         CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Filters.GetSourceFilterSettingsAsync(sourceName, filterName, typeInfo, cancellationToken);
+        return client.Filters.GetSourceFilterSettingsAsync(
+            sourceName,
+            filterName,
+            typeInfo,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -119,7 +121,8 @@ public readonly partial struct FiltersRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetSourceFilterSettingsAsync<T>(string sourceName,
+    public async Task SetSourceFilterSettingsAsync<T>(
+        string sourceName,
         string filterName,
         T settings,
         JsonTypeInfo<T> typeInfo,
@@ -148,7 +151,8 @@ public readonly partial struct FiltersRequestGroup
         }
 
         await client
-            .Filters.SetSourceFilterSettingsAsync(new SetSourceFilterSettingsRequestData(
+            .Filters.SetSourceFilterSettingsAsync(
+                new SetSourceFilterSettingsRequestData(
                     filterSettings: settingsElement,
                     sourceName: sourceName,
                     filterName: filterName,
@@ -170,7 +174,8 @@ public readonly partial struct FiltersRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task SetSourceFilterSettingsAsync<T>(string sourceName,
+    public Task SetSourceFilterSettingsAsync<T>(
+        string sourceName,
         string filterName,
         T settings,
         bool overlay = true,
@@ -179,7 +184,14 @@ public readonly partial struct FiltersRequestGroup
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Filters.SetSourceFilterSettingsAsync(sourceName, filterName, settings, typeInfo, overlay, cancellationToken);
+        return client.Filters.SetSourceFilterSettingsAsync(
+            sourceName,
+            filterName,
+            settings,
+            typeInfo,
+            overlay,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -195,7 +207,8 @@ public readonly partial struct FiltersRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task CreateSourceFilterAsync<T>(string sourceName,
+    public async Task CreateSourceFilterAsync<T>(
+        string sourceName,
         string filterName,
         string filterKind,
         T settings,
@@ -225,7 +238,8 @@ public readonly partial struct FiltersRequestGroup
         }
 
         await client
-            .Filters.CreateSourceFilterAsync(new CreateSourceFilterRequestData(
+            .Filters.CreateSourceFilterAsync(
+                new CreateSourceFilterRequestData(
                     filterName: filterName,
                     filterKind: filterKind,
                     sourceName: sourceName,
@@ -247,7 +261,8 @@ public readonly partial struct FiltersRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task CreateSourceFilterAsync<T>(string sourceName,
+    public Task CreateSourceFilterAsync<T>(
+        string sourceName,
         string filterName,
         string filterKind,
         T settings,
@@ -256,7 +271,14 @@ public readonly partial struct FiltersRequestGroup
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Filters.CreateSourceFilterAsync(sourceName, filterName, filterKind, settings, typeInfo, cancellationToken);
+        return client.Filters.CreateSourceFilterAsync(
+            sourceName,
+            filterName,
+            filterKind,
+            settings,
+            typeInfo,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -269,7 +291,8 @@ public readonly partial struct FiltersRequestGroup
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetSourceFilterDefaultSettingsAsync<T>(string filterKind,
+    public async Task<T?> GetSourceFilterDefaultSettingsAsync<T>(
+        string filterKind,
         JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
@@ -280,12 +303,15 @@ public readonly partial struct FiltersRequestGroup
         client.EnsureConnected();
 
         GetSourceFilterDefaultSettingsResponseData? response = await client
-            .Filters.GetSourceFilterDefaultSettingsAsync(new GetSourceFilterDefaultSettingsRequestData(filterKind: filterKind),
+            .Filters.GetSourceFilterDefaultSettingsAsync(
+                new GetSourceFilterDefaultSettingsRequestData(filterKind: filterKind),
                 cancellationToken: cancellationToken
             )
             .ConfigureAwait(false);
 
-        return response?.DefaultFilterSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.DefaultFilterSettings is not { } element
+            ? null
+            : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -297,12 +323,17 @@ public readonly partial struct FiltersRequestGroup
     /// <returns>The deserialized default settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetSourceFilterDefaultSettingsAsync<T>(string filterKind,
+    public Task<T?> GetSourceFilterDefaultSettingsAsync<T>(
+        string filterKind,
         CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Filters.GetSourceFilterDefaultSettingsAsync(filterKind, typeInfo, cancellationToken);
+        return client.Filters.GetSourceFilterDefaultSettingsAsync(
+            filterKind,
+            typeInfo,
+            cancellationToken
+        );
     }
 }

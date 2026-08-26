@@ -50,7 +50,7 @@ public sealed partial record SaveSourceScreenshotRequestData
     /// </remarks>
     [JsonPropertyName("imageCompressionQuality")]
     [Key("imageCompressionQuality")]
-    public double? ImageCompressionQuality { get; init; }
+    public int? ImageCompressionQuality { get; init; }
 
     /// <summary>
     /// Path to save the screenshot file to. Eg. `C:\Users\user\Desktop\screenshot.png`
@@ -82,7 +82,7 @@ public sealed partial record SaveSourceScreenshotRequestData
     /// </remarks>
     [JsonPropertyName("imageHeight")]
     [Key("imageHeight")]
-    public double? ImageHeight { get; init; }
+    public int? ImageHeight { get; init; }
 
     /// <summary>
     /// Width to scale the screenshot to
@@ -94,7 +94,7 @@ public sealed partial record SaveSourceScreenshotRequestData
     /// </remarks>
     [JsonPropertyName("imageWidth")]
     [Key("imageWidth")]
-    public double? ImageWidth { get; init; }
+    public int? ImageWidth { get; init; }
 
     /// <summary>
     /// Name of the source to take a screenshot of
@@ -127,7 +127,7 @@ public sealed partial record SaveSourceScreenshotRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SaveSourceScreenshotRequestData(string imageFormat, string imageFilePath, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, double? imageWidth = null, double? imageHeight = null, double? imageCompressionQuality = null)
+    public SaveSourceScreenshotRequestData(string imageFormat, string imageFilePath, string? canvasUuid = null, string? sourceName = null, string? sourceUuid = null, int? imageWidth = null, int? imageHeight = null, int? imageCompressionQuality = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SourceName = sourceName;

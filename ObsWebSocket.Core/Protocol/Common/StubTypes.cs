@@ -482,10 +482,3 @@ public sealed class PropertyItemStub
     [JsonConstructor]
     public PropertyItemStub() { }
 }
-
-
-
-
-
-
-

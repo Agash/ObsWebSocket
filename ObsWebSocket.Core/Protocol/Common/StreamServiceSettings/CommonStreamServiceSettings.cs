@@ -14,7 +14,8 @@ public sealed record RtmpCommonStreamServiceSettings(
     [property: JsonPropertyName("bwtest")] bool? BandwidthTest = null,
     [property: JsonPropertyName("stream_key_link")] string? StreamKeyLink = null,
     [property: JsonPropertyName("multitrack_video_name")] string? MultitrackVideoName = null,
-    [property: JsonPropertyName("multitrack_video_disclaimer")] string? MultitrackVideoDisclaimer = null
+    [property: JsonPropertyName("multitrack_video_disclaimer")]
+        string? MultitrackVideoDisclaimer = null
 );
 
 /// <summary>

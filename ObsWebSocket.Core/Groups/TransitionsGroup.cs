@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core.Events;
 using ObsWebSocket.Core.Events.Generated;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Common;
-using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Common.FilterSettings;
 using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
@@ -17,7 +17,7 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Conveniences for the <c>Transitions</c> category, alongside its generated requests.
 /// </summary>
-public readonly partial struct TransitionsRequestGroup
+public readonly partial struct TransitionsGroup
 {
     /// <summary>
     /// Gets the settings for the current scene transition as a strongly-typed object.
@@ -28,7 +28,8 @@ public readonly partial struct TransitionsRequestGroup
     /// <returns>The deserialized transition settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<T?> GetCurrentSceneTransitionSettingsAsync<T>(JsonTypeInfo<T> typeInfo,
+    public async Task<T?> GetCurrentSceneTransitionSettingsAsync<T>(
+        JsonTypeInfo<T> typeInfo,
         CancellationToken cancellationToken = default
     )
         where T : class
@@ -40,7 +41,9 @@ public readonly partial struct TransitionsRequestGroup
             .Transitions.GetCurrentSceneTransitionAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return response?.TransitionSettings is not { } element ? null : JsonSerializer.Deserialize(element, typeInfo);
+        return response?.TransitionSettings is not { } element
+            ? null
+            : JsonSerializer.Deserialize(element, typeInfo);
     }
 
     /// <summary>
@@ -51,12 +54,16 @@ public readonly partial struct TransitionsRequestGroup
     /// <returns>The deserialized transition settings, or <see langword="null"/> if no settings are present.</returns>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task<T?> GetCurrentSceneTransitionSettingsAsync<T>(CancellationToken cancellationToken = default
+    public Task<T?> GetCurrentSceneTransitionSettingsAsync<T>(
+        CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Transitions.GetCurrentSceneTransitionSettingsAsync(typeInfo, cancellationToken);
+        return client.Transitions.GetCurrentSceneTransitionSettingsAsync(
+            typeInfo,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -69,7 +76,8 @@ public readonly partial struct TransitionsRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task SetCurrentSceneTransitionSettingsAsync<T>(T settings,
+    public async Task SetCurrentSceneTransitionSettingsAsync<T>(
+        T settings,
         JsonTypeInfo<T> typeInfo,
         bool? overlay = true,
         CancellationToken cancellationToken = default
@@ -82,7 +90,8 @@ public readonly partial struct TransitionsRequestGroup
         JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
 
         await client
-            .Transitions.SetCurrentSceneTransitionSettingsAsync(new SetCurrentSceneTransitionSettingsRequestData(
+            .Transitions.SetCurrentSceneTransitionSettingsAsync(
+                new SetCurrentSceneTransitionSettingsRequestData(
                     transitionSettings: settingsElement,
                     overlay: overlay
                 ),
@@ -100,13 +109,19 @@ public readonly partial struct TransitionsRequestGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if the type is not registered, OBS returns an error, or serialization fails.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public Task SetCurrentSceneTransitionSettingsAsync<T>(T settings,
+    public Task SetCurrentSceneTransitionSettingsAsync<T>(
+        T settings,
         bool? overlay = true,
         CancellationToken cancellationToken = default
     )
         where T : class
     {
         JsonTypeInfo<T> typeInfo = ObsWebSocketClientHelpers.GetRegisteredTypeInfo<T>();
-        return client.Transitions.SetCurrentSceneTransitionSettingsAsync(settings, typeInfo, overlay, cancellationToken);
+        return client.Transitions.SetCurrentSceneTransitionSettingsAsync(
+            settings,
+            typeInfo,
+            overlay,
+            cancellationToken
+        );
     }
 }

@@ -12,28 +12,27 @@ using ObsWebSocket.Core.Events.Generated;
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Observes OBS events as async sequences. Each accessor subscribes for the lifetime
-/// of the enumeration and unsubscribes when it ends, so the caller never manages handlers.
+/// Events in the <c>canvases</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
 /// </summary>
-public static class ObsWebSocketClientEventStreams
+public readonly partial struct CanvasesGroup
 {
     /// <summary>
     /// Streams <c>CanvasCreated</c> events as they arrive.
     /// <para>A new canvas has been created.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs> CanvasCreatedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs> CanvasCreatedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CanvasCreatedEventArgs>(
-            handler => client.CanvasCreated += handler,
-            handler => client.CanvasCreated -= handler,
+            handler => source.CanvasCreated += handler,
+            handler => source.CanvasCreated -= handler,
             capacity,
             cancellationToken);
     }
@@ -42,19 +41,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CanvasRemoved</c> events as they arrive.
     /// <para>A canvas has been removed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs> CanvasRemovedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs> CanvasRemovedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CanvasRemovedEventArgs>(
-            handler => client.CanvasRemoved += handler,
-            handler => client.CanvasRemoved -= handler,
+            handler => source.CanvasRemoved += handler,
+            handler => source.CanvasRemoved -= handler,
             capacity,
             cancellationToken);
     }
@@ -63,40 +60,45 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CanvasNameChanged</c> events as they arrive.
     /// <para>The name of a canvas has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Canvases</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs> CanvasNameChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs> CanvasNameChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CanvasNameChangedEventArgs>(
-            handler => client.CanvasNameChanged += handler,
-            handler => client.CanvasNameChanged -= handler,
+            handler => source.CanvasNameChanged += handler,
+            handler => source.CanvasNameChanged -= handler,
             capacity,
             cancellationToken);
     }
 
+}
+
+/// <summary>
+/// Events in the <c>config</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct ConfigGroup
+{
     /// <summary>
     /// Streams <c>CurrentSceneCollectionChanging</c> events as they arrive.
     /// <para>The current scene collection has begun changing. Note: We recommend using this event to trigger a pause of all polling requests, as performing any requests during a scene collection change is considered undefined behavior and can cause crashes!</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs> CurrentSceneCollectionChangingStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs> CurrentSceneCollectionChangingStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangingEventArgs>(
-            handler => client.CurrentSceneCollectionChanging += handler,
-            handler => client.CurrentSceneCollectionChanging -= handler,
+            handler => source.CurrentSceneCollectionChanging += handler,
+            handler => source.CurrentSceneCollectionChanging -= handler,
             capacity,
             cancellationToken);
     }
@@ -105,19 +107,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CurrentSceneCollectionChanged</c> events as they arrive.
     /// <para>The current scene collection has changed. Note: If polling has been paused during `CurrentSceneCollectionChanging`, this is the que to restart polling.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangedEventArgs> CurrentSceneCollectionChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangedEventArgs> CurrentSceneCollectionChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneCollectionChangedEventArgs>(
-            handler => client.CurrentSceneCollectionChanged += handler,
-            handler => client.CurrentSceneCollectionChanged -= handler,
+            handler => source.CurrentSceneCollectionChanged += handler,
+            handler => source.CurrentSceneCollectionChanged -= handler,
             capacity,
             cancellationToken);
     }
@@ -126,19 +126,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SceneCollectionListChanged</c> events as they arrive.
     /// <para>The scene collection list has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneCollectionListChangedEventArgs> SceneCollectionListChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneCollectionListChangedEventArgs> SceneCollectionListChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneCollectionListChangedEventArgs>(
-            handler => client.SceneCollectionListChanged += handler,
-            handler => client.SceneCollectionListChanged -= handler,
+            handler => source.SceneCollectionListChanged += handler,
+            handler => source.SceneCollectionListChanged -= handler,
             capacity,
             cancellationToken);
     }
@@ -147,19 +145,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CurrentProfileChanging</c> events as they arrive.
     /// <para>The current profile has begun changing.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProfileChangingEventArgs> CurrentProfileChangingStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProfileChangingEventArgs> CurrentProfileChangingStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentProfileChangingEventArgs>(
-            handler => client.CurrentProfileChanging += handler,
-            handler => client.CurrentProfileChanging -= handler,
+            handler => source.CurrentProfileChanging += handler,
+            handler => source.CurrentProfileChanging -= handler,
             capacity,
             cancellationToken);
     }
@@ -168,19 +164,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CurrentProfileChanged</c> events as they arrive.
     /// <para>The current profile has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProfileChangedEventArgs> CurrentProfileChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProfileChangedEventArgs> CurrentProfileChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentProfileChangedEventArgs>(
-            handler => client.CurrentProfileChanged += handler,
-            handler => client.CurrentProfileChanged -= handler,
+            handler => source.CurrentProfileChanged += handler,
+            handler => source.CurrentProfileChanged -= handler,
             capacity,
             cancellationToken);
     }
@@ -189,40 +183,45 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>ProfileListChanged</c> events as they arrive.
     /// <para>The profile list has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Config</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ProfileListChangedEventArgs> ProfileListChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ProfileListChangedEventArgs> ProfileListChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.ProfileListChangedEventArgs>(
-            handler => client.ProfileListChanged += handler,
-            handler => client.ProfileListChanged -= handler,
+            handler => source.ProfileListChanged += handler,
+            handler => source.ProfileListChanged -= handler,
             capacity,
             cancellationToken);
     }
 
+}
+
+/// <summary>
+/// Events in the <c>filters</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct FiltersGroup
+{
     /// <summary>
     /// Streams <c>SourceFilterListReindexed</c> events as they arrive.
     /// <para>A source&apos;s filter list has been reindexed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterListReindexedEventArgs> SourceFilterListReindexedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterListReindexedEventArgs> SourceFilterListReindexedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterListReindexedEventArgs>(
-            handler => client.SourceFilterListReindexed += handler,
-            handler => client.SourceFilterListReindexed -= handler,
+            handler => source.SourceFilterListReindexed += handler,
+            handler => source.SourceFilterListReindexed -= handler,
             capacity,
             cancellationToken);
     }
@@ -231,19 +230,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SourceFilterCreated</c> events as they arrive.
     /// <para>A filter has been added to a source.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterCreatedEventArgs> SourceFilterCreatedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterCreatedEventArgs> SourceFilterCreatedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterCreatedEventArgs>(
-            handler => client.SourceFilterCreated += handler,
-            handler => client.SourceFilterCreated -= handler,
+            handler => source.SourceFilterCreated += handler,
+            handler => source.SourceFilterCreated -= handler,
             capacity,
             cancellationToken);
     }
@@ -252,19 +249,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SourceFilterRemoved</c> events as they arrive.
     /// <para>A filter has been removed from a source.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterRemovedEventArgs> SourceFilterRemovedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterRemovedEventArgs> SourceFilterRemovedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterRemovedEventArgs>(
-            handler => client.SourceFilterRemoved += handler,
-            handler => client.SourceFilterRemoved -= handler,
+            handler => source.SourceFilterRemoved += handler,
+            handler => source.SourceFilterRemoved -= handler,
             capacity,
             cancellationToken);
     }
@@ -273,19 +268,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SourceFilterNameChanged</c> events as they arrive.
     /// <para>The name of a source filter has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterNameChangedEventArgs> SourceFilterNameChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterNameChangedEventArgs> SourceFilterNameChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterNameChangedEventArgs>(
-            handler => client.SourceFilterNameChanged += handler,
-            handler => client.SourceFilterNameChanged -= handler,
+            handler => source.SourceFilterNameChanged += handler,
+            handler => source.SourceFilterNameChanged -= handler,
             capacity,
             cancellationToken);
     }
@@ -294,19 +287,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SourceFilterSettingsChanged</c> events as they arrive.
     /// <para>An source filter&apos;s settings have changed (been updated).</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterSettingsChangedEventArgs> SourceFilterSettingsChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterSettingsChangedEventArgs> SourceFilterSettingsChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterSettingsChangedEventArgs>(
-            handler => client.SourceFilterSettingsChanged += handler,
-            handler => client.SourceFilterSettingsChanged -= handler,
+            handler => source.SourceFilterSettingsChanged += handler,
+            handler => source.SourceFilterSettingsChanged -= handler,
             capacity,
             cancellationToken);
     }
@@ -315,922 +306,45 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>SourceFilterEnableStateChanged</c> events as they arrive.
     /// <para>A source filter&apos;s enable state has changed.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Filters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterEnableStateChangedEventArgs> SourceFilterEnableStateChangedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SourceFilterEnableStateChangedEventArgs> SourceFilterEnableStateChangedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.SourceFilterEnableStateChangedEventArgs>(
-            handler => client.SourceFilterEnableStateChanged += handler,
-            handler => client.SourceFilterEnableStateChanged -= handler,
+            handler => source.SourceFilterEnableStateChanged += handler,
+            handler => source.SourceFilterEnableStateChanged -= handler,
             capacity,
             cancellationToken);
     }
 
+}
+
+/// <summary>
+/// Events in the <c>general</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct GeneralGroup
+{
     /// <summary>
     /// Streams <c>ExitStarted</c> events as they arrive.
     /// <para>OBS has begun the shutdown process.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>General</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ExitStartedEventArgs> ExitStartedStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ExitStartedEventArgs> ExitStartedStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.ExitStartedEventArgs>(
-            handler => client.ExitStarted += handler,
-            handler => client.ExitStarted -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputCreated</c> events as they arrive.
-    /// <para>An input has been created.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputCreatedEventArgs> InputCreatedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputCreatedEventArgs>(
-            handler => client.InputCreated += handler,
-            handler => client.InputCreated -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputRemoved</c> events as they arrive.
-    /// <para>An input has been removed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputRemovedEventArgs> InputRemovedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputRemovedEventArgs>(
-            handler => client.InputRemoved += handler,
-            handler => client.InputRemoved -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputNameChanged</c> events as they arrive.
-    /// <para>The name of an input has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputNameChangedEventArgs> InputNameChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputNameChangedEventArgs>(
-            handler => client.InputNameChanged += handler,
-            handler => client.InputNameChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputSettingsChanged</c> events as they arrive.
-    /// <para>An input&apos;s settings have changed (been updated). Note: On some inputs, changing values in the properties dialog will cause an immediate update. Pressing the &quot;Cancel&quot; button will revert the settings, resulting in another event being fired.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputSettingsChangedEventArgs> InputSettingsChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputSettingsChangedEventArgs>(
-            handler => client.InputSettingsChanged += handler,
-            handler => client.InputSettingsChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputActiveStateChanged</c> events as they arrive.
-    /// <para>An input&apos;s active state has changed. When an input is active, it means it&apos;s being shown by the program feed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>InputActiveStateChanged</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputActiveStateChangedEventArgs> InputActiveStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputActiveStateChangedEventArgs>(
-            handler => client.InputActiveStateChanged += handler,
-            handler => client.InputActiveStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputShowStateChanged</c> events as they arrive.
-    /// <para>An input&apos;s show state has changed. When an input is showing, it means it&apos;s being shown by the preview or a dialog.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>InputShowStateChanged</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputShowStateChangedEventArgs> InputShowStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputShowStateChangedEventArgs>(
-            handler => client.InputShowStateChanged += handler,
-            handler => client.InputShowStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputMuteStateChanged</c> events as they arrive.
-    /// <para>An input&apos;s mute state has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputMuteStateChangedEventArgs> InputMuteStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputMuteStateChangedEventArgs>(
-            handler => client.InputMuteStateChanged += handler,
-            handler => client.InputMuteStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputVolumeChanged</c> events as they arrive.
-    /// <para>An input&apos;s volume level has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputVolumeChangedEventArgs> InputVolumeChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputVolumeChangedEventArgs>(
-            handler => client.InputVolumeChanged += handler,
-            handler => client.InputVolumeChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputAudioBalanceChanged</c> events as they arrive.
-    /// <para>The audio balance value of an input has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioBalanceChangedEventArgs> InputAudioBalanceChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioBalanceChangedEventArgs>(
-            handler => client.InputAudioBalanceChanged += handler,
-            handler => client.InputAudioBalanceChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputAudioSyncOffsetChanged</c> events as they arrive.
-    /// <para>The sync offset of an input has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioSyncOffsetChangedEventArgs> InputAudioSyncOffsetChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioSyncOffsetChangedEventArgs>(
-            handler => client.InputAudioSyncOffsetChanged += handler,
-            handler => client.InputAudioSyncOffsetChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputAudioTracksChanged</c> events as they arrive.
-    /// <para>The audio tracks of an input have changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioTracksChangedEventArgs> InputAudioTracksChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioTracksChangedEventArgs>(
-            handler => client.InputAudioTracksChanged += handler,
-            handler => client.InputAudioTracksChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputAudioMonitorTypeChanged</c> events as they arrive.
-    /// <para>The monitor type of an input has changed. Available types are: - `OBS_MONITORING_TYPE_NONE` - `OBS_MONITORING_TYPE_MONITOR_ONLY` - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioMonitorTypeChangedEventArgs> InputAudioMonitorTypeChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioMonitorTypeChangedEventArgs>(
-            handler => client.InputAudioMonitorTypeChanged += handler,
-            handler => client.InputAudioMonitorTypeChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>InputVolumeMeters</c> events as they arrive.
-    /// <para>A high-volume event providing volume levels of all active inputs every 50 milliseconds.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>InputVolumeMeters</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputVolumeMetersEventArgs> InputVolumeMetersStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputVolumeMetersEventArgs>(
-            handler => client.InputVolumeMeters += handler,
-            handler => client.InputVolumeMeters -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>MediaInputPlaybackStarted</c> events as they arrive.
-    /// <para>A media input has started playing.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackStartedEventArgs> MediaInputPlaybackStartedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackStartedEventArgs>(
-            handler => client.MediaInputPlaybackStarted += handler,
-            handler => client.MediaInputPlaybackStarted -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>MediaInputPlaybackEnded</c> events as they arrive.
-    /// <para>A media input has finished playing.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackEndedEventArgs> MediaInputPlaybackEndedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackEndedEventArgs>(
-            handler => client.MediaInputPlaybackEnded += handler,
-            handler => client.MediaInputPlaybackEnded -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>MediaInputActionTriggered</c> events as they arrive.
-    /// <para>An action has been performed on an input.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputActionTriggeredEventArgs> MediaInputActionTriggeredStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputActionTriggeredEventArgs>(
-            handler => client.MediaInputActionTriggered += handler,
-            handler => client.MediaInputActionTriggered -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>StreamStateChanged</c> events as they arrive.
-    /// <para>The state of the stream output has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.StreamStateChangedEventArgs> StreamStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.StreamStateChangedEventArgs>(
-            handler => client.StreamStateChanged += handler,
-            handler => client.StreamStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>RecordStateChanged</c> events as they arrive.
-    /// <para>The state of the record output has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.RecordStateChangedEventArgs> RecordStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.RecordStateChangedEventArgs>(
-            handler => client.RecordStateChanged += handler,
-            handler => client.RecordStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>RecordFileChanged</c> events as they arrive.
-    /// <para>The record output has started writing to a new file. For example, when a file split happens.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.RecordFileChangedEventArgs> RecordFileChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.RecordFileChangedEventArgs>(
-            handler => client.RecordFileChanged += handler,
-            handler => client.RecordFileChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>ReplayBufferStateChanged</c> events as they arrive.
-    /// <para>The state of the replay buffer output has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ReplayBufferStateChangedEventArgs> ReplayBufferStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ReplayBufferStateChangedEventArgs>(
-            handler => client.ReplayBufferStateChanged += handler,
-            handler => client.ReplayBufferStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>VirtualcamStateChanged</c> events as they arrive.
-    /// <para>The state of the virtualcam output has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.VirtualcamStateChangedEventArgs> VirtualcamStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.VirtualcamStateChangedEventArgs>(
-            handler => client.VirtualcamStateChanged += handler,
-            handler => client.VirtualcamStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>ReplayBufferSaved</c> events as they arrive.
-    /// <para>The replay buffer has been saved.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ReplayBufferSavedEventArgs> ReplayBufferSavedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ReplayBufferSavedEventArgs>(
-            handler => client.ReplayBufferSaved += handler,
-            handler => client.ReplayBufferSaved -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemCreated</c> events as they arrive.
-    /// <para>A scene item has been created.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemCreatedEventArgs> SceneItemCreatedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemCreatedEventArgs>(
-            handler => client.SceneItemCreated += handler,
-            handler => client.SceneItemCreated -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemRemoved</c> events as they arrive.
-    /// <para>A scene item has been removed. This event is not emitted when the scene the item is in is removed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemRemovedEventArgs> SceneItemRemovedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemRemovedEventArgs>(
-            handler => client.SceneItemRemoved += handler,
-            handler => client.SceneItemRemoved -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemListReindexed</c> events as they arrive.
-    /// <para>A scene&apos;s item list has been reindexed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemListReindexedEventArgs> SceneItemListReindexedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemListReindexedEventArgs>(
-            handler => client.SceneItemListReindexed += handler,
-            handler => client.SceneItemListReindexed -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemEnableStateChanged</c> events as they arrive.
-    /// <para>A scene item&apos;s enable state has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemEnableStateChangedEventArgs> SceneItemEnableStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemEnableStateChangedEventArgs>(
-            handler => client.SceneItemEnableStateChanged += handler,
-            handler => client.SceneItemEnableStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemLockStateChanged</c> events as they arrive.
-    /// <para>A scene item&apos;s lock state has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemLockStateChangedEventArgs> SceneItemLockStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemLockStateChangedEventArgs>(
-            handler => client.SceneItemLockStateChanged += handler,
-            handler => client.SceneItemLockStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemSelected</c> events as they arrive.
-    /// <para>A scene item has been selected in the Ui.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemSelectedEventArgs> SceneItemSelectedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemSelectedEventArgs>(
-            handler => client.SceneItemSelected += handler,
-            handler => client.SceneItemSelected -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneItemTransformChanged</c> events as they arrive.
-    /// <para>The transform/crop of a scene item has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>SceneItemTransformChanged</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemTransformChangedEventArgs> SceneItemTransformChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemTransformChangedEventArgs>(
-            handler => client.SceneItemTransformChanged += handler,
-            handler => client.SceneItemTransformChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneCreated</c> events as they arrive.
-    /// <para>A new scene has been created.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneCreatedEventArgs> SceneCreatedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneCreatedEventArgs>(
-            handler => client.SceneCreated += handler,
-            handler => client.SceneCreated -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneRemoved</c> events as they arrive.
-    /// <para>A scene has been removed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneRemovedEventArgs> SceneRemovedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneRemovedEventArgs>(
-            handler => client.SceneRemoved += handler,
-            handler => client.SceneRemoved -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneNameChanged</c> events as they arrive.
-    /// <para>The name of a scene has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneNameChangedEventArgs> SceneNameChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneNameChangedEventArgs>(
-            handler => client.SceneNameChanged += handler,
-            handler => client.SceneNameChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>CurrentProgramSceneChanged</c> events as they arrive.
-    /// <para>The current program scene has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProgramSceneChangedEventArgs> CurrentProgramSceneChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentProgramSceneChangedEventArgs>(
-            handler => client.CurrentProgramSceneChanged += handler,
-            handler => client.CurrentProgramSceneChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>CurrentPreviewSceneChanged</c> events as they arrive.
-    /// <para>The current preview scene has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentPreviewSceneChangedEventArgs> CurrentPreviewSceneChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentPreviewSceneChangedEventArgs>(
-            handler => client.CurrentPreviewSceneChanged += handler,
-            handler => client.CurrentPreviewSceneChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneListChanged</c> events as they arrive.
-    /// <para>The list of scenes has changed. TODO: Make OBS fire this event when scenes are reordered.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneListChangedEventArgs> SceneListChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneListChangedEventArgs>(
-            handler => client.SceneListChanged += handler,
-            handler => client.SceneListChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>CurrentSceneTransitionChanged</c> events as they arrive.
-    /// <para>The current scene transition has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionChangedEventArgs> CurrentSceneTransitionChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionChangedEventArgs>(
-            handler => client.CurrentSceneTransitionChanged += handler,
-            handler => client.CurrentSceneTransitionChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>CurrentSceneTransitionDurationChanged</c> events as they arrive.
-    /// <para>The current scene transition duration has changed.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionDurationChangedEventArgs> CurrentSceneTransitionDurationChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionDurationChangedEventArgs>(
-            handler => client.CurrentSceneTransitionDurationChanged += handler,
-            handler => client.CurrentSceneTransitionDurationChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneTransitionStarted</c> events as they arrive.
-    /// <para>A scene transition has started.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionStartedEventArgs> SceneTransitionStartedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionStartedEventArgs>(
-            handler => client.SceneTransitionStarted += handler,
-            handler => client.SceneTransitionStarted -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneTransitionEnded</c> events as they arrive.
-    /// <para>A scene transition has completed fully. Note: Does not appear to trigger when the transition is interrupted by the user.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionEndedEventArgs> SceneTransitionEndedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionEndedEventArgs>(
-            handler => client.SceneTransitionEnded += handler,
-            handler => client.SceneTransitionEnded -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>SceneTransitionVideoEnded</c> events as they arrive.
-    /// <para>A scene transition&apos;s video has completed fully. Useful for stinger transitions to tell when the video *actually* ends. `SceneTransitionEnded` only signifies the cut point, not the completion of transition playback. Note: Appears to be called by every transition, regardless of relevance.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionVideoEndedEventArgs> SceneTransitionVideoEndedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionVideoEndedEventArgs>(
-            handler => client.SceneTransitionVideoEnded += handler,
-            handler => client.SceneTransitionVideoEnded -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>StudioModeStateChanged</c> events as they arrive.
-    /// <para>Studio mode has been enabled or disabled.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.StudioModeStateChangedEventArgs> StudioModeStateChangedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.StudioModeStateChangedEventArgs>(
-            handler => client.StudioModeStateChanged += handler,
-            handler => client.StudioModeStateChanged -= handler,
-            capacity,
-            cancellationToken);
-    }
-
-    /// <summary>
-    /// Streams <c>ScreenshotSaved</c> events as they arrive.
-    /// <para>A screenshot has been saved. Note: Triggered for the screenshot feature available in `Settings -&gt; Hotkeys -&gt; Screenshot Output` ONLY. Applications using `Get/SaveSourceScreenshot` should implement a `CustomEvent` if this kind of inter-client communication is desired.</para>
-    /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
-    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
-    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
-    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ScreenshotSavedEventArgs> ScreenshotSavedStream(
-        this ObsWebSocketClient client,
-        int capacity = EventStream.DefaultCapacity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ScreenshotSavedEventArgs>(
-            handler => client.ScreenshotSaved += handler,
-            handler => client.ScreenshotSaved -= handler,
+            handler => source.ExitStarted += handler,
+            handler => source.ExitStarted -= handler,
             capacity,
             cancellationToken);
     }
@@ -1239,19 +353,17 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>VendorEvent</c> events as they arrive.
     /// <para>An event has been emitted from a vendor. A vendor is a unique name registered by a third-party plugin or script, which allows for custom requests and events to be added to obs-websocket. If a plugin or script implements vendor requests or events, documentation is expected to be provided with them.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>Vendors</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.VendorEventEventArgs> VendorEventStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.VendorEventEventArgs> VendorEventStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.VendorEventEventArgs>(
-            handler => client.VendorEvent += handler,
-            handler => client.VendorEvent -= handler,
+            handler => source.VendorEvent += handler,
+            handler => source.VendorEvent -= handler,
             capacity,
             cancellationToken);
     }
@@ -1260,21 +372,881 @@ public static class ObsWebSocketClientEventStreams
     /// Streams <c>CustomEvent</c> events as they arrive.
     /// <para>Custom event emitted by `BroadcastCustomEvent`.</para>
     /// </summary>
-    /// <param name="client">The ObsWebSocketClient instance.</param>
     /// <param name="capacity">Events buffered before the oldest is dropped.</param>
     /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
     /// <remarks>Requires the <c>General</c> subscription.</remarks>
-    public static IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CustomEventEventArgs> CustomEventStream(
-        this ObsWebSocketClient client,
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CustomEventEventArgs> CustomEventStream(
         int capacity = EventStream.DefaultCapacity,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(client);
+        ObsWebSocketClient source = client;
         return EventStream.Create<ObsWebSocket.Core.Events.Generated.CustomEventEventArgs>(
-            handler => client.CustomEvent += handler,
-            handler => client.CustomEvent -= handler,
+            handler => source.CustomEvent += handler,
+            handler => source.CustomEvent -= handler,
             capacity,
             cancellationToken);
     }
 
 }
+
+/// <summary>
+/// Events in the <c>inputs</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct InputsGroup
+{
+    /// <summary>
+    /// Streams <c>InputCreated</c> events as they arrive.
+    /// <para>An input has been created.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputCreatedEventArgs> InputCreatedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputCreatedEventArgs>(
+            handler => source.InputCreated += handler,
+            handler => source.InputCreated -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputRemoved</c> events as they arrive.
+    /// <para>An input has been removed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputRemovedEventArgs> InputRemovedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputRemovedEventArgs>(
+            handler => source.InputRemoved += handler,
+            handler => source.InputRemoved -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputNameChanged</c> events as they arrive.
+    /// <para>The name of an input has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputNameChangedEventArgs> InputNameChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputNameChangedEventArgs>(
+            handler => source.InputNameChanged += handler,
+            handler => source.InputNameChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputSettingsChanged</c> events as they arrive.
+    /// <para>An input&apos;s settings have changed (been updated). Note: On some inputs, changing values in the properties dialog will cause an immediate update. Pressing the &quot;Cancel&quot; button will revert the settings, resulting in another event being fired.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputSettingsChangedEventArgs> InputSettingsChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputSettingsChangedEventArgs>(
+            handler => source.InputSettingsChanged += handler,
+            handler => source.InputSettingsChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputActiveStateChanged</c> events as they arrive.
+    /// <para>An input&apos;s active state has changed. When an input is active, it means it&apos;s being shown by the program feed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>InputActiveStateChanged</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputActiveStateChangedEventArgs> InputActiveStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputActiveStateChangedEventArgs>(
+            handler => source.InputActiveStateChanged += handler,
+            handler => source.InputActiveStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputShowStateChanged</c> events as they arrive.
+    /// <para>An input&apos;s show state has changed. When an input is showing, it means it&apos;s being shown by the preview or a dialog.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>InputShowStateChanged</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputShowStateChangedEventArgs> InputShowStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputShowStateChangedEventArgs>(
+            handler => source.InputShowStateChanged += handler,
+            handler => source.InputShowStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputMuteStateChanged</c> events as they arrive.
+    /// <para>An input&apos;s mute state has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputMuteStateChangedEventArgs> InputMuteStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputMuteStateChangedEventArgs>(
+            handler => source.InputMuteStateChanged += handler,
+            handler => source.InputMuteStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputVolumeChanged</c> events as they arrive.
+    /// <para>An input&apos;s volume level has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputVolumeChangedEventArgs> InputVolumeChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputVolumeChangedEventArgs>(
+            handler => source.InputVolumeChanged += handler,
+            handler => source.InputVolumeChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputAudioBalanceChanged</c> events as they arrive.
+    /// <para>The audio balance value of an input has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioBalanceChangedEventArgs> InputAudioBalanceChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioBalanceChangedEventArgs>(
+            handler => source.InputAudioBalanceChanged += handler,
+            handler => source.InputAudioBalanceChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputAudioSyncOffsetChanged</c> events as they arrive.
+    /// <para>The sync offset of an input has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioSyncOffsetChangedEventArgs> InputAudioSyncOffsetChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioSyncOffsetChangedEventArgs>(
+            handler => source.InputAudioSyncOffsetChanged += handler,
+            handler => source.InputAudioSyncOffsetChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputAudioTracksChanged</c> events as they arrive.
+    /// <para>The audio tracks of an input have changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioTracksChangedEventArgs> InputAudioTracksChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioTracksChangedEventArgs>(
+            handler => source.InputAudioTracksChanged += handler,
+            handler => source.InputAudioTracksChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputAudioMonitorTypeChanged</c> events as they arrive.
+    /// <para>The monitor type of an input has changed. Available types are: - `OBS_MONITORING_TYPE_NONE` - `OBS_MONITORING_TYPE_MONITOR_ONLY` - `OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT`</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Inputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputAudioMonitorTypeChangedEventArgs> InputAudioMonitorTypeChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputAudioMonitorTypeChangedEventArgs>(
+            handler => source.InputAudioMonitorTypeChanged += handler,
+            handler => source.InputAudioMonitorTypeChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>InputVolumeMeters</c> events as they arrive.
+    /// <para>A high-volume event providing volume levels of all active inputs every 50 milliseconds.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>InputVolumeMeters</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.InputVolumeMetersEventArgs> InputVolumeMetersStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.InputVolumeMetersEventArgs>(
+            handler => source.InputVolumeMeters += handler,
+            handler => source.InputVolumeMeters -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>media inputs</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct MediaInputsGroup
+{
+    /// <summary>
+    /// Streams <c>MediaInputPlaybackStarted</c> events as they arrive.
+    /// <para>A media input has started playing.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackStartedEventArgs> MediaInputPlaybackStartedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackStartedEventArgs>(
+            handler => source.MediaInputPlaybackStarted += handler,
+            handler => source.MediaInputPlaybackStarted -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>MediaInputPlaybackEnded</c> events as they arrive.
+    /// <para>A media input has finished playing.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackEndedEventArgs> MediaInputPlaybackEndedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputPlaybackEndedEventArgs>(
+            handler => source.MediaInputPlaybackEnded += handler,
+            handler => source.MediaInputPlaybackEnded -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>MediaInputActionTriggered</c> events as they arrive.
+    /// <para>An action has been performed on an input.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>MediaInputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.MediaInputActionTriggeredEventArgs> MediaInputActionTriggeredStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.MediaInputActionTriggeredEventArgs>(
+            handler => source.MediaInputActionTriggered += handler,
+            handler => source.MediaInputActionTriggered -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>outputs</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct OutputsGroup
+{
+    /// <summary>
+    /// Streams <c>StreamStateChanged</c> events as they arrive.
+    /// <para>The state of the stream output has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.StreamStateChangedEventArgs> StreamStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.StreamStateChangedEventArgs>(
+            handler => source.StreamStateChanged += handler,
+            handler => source.StreamStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>RecordStateChanged</c> events as they arrive.
+    /// <para>The state of the record output has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.RecordStateChangedEventArgs> RecordStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.RecordStateChangedEventArgs>(
+            handler => source.RecordStateChanged += handler,
+            handler => source.RecordStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>RecordFileChanged</c> events as they arrive.
+    /// <para>The record output has started writing to a new file. For example, when a file split happens.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.RecordFileChangedEventArgs> RecordFileChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.RecordFileChangedEventArgs>(
+            handler => source.RecordFileChanged += handler,
+            handler => source.RecordFileChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>ReplayBufferStateChanged</c> events as they arrive.
+    /// <para>The state of the replay buffer output has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ReplayBufferStateChangedEventArgs> ReplayBufferStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ReplayBufferStateChangedEventArgs>(
+            handler => source.ReplayBufferStateChanged += handler,
+            handler => source.ReplayBufferStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>VirtualcamStateChanged</c> events as they arrive.
+    /// <para>The state of the virtualcam output has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.VirtualcamStateChangedEventArgs> VirtualcamStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.VirtualcamStateChangedEventArgs>(
+            handler => source.VirtualcamStateChanged += handler,
+            handler => source.VirtualcamStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>ReplayBufferSaved</c> events as they arrive.
+    /// <para>The replay buffer has been saved.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Outputs</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ReplayBufferSavedEventArgs> ReplayBufferSavedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ReplayBufferSavedEventArgs>(
+            handler => source.ReplayBufferSaved += handler,
+            handler => source.ReplayBufferSaved -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>scene items</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct SceneItemsGroup
+{
+    /// <summary>
+    /// Streams <c>SceneItemCreated</c> events as they arrive.
+    /// <para>A scene item has been created.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemCreatedEventArgs> SceneItemCreatedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemCreatedEventArgs>(
+            handler => source.SceneItemCreated += handler,
+            handler => source.SceneItemCreated -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemRemoved</c> events as they arrive.
+    /// <para>A scene item has been removed. This event is not emitted when the scene the item is in is removed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemRemovedEventArgs> SceneItemRemovedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemRemovedEventArgs>(
+            handler => source.SceneItemRemoved += handler,
+            handler => source.SceneItemRemoved -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemListReindexed</c> events as they arrive.
+    /// <para>A scene&apos;s item list has been reindexed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemListReindexedEventArgs> SceneItemListReindexedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemListReindexedEventArgs>(
+            handler => source.SceneItemListReindexed += handler,
+            handler => source.SceneItemListReindexed -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemEnableStateChanged</c> events as they arrive.
+    /// <para>A scene item&apos;s enable state has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemEnableStateChangedEventArgs> SceneItemEnableStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemEnableStateChangedEventArgs>(
+            handler => source.SceneItemEnableStateChanged += handler,
+            handler => source.SceneItemEnableStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemLockStateChanged</c> events as they arrive.
+    /// <para>A scene item&apos;s lock state has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemLockStateChangedEventArgs> SceneItemLockStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemLockStateChangedEventArgs>(
+            handler => source.SceneItemLockStateChanged += handler,
+            handler => source.SceneItemLockStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemSelected</c> events as they arrive.
+    /// <para>A scene item has been selected in the Ui.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItems</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemSelectedEventArgs> SceneItemSelectedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemSelectedEventArgs>(
+            handler => source.SceneItemSelected += handler,
+            handler => source.SceneItemSelected -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneItemTransformChanged</c> events as they arrive.
+    /// <para>The transform/crop of a scene item has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>SceneItemTransformChanged</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneItemTransformChangedEventArgs> SceneItemTransformChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneItemTransformChangedEventArgs>(
+            handler => source.SceneItemTransformChanged += handler,
+            handler => source.SceneItemTransformChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>scenes</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct ScenesGroup
+{
+    /// <summary>
+    /// Streams <c>SceneCreated</c> events as they arrive.
+    /// <para>A new scene has been created.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneCreatedEventArgs> SceneCreatedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneCreatedEventArgs>(
+            handler => source.SceneCreated += handler,
+            handler => source.SceneCreated -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneRemoved</c> events as they arrive.
+    /// <para>A scene has been removed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneRemovedEventArgs> SceneRemovedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneRemovedEventArgs>(
+            handler => source.SceneRemoved += handler,
+            handler => source.SceneRemoved -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneNameChanged</c> events as they arrive.
+    /// <para>The name of a scene has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneNameChangedEventArgs> SceneNameChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneNameChangedEventArgs>(
+            handler => source.SceneNameChanged += handler,
+            handler => source.SceneNameChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>CurrentProgramSceneChanged</c> events as they arrive.
+    /// <para>The current program scene has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentProgramSceneChangedEventArgs> CurrentProgramSceneChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentProgramSceneChangedEventArgs>(
+            handler => source.CurrentProgramSceneChanged += handler,
+            handler => source.CurrentProgramSceneChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>CurrentPreviewSceneChanged</c> events as they arrive.
+    /// <para>The current preview scene has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentPreviewSceneChangedEventArgs> CurrentPreviewSceneChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentPreviewSceneChangedEventArgs>(
+            handler => source.CurrentPreviewSceneChanged += handler,
+            handler => source.CurrentPreviewSceneChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneListChanged</c> events as they arrive.
+    /// <para>The list of scenes has changed. TODO: Make OBS fire this event when scenes are reordered.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Scenes</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneListChangedEventArgs> SceneListChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneListChangedEventArgs>(
+            handler => source.SceneListChanged += handler,
+            handler => source.SceneListChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>transitions</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct TransitionsGroup
+{
+    /// <summary>
+    /// Streams <c>CurrentSceneTransitionChanged</c> events as they arrive.
+    /// <para>The current scene transition has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionChangedEventArgs> CurrentSceneTransitionChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionChangedEventArgs>(
+            handler => source.CurrentSceneTransitionChanged += handler,
+            handler => source.CurrentSceneTransitionChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>CurrentSceneTransitionDurationChanged</c> events as they arrive.
+    /// <para>The current scene transition duration has changed.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionDurationChangedEventArgs> CurrentSceneTransitionDurationChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.CurrentSceneTransitionDurationChangedEventArgs>(
+            handler => source.CurrentSceneTransitionDurationChanged += handler,
+            handler => source.CurrentSceneTransitionDurationChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneTransitionStarted</c> events as they arrive.
+    /// <para>A scene transition has started.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionStartedEventArgs> SceneTransitionStartedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionStartedEventArgs>(
+            handler => source.SceneTransitionStarted += handler,
+            handler => source.SceneTransitionStarted -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneTransitionEnded</c> events as they arrive.
+    /// <para>A scene transition has completed fully. Note: Does not appear to trigger when the transition is interrupted by the user.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionEndedEventArgs> SceneTransitionEndedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionEndedEventArgs>(
+            handler => source.SceneTransitionEnded += handler,
+            handler => source.SceneTransitionEnded -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>SceneTransitionVideoEnded</c> events as they arrive.
+    /// <para>A scene transition&apos;s video has completed fully. Useful for stinger transitions to tell when the video *actually* ends. `SceneTransitionEnded` only signifies the cut point, not the completion of transition playback. Note: Appears to be called by every transition, regardless of relevance.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Transitions</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.SceneTransitionVideoEndedEventArgs> SceneTransitionVideoEndedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.SceneTransitionVideoEndedEventArgs>(
+            handler => source.SceneTransitionVideoEnded += handler,
+            handler => source.SceneTransitionVideoEnded -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+
+/// <summary>
+/// Events in the <c>ui</c> category, as async sequences.
+/// Each accessor subscribes for the lifetime of the enumeration and unsubscribes
+/// when it ends, so the caller never manages handlers.
+/// </summary>
+public readonly partial struct UiGroup
+{
+    /// <summary>
+    /// Streams <c>StudioModeStateChanged</c> events as they arrive.
+    /// <para>Studio mode has been enabled or disabled.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.StudioModeStateChangedEventArgs> StudioModeStateChangedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.StudioModeStateChangedEventArgs>(
+            handler => source.StudioModeStateChanged += handler,
+            handler => source.StudioModeStateChanged -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>ScreenshotSaved</c> events as they arrive.
+    /// <para>A screenshot has been saved. Note: Triggered for the screenshot feature available in `Settings -&gt; Hotkeys -&gt; Screenshot Output` ONLY. Applications using `Get/SaveSourceScreenshot` should implement a `CustomEvent` if this kind of inter-client communication is desired.</para>
+    /// </summary>
+    /// <param name="capacity">Events buffered before the oldest is dropped.</param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <remarks>Requires the <c>Ui</c> subscription.</remarks>
+    public IAsyncEnumerable<ObsWebSocket.Core.Events.Generated.ScreenshotSavedEventArgs> ScreenshotSavedStream(
+        int capacity = EventStream.DefaultCapacity,
+        CancellationToken cancellationToken = default)
+    {
+        ObsWebSocketClient source = client;
+        return EventStream.Create<ObsWebSocket.Core.Events.Generated.ScreenshotSavedEventArgs>(
+            handler => source.ScreenshotSaved += handler,
+            handler => source.ScreenshotSaved -= handler,
+            capacity,
+            cancellationToken);
+    }
+
+}
+

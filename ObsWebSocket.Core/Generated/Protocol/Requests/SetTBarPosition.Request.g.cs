@@ -35,7 +35,7 @@ public sealed partial record SetTBarPositionRequestData
     /// </remarks>
     [JsonPropertyName("position")]
     [Key("position")]
-    public required double Position { get; init; }
+    public required int Position { get; init; }
 
     /// <summary>
     /// Whether to release the TBar. Only set `false` if you know that you will be sending another position update
@@ -57,7 +57,7 @@ public sealed partial record SetTBarPositionRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetTBarPositionRequestData(double position, bool? release = null)
+    public SetTBarPositionRequestData(int position, bool? release = null)
     {
         this.Position = position;
         this.Release = release;

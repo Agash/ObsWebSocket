@@ -36,7 +36,7 @@ public sealed partial record GetStreamStatusResponseData
     /// </summary>
     [JsonPropertyName("outputBytes")]
     [Key("outputBytes")]
-    public required double OutputBytes { get; init; }
+    public required long OutputBytes { get; init; }
 
     /// <summary>
     /// Congestion of the output
@@ -50,7 +50,7 @@ public sealed partial record GetStreamStatusResponseData
     /// </summary>
     [JsonPropertyName("outputDuration")]
     [Key("outputDuration")]
-    public required double OutputDuration { get; init; }
+    public required long OutputDuration { get; init; }
 
     /// <summary>
     /// Whether the output is currently reconnecting
@@ -64,7 +64,7 @@ public sealed partial record GetStreamStatusResponseData
     /// </summary>
     [JsonPropertyName("outputSkippedFrames")]
     [Key("outputSkippedFrames")]
-    public required double OutputSkippedFrames { get; init; }
+    public required int OutputSkippedFrames { get; init; }
 
     /// <summary>
     /// Current formatted timecode string for the output
@@ -78,7 +78,7 @@ public sealed partial record GetStreamStatusResponseData
     /// </summary>
     [JsonPropertyName("outputTotalFrames")]
     [Key("outputTotalFrames")]
-    public required double OutputTotalFrames { get; init; }
+    public required int OutputTotalFrames { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -89,7 +89,7 @@ public sealed partial record GetStreamStatusResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetStreamStatusResponseData(bool outputActive, bool outputReconnecting, double outputDuration, double outputCongestion, double outputBytes, double outputSkippedFrames, double outputTotalFrames, string? outputTimecode = null)
+    public GetStreamStatusResponseData(bool outputActive, bool outputReconnecting, long outputDuration, double outputCongestion, long outputBytes, int outputSkippedFrames, int outputTotalFrames, string? outputTimecode = null)
     {
         this.OutputActive = outputActive;
         this.OutputReconnecting = outputReconnecting;
