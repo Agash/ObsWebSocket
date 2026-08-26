@@ -882,6 +882,30 @@ internal sealed partial class Worker(
                 .ConfigureAwait(false);
             if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
             {
+                // A scene collection made fresh in the UI has no inputs at all. The suite supplies
+                // one rather than refusing to run, since every fixture it needs it creates anyway.
+                _logger.LogInformation(
+                    "[{Format}] No inputs in this collection; creating one to validate against.",
+                    format
+                );
+                await cycleClient
+                    .Inputs.CreateInputAsync(
+                        new(
+                            inputName: $"__obsws_seed_{Guid.NewGuid():N}"[..24],
+                            inputKind: "color_source_v3",
+                            sceneName: scenes!.Scenes[0].SceneName
+                        ),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+
+                inputs = await cycleClient
+                    .Inputs.GetInputListAsync(new(), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            if (inputs?.Inputs is null || inputs.Inputs.Count == 0)
+            {
                 throw new InvalidOperationException($"[{format}] GetInputList returned no inputs.");
             }
 
@@ -2885,6 +2909,36 @@ internal sealed partial class Worker(
                         {
                             // High rate event with its own stub. It was read as an InputStub and
                             // failed on the kind fields it never sends, so it never fired at all.
+                            // A collection with no audio input reports no meters at all, which
+                            // says nothing about whether the payload reads correctly.
+                            GetInputListResponseData present = await client
+                                .Inputs.GetInputListAsync(new(), cancellationToken)
+                                .ConfigureAwait(false);
+                            string? seeded = null;
+                            if (
+                                !present.Inputs.Exists(i =>
+                                    i.InputKind.Contains("wasapi", StringComparison.Ordinal)
+                                )
+                            )
+                            {
+                                // OBS meters only the inputs it considers active, which means
+                                // the ones in the program scene. Anywhere else reports nothing.
+                                GetSceneListResponseData live = await client
+                                    .Scenes.GetSceneListAsync(new(), cancellationToken)
+                                    .ConfigureAwait(false);
+                                seeded = $"__obsws_meter_{Guid.NewGuid():N}"[..22];
+                                await client
+                                    .Inputs.CreateInputAsync(
+                                        new(
+                                            inputName: seeded,
+                                            inputKind: "wasapi_output_capture",
+                                            sceneName: live.CurrentProgramSceneName ?? sceneName
+                                        ),
+                                        cancellationToken
+                                    )
+                                    .ConfigureAwait(false);
+                            }
+
                             EventSubscription? before = client.CurrentEventSubscriptions;
                             await client
                                 .ReidentifyAsync(
@@ -2940,6 +2994,16 @@ internal sealed partial class Worker(
                                         .ReidentifyAsync(
                                             (uint)before.Value,
                                             cancellationToken: CancellationToken.None
+                                        )
+                                        .ConfigureAwait(false);
+                                }
+
+                                if (seeded is not null)
+                                {
+                                    await client
+                                        .Inputs.RemoveInputAsync(
+                                            new(inputName: seeded),
+                                            CancellationToken.None
                                         )
                                         .ConfigureAwait(false);
                                 }
@@ -4205,6 +4269,8 @@ internal sealed partial class Worker(
     /// an input of the wrong kind) are reported as untested rather than as failures, so the count
     /// says how much of the surface was actually exercised.
     /// </remarks>
+    private const string FixtureFilterName = "__obsws_rsweep_filter";
+
     private static async Task<
         List<(string Label, bool Pass, string Detail)>
     > SweepEveryReadRequestAsync(ObsWebSocketClient client, CancellationToken cancellationToken)
@@ -4269,12 +4335,6 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         string? groupName = groups.Groups.Count > 0 ? groups.Groups[0] : null;
 
-        GetSourceFilterListResponseData sourceFilters = await client
-            .Filters.GetSourceFilterListAsync(new(sourceName: inputName), cancellationToken)
-            .ConfigureAwait(false);
-        string? filterName =
-            sourceFilters.Filters.Count > 0 ? sourceFilters.Filters[0].FilterName : null;
-
         // The nine discovery calls above are themselves read requests.
         read += 9;
 
@@ -4306,6 +4366,16 @@ internal sealed partial class Worker(
         await client
             .Inputs.CreateInputAsync(
                 new(inputName: mediaInput, inputKind: "ffmpeg_source", sceneName: readScene),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        await client
+            .Filters.CreateSourceFilterAsync(
+                new(
+                    filterName: FixtureFilterName,
+                    filterKind: "color_filter_v2",
+                    sourceName: mediaInput
+                ),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -4380,22 +4450,15 @@ internal sealed partial class Worker(
                         )
                 )
                 .ConfigureAwait(false);
-            if (filterName is not null)
-            {
-                await Probe(
-                        "GetSourceFilter",
-                        () =>
-                            client.Filters.GetSourceFilterAsync(
-                                new(filterName: filterName, sourceName: inputName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                untested.Add("GetSourceFilter (no filter on the first input)");
-            }
+            await Probe(
+                    "GetSourceFilter",
+                    () =>
+                        client.Filters.GetSourceFilterAsync(
+                            new(filterName: FixtureFilterName, sourceName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
 
             await Probe("GetVersion", () => client.General.GetVersionAsync(cancellationToken))
                 .ConfigureAwait(false);
@@ -4431,7 +4494,7 @@ internal sealed partial class Worker(
                     "GetInputMute",
                     () =>
                         client.Inputs.GetInputMuteAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4440,7 +4503,7 @@ internal sealed partial class Worker(
                     "GetInputVolume",
                     () =>
                         client.Inputs.GetInputVolumeAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4449,7 +4512,7 @@ internal sealed partial class Worker(
                     "GetInputAudioBalance",
                     () =>
                         client.Inputs.GetInputAudioBalanceAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4458,7 +4521,7 @@ internal sealed partial class Worker(
                     "GetInputAudioSyncOffset",
                     () =>
                         client.Inputs.GetInputAudioSyncOffsetAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4467,7 +4530,7 @@ internal sealed partial class Worker(
                     "GetInputAudioMonitorType",
                     () =>
                         client.Inputs.GetInputAudioMonitorTypeAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4476,7 +4539,7 @@ internal sealed partial class Worker(
                     "GetInputAudioTracks",
                     () =>
                         client.Inputs.GetInputAudioTracksAsync(
-                            new(inputName: inputName),
+                            new(inputName: audioInput),
                             cancellationToken
                         )
                 )
@@ -4513,7 +4576,7 @@ internal sealed partial class Worker(
                     "GetMediaInputStatus",
                     () =>
                         client.MediaInputs.GetMediaInputStatusAsync(
-                            new(inputName: inputName),
+                            new(inputName: mediaInput),
                             cancellationToken
                         )
                 )
