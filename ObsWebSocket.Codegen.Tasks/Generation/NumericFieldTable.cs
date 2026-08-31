@@ -17,7 +17,7 @@ namespace ObsWebSocket.Codegen.Tasks.Generation;
 /// is whether obs-websocket bounds it. A field validated with <c>ValidateNumber</c> or
 /// <c>ValidateOptionalNumber</c> has a stated range and is safe at its natural width; a field
 /// copied straight out of libobs or a settings blob is as wide as the C type behind it, and most of
-/// those are <c>uint32_t</c> or <c>int64_t</c>. Getting this wrong is not a truncated field — the
+/// those are <c>uint32_t</c> or <c>int64_t</c>. Getting this wrong is not a truncated field: the
 /// response fails to deserialize, so one out-of-range pixel count takes the whole message with it.
 /// Check the request handler before adding a field here.
 /// </para>
@@ -57,7 +57,7 @@ internal static class NumericFieldTable
     /// </summary>
     /// <remarks>
     /// The frame and message counters are here because of what fills them, not because the numbers
-    /// look large. A field is safe as an <c>int</c> only when obs-websocket bounds it — the
+    /// look large. A field is safe as an <c>int</c> only when obs-websocket bounds it. The
     /// resolutions are all validated to 8..4096, and the indices are container positions. These
     /// are copied out of libobs and the session with no clamp in between:
     /// <c>obs_get_total_frames</c> and <c>obs_get_lagged_frames</c> return <c>uint32_t</c>,

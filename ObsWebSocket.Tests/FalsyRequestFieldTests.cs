@@ -51,7 +51,7 @@ public sealed class FalsyRequestFieldTests
     public void Serialize_UnsetOptionalField_IsStillOmitted()
     {
         // Optional protocol fields are generated as nullable, so they must stay absent
-        // rather than being sent as explicit nulls — OBS applies its own defaults for
+        // rather than being sent as explicit nulls. OBS applies its own defaults for
         // fields that are not present.
         string json = Json(new CreateSceneItemRequestData(sceneName: "Scene", sourceName: "Src"));
         Assert.IsFalse(json.Contains("null", StringComparison.Ordinal), json);

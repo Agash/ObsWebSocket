@@ -511,9 +511,7 @@ internal sealed partial class Worker(
                 // Read then write, both about the same filter. Through the category group that is
                 // four strings across two request records, any one of which can be misspelled into
                 // a ResourceNotFound. Held as a handle it is two strings, once.
-                FilterOperations filter = _obsClient
-                    .Source(sourceForToggle)
-                    .Filter(filterToToggle);
+                FilterOperations filter = _obsClient.Source(sourceForToggle).Filter(filterToToggle);
 
                 GetSourceFilterResponseData? currentFilterState = await filter.GetAsync(
                     cancellationToken
@@ -1136,8 +1134,8 @@ internal sealed partial class Worker(
                 _ = summary.AddRow(
                     Markup.Escape(label),
                     pass
-                        ? $"[green]Pass[/] — {Markup.Escape(detail)}"
-                        : $"[red]Fail[/] — {Markup.Escape(detail)}"
+                        ? $"[green]Pass[/]: {Markup.Escape(detail)}"
+                        : $"[red]Fail[/]: {Markup.Escape(detail)}"
                 );
             }
             foreach ((string label, bool pass, string detail) in modernResults)
@@ -3988,7 +3986,7 @@ internal sealed partial class Worker(
         {
             // The one lookup that is not a convenience: OBS addresses scene items by a number that
             // only GetSceneItemId reports, so an item known by source name cannot be acted on until
-            // it has been resolved. The type system says so — ItemAsync returns the actable type.
+            // it has been resolved. The type system says so: ItemAsync returns the actable type.
             SceneItemOperations item = await resolved.ItemAsync(
                 sourceName,
                 cancellationToken: cancellationToken
@@ -4337,7 +4335,7 @@ internal sealed partial class Worker(
                 .ToList()
             ?? [];
 
-        // Step 4: Prompt — create new source or update an existing browser source
+        // Step 4: Prompt to create a new source or update an existing browser source
         const string CreateNewChoice = "+ Create new browser source";
         List<string> sourceChoices = [CreateNewChoice, .. existingBrowserSourcesInScene];
 
@@ -4434,7 +4432,7 @@ internal sealed partial class Worker(
         {
             UiInfo($"Updating browser source '{sourceName}' settings...");
 
-            // overlay: false — reset to defaults then apply all new settings cleanly
+            // overlay: false resets to defaults, then applies all new settings cleanly
             await _obsClient.Inputs.SetInputSettingsAsync(
                 inputName: sourceName,
                 settings: browserSettings,
@@ -4461,7 +4459,7 @@ internal sealed partial class Worker(
         );
 
         RenderKeyValueTable(
-            $"Browser Source — {(isNewSource ? "Created" : "Updated")}",
+            $"Browser Source: {(isNewSource ? "Created" : "Updated")}",
             [
                 ("Name", sourceName),
                 ("Scene", selectedScene),
@@ -4473,7 +4471,7 @@ internal sealed partial class Worker(
                 ("OBS Control Level", "Full (webpage_control_level: 5)"),
                 ("Refresh on Scene Active", "Yes (restart_when_active: true)"),
                 ("Blend Mode", "Normal (OBS_BLEND_NORMAL)"),
-                ("Blending Method", "sRGB Off — set manually in OBS (not exposed by WebSocket v5)"),
+                ("Blending Method", "sRGB Off, set manually in OBS (not exposed by WebSocket v5)"),
             ]
         );
     }

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to file this. Please do not report security
-        vulnerabilities here — use a [private advisory](../../security/advisories/new) instead.
+        vulnerabilities here. Use a [private advisory](../../security/advisories/new) instead.
   - type: textarea
     id: what-happened
     attributes:

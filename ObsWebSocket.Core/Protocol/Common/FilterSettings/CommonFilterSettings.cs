@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace ObsWebSocket.Core.Protocol.Common.FilterSettings;
 
 /// <summary>Settings for the 'mask_filter' or 'mask_filter_v2' filter (Image Mask/Blend).</summary>
-/// <remarks>v1 uses opacity 0–100; v2 uses 0.0–1.0.</remarks>
+/// <remarks>v1 uses opacity 0 to 100; v2 uses 0.0 to 1.0.</remarks>
 public sealed record ImageMaskBlendFilterSettings(
     [property: JsonPropertyName("type")] string? Type = null,
     [property: JsonPropertyName("color")] long? Color = null,
@@ -46,8 +46,8 @@ public sealed record HdrTonemapFilterSettings(
 
 /// <summary>
 /// Settings for the 'color_filter' (Color Correction v1) or 'color_filter_v2' filter.
-/// v1 includes <see cref="Color"/> and uses opacity on a 0–100 scale.
-/// v2 replaces <see cref="Color"/> with <see cref="ColorAdd"/> / <see cref="ColorMultiply"/> and uses opacity 0.0–1.0.
+/// v1 includes <see cref="Color"/> and uses opacity on a 0 to 100 scale.
+/// v2 replaces <see cref="Color"/> with <see cref="ColorAdd"/> / <see cref="ColorMultiply"/> and uses opacity 0.0 to 1.0.
 /// Null properties are skipped on overlay writes, so this type works for both versions.
 /// </summary>
 public sealed record ColorCorrectionFilterSettings(
@@ -86,7 +86,7 @@ public sealed record GpuDelayFilterSettings;
 
 /// <summary>
 /// Settings for the 'color_key_filter' or 'color_key_filter_v2' filter.
-/// v1 uses opacity 0–100; v2 uses 0.0–1.0.
+/// v1 uses opacity 0 to 100; v2 uses 0.0 to 1.0.
 /// </summary>
 public sealed record ColorKeyFilterSettings(
     [property: JsonPropertyName("key_color_type")] string? KeyColorType = null,
@@ -113,7 +113,7 @@ public sealed record SharpnessFilterSettings(
 
 /// <summary>
 /// Settings for the 'chroma_key_filter' or 'chroma_key_filter_v2' filter.
-/// v1 uses opacity 0–100; v2 uses 0.0–1.0.
+/// v1 uses opacity 0 to 100; v2 uses 0.0 to 1.0.
 /// </summary>
 public sealed record ChromaKeyFilterSettings(
     [property: JsonPropertyName("key_color_type")] string? KeyColorType = null,
@@ -188,10 +188,10 @@ public sealed record ExpanderFilterSettings(
     /// <summary>Known values for the <see cref="Presets"/> setting.</summary>
     public static class PresetsValues
     {
-        /// <summary>Expander — increases dynamic range below the threshold.</summary>
+        /// <summary>Expander. Increases dynamic range below the threshold.</summary>
         public const string Expander = "expander";
 
-        /// <summary>Gate — silences audio below the threshold.</summary>
+        /// <summary>Gate. Silences audio below the threshold.</summary>
         public const string Gate = "gate";
     }
 }

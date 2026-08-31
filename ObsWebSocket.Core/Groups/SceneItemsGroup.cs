@@ -155,5 +155,4 @@ public readonly partial struct SceneItemsGroup
         }
         // Let other ObsWebSocketExceptions or different exception types propagate
     }
-
 }

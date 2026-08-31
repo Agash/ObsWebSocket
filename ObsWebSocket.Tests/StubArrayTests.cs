@@ -254,12 +254,11 @@ public sealed class StubArrayTests
         StringAssert.Contains(ex.InnerException!.Message, "inputKind");
     }
 
-
     /// <summary>
     /// OBS copies the output dimensions straight out of <c>obs_output_get_width</c> and
     /// <c>obs_output_get_height</c>, which return <c>uint32_t</c> and are not clamped on the way
-    /// out. An output that has never started can report a value past <see cref="int.MaxValue"/> —
-    /// a live OBS 32.2.2 sent 2586032160 for an idle virtual camera — and as an <c>int</c> that
+    /// out. An output that has never started can report a value past <see cref="int.MaxValue"/>; a
+    /// live OBS 32.2.2 sent 2586032160 for an idle virtual camera. As an <c>int</c> that
     /// took the whole GetOutputList response down, not just the one field.
     /// </summary>
     [TestMethod]
@@ -314,10 +313,11 @@ public sealed class StubArrayTests
             original,
             MsgPackMessageSerializer.s_msgPackOptions
         );
-        GetOutputListResponseData read = MessagePackSerializer.Deserialize<GetOutputListResponseData>(
-            packed,
-            MsgPackMessageSerializer.s_msgPackOptions
-        );
+        GetOutputListResponseData read =
+            MessagePackSerializer.Deserialize<GetOutputListResponseData>(
+                packed,
+                MsgPackMessageSerializer.s_msgPackOptions
+            );
 
         Assert.AreEqual(2586032160L, read.Outputs[0].OutputHeight);
     }
@@ -358,7 +358,6 @@ public sealed class StubArrayTests
         Assert.AreEqual(3000000000L, read.RenderTotalFrames);
         Assert.AreEqual(6000000000L, read.WebSocketSessionOutgoingMessages);
     }
-
 
     /// <summary>
     /// A canvas-scoped scene list has no index to report, so OBS sends <c>sceneIndex</c> as null
