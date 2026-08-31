@@ -33,7 +33,7 @@ public sealed partial record SetCurrentSceneTransitionDurationRequestData
     /// </remarks>
     [JsonPropertyName("transitionDuration")]
     [Key("transitionDuration")]
-    public required int TransitionDuration { get; init; }
+    public required long TransitionDuration { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -44,7 +44,7 @@ public sealed partial record SetCurrentSceneTransitionDurationRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SetCurrentSceneTransitionDurationRequestData(int transitionDuration)
+    public SetCurrentSceneTransitionDurationRequestData(long transitionDuration)
     {
         this.TransitionDuration = transitionDuration;
     }

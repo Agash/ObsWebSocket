@@ -67,7 +67,7 @@ public sealed partial record SetSceneSceneTransitionOverrideRequestData
     /// </remarks>
     [JsonPropertyName("transitionDuration")]
     [Key("transitionDuration")]
-    public int? TransitionDuration { get; init; }
+    public long? TransitionDuration { get; init; }
 
     /// <summary>
     /// Name of the scene transition to use as override. Specify `null` to remove
@@ -88,7 +88,7 @@ public sealed partial record SetSceneSceneTransitionOverrideRequestData
     /// Initializes a new instance with all properties specified.
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
-    public SetSceneSceneTransitionOverrideRequestData(string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? transitionName = null, int? transitionDuration = null)
+    public SetSceneSceneTransitionOverrideRequestData(string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? transitionName = null, long? transitionDuration = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

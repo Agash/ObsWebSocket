@@ -25,7 +25,7 @@ public readonly partial struct SceneOperations
 
     /// <summary>A scene item in this scene, by the numeric id OBS assigned it.</summary>
     /// <param name="sceneItemId">The id, which <c>GetSceneItemList</c> or an event reports.</param>
-    public SceneItemOperations Item(int sceneItemId) => new(client, handle.Item(sceneItemId));
+    public SceneItemOperations Item(long sceneItemId) => new(client, handle.Item(sceneItemId));
 
     /// <summary>
     /// A scene item in this scene, by the name of the source it shows.

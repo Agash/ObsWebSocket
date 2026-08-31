@@ -1145,7 +1145,7 @@ public readonly partial struct SceneOperations(ObsWebSocketClient client, SceneH
     /// <returns>A task that completes when OBS has processed the request.</returns>
     public Task SetSceneTransitionOverrideAsync(
         string? transitionName = null,
-        int? transitionDuration = null,
+        long? transitionDuration = null,
         CancellationToken cancellationToken = default
     ) =>
         client.Scenes.SetSceneSceneTransitionOverrideAsync(

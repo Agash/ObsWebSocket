@@ -157,7 +157,7 @@ public sealed record SceneHandle : IObsHandle
     /// <summary>
     /// A scene item in this scene, by the numeric id OBS assigned it.
     /// </summary>
-    public SceneItemHandle Item(int sceneItemId) => SceneItemHandle.For(this, sceneItemId);
+    public SceneItemHandle Item(long sceneItemId) => SceneItemHandle.For(this, sceneItemId);
 
     /// <summary>
     /// A scene item in this scene, by the name of the source it shows. Needs resolving, because
@@ -297,7 +297,7 @@ public sealed record SourceHandle : IObsHandle
 /// </remarks>
 public sealed record SceneItemHandle
 {
-    private SceneItemHandle(SceneHandle scene, int sceneItemId)
+    private SceneItemHandle(SceneHandle scene, long sceneItemId)
     {
         Scene = scene;
         SceneItemId = sceneItemId;
@@ -307,10 +307,10 @@ public sealed record SceneItemHandle
     public SceneHandle Scene { get; }
 
     /// <summary>The numeric id OBS assigned the item.</summary>
-    public int SceneItemId { get; }
+    public long SceneItemId { get; }
 
     /// <summary>Builds a handle for an id already known.</summary>
-    public static SceneItemHandle For(SceneHandle scene, int sceneItemId)
+    public static SceneItemHandle For(SceneHandle scene, long sceneItemId)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentOutOfRangeException.ThrowIfNegative(sceneItemId);
