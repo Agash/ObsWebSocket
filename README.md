@@ -67,11 +67,29 @@ public sealed class Worker(ObsWebSocketClient client) : BackgroundService
 }
 ```
 
-## Everything is grouped by category
+## Three levels
+
+The client exposes the protocol at three levels. Most code lives in the middle one and reaches for
+the others where they pay.
+
+| Level | Looks like | Reach for it when |
+|---|---|---|
+| [Handles](#handles) | `client.Input("Mic").SetMuteAsync(true, ct)` | Several calls concern one scene, input, source, item or filter; identity has to survive a rename; you already hold a uuid |
+| [Category groups](#the-category-groups) | `client.Inputs.SetInputMuteAsync(new("Mic", true), ct)` | Anything. One method per protocol request, plus the helpers |
+| [Raw](#dropping-to-the-low-level) | `client.CallAsync<T>("SetInputMute", data, ct)` | A request this build does not model: a newer OBS, a vendor plugin |
+
+Each level forwards to the one below it, so mixing them costs nothing and no level hides anything
+the one below can reach.
+
+Handles cover the 66 requests that act on one named thing. The rest — `GetVersion`, `GetStats`,
+record and stream control, profiles, video settings — are not about a particular thing, so they
+exist only on their group. The hand-written helpers (`SetInputVolumeDbAsync`,
+`SwitchProgramSceneAndWaitAsync`, the typed settings pairs) live on the group too.
+
+## The category groups
 
 The client mirrors the categories the OBS protocol defines. Requests, event streams and the
-conveniences this library adds all sit in the group their category owns, so there is one way to
-reach anything:
+helpers this library adds all sit in the group their category owns:
 
 ```csharp
 await client.Scenes.GetSceneListAsync(new(), ct);                                   // generated request
@@ -90,12 +108,111 @@ protocol definition, so a refresh that recategorises a request moves it here too
 `WaitForEventAsync` and `CallBatchAsync` stay directly on the client, since neither belongs to one
 category.
 
+## Handles
+
+Every OBS request that acts on something takes its identity as two optional fields, a name and a
+uuid, and resolves them in a fixed order: a uuid wins outright, a name is read only when no uuid was
+sent, the canvas is consulted only on the name path, and neither field present is
+`MissingRequestField`. So `new SetCurrentProgramSceneRequestData()` compiles and fails at runtime,
+and passing both silently ignores the name.
+
+A handle makes that choice once. A string is a name, a `Guid` is a uuid:
+
+```csharp
+await client.Scene("Intro").SetCurrentProgramAsync(ct);
+await client.Scene(sceneGuid).SetNameAsync("Outro", ct);
+await client.Input("Mic").SetMuteAsync(true, ct);
+await client.Input("Mic").Filter("EQ").SetEnabledAsync(false, ct);
+```
+
+The entry points are `Scene`, `Input`, `Source`, `SceneItem` and `Filter`. Each carries every request
+the protocol defines about that kind of thing, named without the part the handle already says:
+`SetSceneItemEnabled` is `SetEnabledAsync` on a scene item, `GetInputMute` is `GetMuteAsync` on an
+input. The protocol name stays in the XML docs and on the category group.
+
+Handles hold identity, nothing else. They cache no state and are safe to keep for the life of an
+application.
+
+### Resolving a name to a uuid
+
+A name handle is fine when you just typed the name. A uuid handle survives a rename, and is the only
+form OBS will accept once it drops names, which the maintainers have said is the plan.
+
+Resolving costs a round trip, so it is explicit:
+
+```csharp
+SceneOperations intro = await client.Scene("Intro").ResolveAsync(ct);
+// intro.Handle.IsResolved is true; a rename in OBS can no longer move it
+```
+
+The protocol has no narrow lookup — nothing answers "what is the uuid of the scene called X" — so
+this is `GetSceneList` and a scan. The list is not wasted: on a miss you get the names that do
+exist, where OBS itself can only answer `ResourceNotFound`.
+
+```
+ObsWebSocketResourceNotFoundException: No scene named 'Intor'. Available: 'Intro', 'Gameplay', 'BRB'.
+```
+
+### Handles that cost nothing
+
+An event already says which scene it concerns, by uuid. Reading the name back off it and addressing
+by name again is the round trip and the rename race that the uuid was there to avoid:
+
+```csharp
+client.Scenes.CurrentProgramSceneChanged += async (_, e) =>
+    await client.Scene(e.EventData.Scene).GetItemListAsync();   // already resolved
+```
+
+Forty-seven events and responses carry one, including the creation requests, which answer with the
+uuid of what they just made:
+
+```csharp
+CreateSceneResponseData created = await client.Scenes.CreateSceneAsync(new("Intro"), ct);
+await client.Scene(created.Scene).SetCurrentProgramAsync(ct);   // no lookup
+```
+
+### Scene items
+
+Scene items are the one case where a lookup is not a convenience: OBS addresses them by a number
+that only `GetSceneItemId` reports. A scene item known by its source name is therefore a different
+type from one that can be acted on, and the missing lookup is a compile error rather than a runtime
+one:
+
+```csharp
+SceneItemOperations logo = await client.Scene("Intro").ItemAsync("Logo", cancellationToken: ct);
+await logo.SetEnabledAsync(false, ct);
+await logo.Scene.GetItemListAsync(ct);                       // navigate back up
+
+await client.Scene("Intro").Item(3).SetIndexAsync(0, ct);    // an id needs no lookup
+```
+
+`Item(int)` and `Filter(string)` never send anything, since an id and a filter name are already the
+whole identity.
+
+### Canvases
+
+A canvas has no name in the protocol: every canvas-scoped request takes a uuid, and `canvasName`
+appears only in `GetCanvasList`. `CanvasHandle` is the one handle whose name form cannot be sent
+anywhere before it is resolved:
+
+```csharp
+CanvasHandle vertical = await client.Canvases.ResolveAsync("Vertical", ct);
+await client.Scene(vertical.Scene("Intro")).GetItemListAsync(ct);
+```
+
+Omitting the canvas means the main one, which is `CanvasHandle.Main` rather than a null check at
+every call site. A canvas only scopes a *name*: OBS ignores `canvasUuid` beside a uuid, so a resolved
+handle drops it.
+
 ## The helper set
 
-Alongside the generated request per protocol request, each group carries conveniences for things
-that otherwise take several calls or a lookup. Every typed settings helper has two overloads: an
-implicit one for library-registered types, and an explicit one taking a `JsonTypeInfo<T>` for
-consumer-provided types. Use the explicit overload to stay AOT-safe.
+Alongside the generated request per protocol request, each group carries helpers for things that
+otherwise take several calls or a lookup. These are hand-written, so they exist only on the group,
+not on a handle.
+
+Every typed settings helper has two overloads: an implicit one for library-registered types, and an
+explicit one taking a `JsonTypeInfo<T>` for consumer-provided types. Use the explicit overload to
+stay AOT-safe.
 
 **Settings read and write**
 
@@ -182,9 +299,8 @@ client.Scenes.CurrentProgramSceneChanged += (_, e) =>
     Console.WriteLine($"Program scene is now {e.EventData.SceneName}");
 ```
 
-Both work over the same event at once. The group's event is the client's event, so a handler added
-through one can be removed through the other; `client.CurrentProgramSceneChanged` remains for the
-low-level path, the way `CallAsync` remains alongside the generated requests.
+The group's event *is* the client's event, so both work at once and a handler added through one can
+be removed through the other.
 
 Connection lifecycle events stay on the client, since `Connected`, `Disconnected`,
 `ConnectionFailed` and `AuthenticationFailure` belong to no protocol category.
@@ -326,97 +442,46 @@ batch.Add("SetInputSettings", myJsonElement);
 
 ### Running requests in parallel
 
-`RequestBatchExecutionType.Parallel` works, but OBS mislabels what comes back. It collects results
-in completion order and labels them from the submission order, so on any one row the
-`requestType` and `requestId` belong to a different request than the `requestStatus` and
-`responseData` beside them. That happens before the response leaves OBS, so it cannot be corrected
-here. See [#16](https://github.com/Agash/ObsWebSocket/issues/16).
+`RequestBatchExecutionType.Parallel` works, but OBS mislabels what comes back. It collects results in
+completion order and labels them from the submission order, so on any row the `requestType` and
+`requestId` name a different request than the `requestStatus` and `responseData` beside them. That
+happens inside OBS, so it cannot be corrected here. See
+[#16](https://github.com/Agash/ObsWebSocket/issues/16).
 
-Only the labelling is wrong. `requestStatus` and `responseData` come from the same object, so each
-row's status does belong to the payload beside it; it is the `requestType` and `requestId` on that
-row that name a different request. `Get` and the indexer therefore throw rather than hand back data
-under the wrong reference, and `TryGet` reports `false`.
-
-Nothing is lost, though, and `Raw` still reaches all of it. `GetData<T>` reads the payload without
-consulting the label, so every response is recoverable as a set:
-
-```csharp
-BatchResults results = await client.CallBatchAsync(
-    batch, executionType: RequestBatchExecutionType.Parallel, haltOnFailure: false, cancellationToken: ct);
-
-foreach (RequestResponsePayload<object> row in results.Raw)
-{
-    if (!row.RequestStatus.Result)
-    {
-        Console.WriteLine($"one request failed with {row.RequestStatus.Code}");
-        continue;   // the code is right, the requestType naming it is not
-    }
-
-    // Correct data, from one of the requests in the batch. Which one is not knowable.
-    GetSceneItemListResponseData? data = row.GetData<GetSceneItemListResponseData>();
-}
-```
-
-That works when every request in the batch returns the **same** type, so it does not matter which
-row is which, and when the order is not what you needed.
-
-A parallel batch of **different** request types is harder, because nothing on a row tells you which
-type its payload really is. `GetData<T>` will not invent an answer, though: it checks the payload
-against the fields `T` expects and throws `ObsWebSocketSerializationException` when the payload
-carries none of them. So you can try each type you expect and let the mismatch tell you.
-
-That check rejects rather than identifies. Two records that share field names cannot be told apart
-this way, and a payload overlapping the target only partly still passes with the rest of the
-properties left at their defaults. Where two records are field for field identical, which happens
-for five shapes including `GetInputMute` and `ToggleInputMute`, reading one as the other gives the
-right values anyway.
-
-So a heterogeneous parallel batch is possible to unpick but never reliable. Use a serial batch, or
-concurrent requests.
-
+Only the labelling is wrong — status and payload do come from the same object — so `Get` and the
+indexer throw rather than return data under the wrong reference, and `TryGet` returns `false`.
 Anything that does not depend on which row is which stays exact:
 
 ```csharp
-ObsBatchBuilder batch = new();
-foreach (string input in inputs)
-{
-    _ = batch.Inputs.SetInputMute(new(inputName: input, inputMuted: true));
-}
-
 BatchResults results = await client.CallBatchAsync(
     batch, executionType: RequestBatchExecutionType.Parallel, cancellationToken: ct);
 
-bool everythingWorked = results.AllSucceeded();   // reliable: order does not change the verdict
-int failureCount = results.GetFailures().Count(); // reliable count, unreliable names
+bool everythingWorked = results.AllSucceeded();    // reliable: order does not change the verdict
+int failureCount = results.GetFailures().Count();  // reliable count, unreliable names
 ```
 
-So `Parallel` suits a set of writes you want applied as fast as possible, where you only need to
-know whether they all took. It does not suit reading anything back.
+`results.Raw` still reaches every payload, and `GetData<T>` reads one without consulting the label,
+so a batch where every request returns the same type is fully recoverable. A batch of mixed types is
+not: `GetData<T>` rejects a payload carrying none of `T`'s fields, but that rejects rather than
+identifies, and two records with the same field names cannot be told apart.
 
-When you need results attributed, use concurrent requests rather than a parallel batch. The client
-multiplexes on the request id, so anything in flight at once is matched back to its own caller:
+So `Parallel` suits a set of writes you want applied as fast as possible and only need a pass/fail
+on. When you need answers attributed to requests, send them concurrently instead — the client
+multiplexes on the request id:
 
 ```csharp
 Task<GetVersionResponseData> version = client.General.GetVersionAsync(ct);
 Task<GetStatsResponseData> stats = client.General.GetStatsAsync(ct);
-Task<GetSceneItemListResponseData>[] perScene =
-[
-    .. sceneNames.Select(n => client.SceneItems.GetSceneItemListAsync(new(sceneName: n), ct)),
-];
 
-await Task.WhenAll([version, stats, .. perScene.Cast<Task>()]);
-
-Console.WriteLine(version.Result.ObsVersion);   // each result belongs to its own request
+await Task.WhenAll(version, stats);
 ```
 
-That costs one round trip per request rather than one for the set. Use a serial batch when the round
-trip is what you are saving, and concurrent requests when you need the answers attributed.
+That costs a round trip per request. Use a serial batch when the round trip is what you are saving.
 
 ## Dropping to the low level
 
-Nothing above is a wall. Every generated request is a thin wrapper over the same primitives, and
-they stay available for a request this build does not model, an OBS newer than this library, or a
-vendor plugin:
+Every generated request is a thin wrapper over the same primitives, which stay available for a
+request this build does not model, an OBS newer than this library, or a vendor plugin:
 
 ```csharp
 // A request with a reference type response.
@@ -458,9 +523,9 @@ Those two are the AOT-safe ways to build a payload. `JsonSerializer.SerializeToE
 `JsonTypeInfo`, and the `JsonNode` and `JsonObject` routes, all work at runtime but carry `IL2026`
 and `IL3050`, so they are not options under Native AOT.
 
-The same applies to events and enums: `client.SceneCreated` remains alongside
-`client.Scenes.SceneCreated`, and `ToWireValue()` / `FromWireValue()` convert an enum to and from
-the protocol string when you are building a payload by hand.
+Events and enums have the same escape hatch: `client.SceneCreated` remains alongside
+`client.Scenes.SceneCreated`, and `ToWireValue()` / `FromWireValue()` convert an enum to and from the
+protocol string when you are building a payload by hand.
 
 ## Protocol types
 
@@ -474,12 +539,20 @@ generated as `int` or `long`, from an explicit list in the generator rather than
 names, so a volume can never be truncated by a naming coincidence:
 
 ```csharp
-int id = await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct) ?? throw new(...);
+long id = await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct) ?? throw new(...);
 await client.SceneItems.SetSceneItemIndexAsync(new(sceneItemId: id, sceneItemIndex: 0, sceneName: "Intro"), ct);
 
 long bytes = (await client.Stream.GetStreamStatusAsync(ct)).OutputBytes;
 double volume = (await client.Inputs.GetInputVolumeAsync(new("Mic"), ct)).InputVolumeMul;
 ```
+
+The width comes from what fills the field upstream, not from how large the value looks. Where
+obs-websocket validates a range — resolutions are 8..4096, indices 0..8192 — `int` is enough.
+Where it copies a value straight out of libobs, the C type decides: scene item ids and settings
+durations are `int64_t`, frame counters and output dimensions are `uint32_t`, and session message
+counts are `uint64_t`, so all of those are `long`. This is not cosmetic. An out-of-range value does
+not truncate one field, it fails the whole response — an idle virtual camera reporting an
+uninitialised `outputHeight` made every `GetOutputList` unreadable.
 
 **Enums.** Fields carrying a protocol enum are that enum, on both the read and the write side, so
 there is nothing to convert at the call site:
@@ -539,8 +612,6 @@ builder.Services.AddObsWebSocketClient(o =>
 });
 ```
 
-Options are validated when the client is resolved, so a missing or malformed `ServerUri` fails at
-startup with the offending option named, rather than on the first connection attempt.
 
 ### Multiple OBS instances
 
@@ -596,8 +667,6 @@ catch (ObsWebSocketRequestException ex) when (ex.StatusCode is RequestStatusCode
 `ObsWebSocketSerializationException` covers payloads that cannot be written or read, and all three
 derive from `ObsWebSocketException`.
 
-Requests return their response data non-nullable; a successful request that carries no payload
-raises `ObsWebSocketException` rather than handing back null.
 
 ## Reconnect
 
@@ -644,18 +713,18 @@ identically on either, and the validation suite exercises both.
 
 `ObsWebSocket.Example` is a host-based sample with configuration and DI.
 
-- **Interactive mode**: command loop (`help`, `version`, `scene`, `watch`, `media`, `status`, `batch-example`, and more)
-- **Transport validation mode**: exercises the surface on JSON and MessagePack, then enters the interactive loop
-- **One-shot mode**: `ObsWebSocket.Example run-transport-tests`
+- **Interactive mode**: a command loop — `help` lists it. `mute`, `list-filters` and `toggle-filter`
+  go through handles, `set-text` and `get-input-settings` deliberately do not, and `resolve` shows
+  what resolving buys and costs.
+- **Validation mode**: `ObsWebSocket.Example run-transport-tests` runs the same checks on JSON and
+  on MessagePack against a scene, input and filter it creates and removes itself.
 
-`run-transport-tests` creates its own scene and input, so it does not depend on a particular OBS
-layout, and removes them afterwards. It runs the same checks on JSON and on MessagePack, asserting
-real values rather than that a call returned: the three settings modes, event streams and their
-buffering, `WaitForEventAsync`, the typed batch builder including duplicate request types, partial
-failure and truncation, a parallel batch and what survives its mispairing, concurrent requests
-keeping their own results, the low level `Add` and `CallAsync` path, typed protocol enums, integer
-fields round tripping in both directions, screenshots in memory and on disk, and the scene, preview,
-input, mute, volume, media, transition and output helpers.
+The validation run asserts real values rather than that a call returned. It covers the three
+settings modes, event streams and their buffering, `WaitForEventAsync`, the typed batch builder
+including duplicate request types and partial failure, parallel batches, the low-level path, typed
+enums, screenshots, and the handles — including that a uuid handle still resolves after a rename and
+a name handle does not. It also calls every read request and every safely sendable write request in
+the protocol, and fails on any response it cannot deserialize.
 
 ## Native AOT
 

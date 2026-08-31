@@ -299,7 +299,7 @@ internal static class ReadmeCompileCheck
 
     internal static async Task NumbersAsync(ObsWebSocketClient client, CancellationToken ct)
     {
-        int id =
+        long id =
             await client.SceneItems.FindSceneItemIdAsync("Intro", "Logo", ct)
             ?? throw new InvalidOperationException();
         await client.SceneItems.SetSceneItemIndexAsync(
@@ -413,6 +413,59 @@ internal static class ReadmeCompileCheck
         }
 
         _ = $"{v?.ObsVersion} {raw}";
+    }
+
+    internal static async Task HandlesAsync(
+        ObsWebSocketClient client,
+        Guid sceneGuid,
+        CancellationToken ct
+    )
+    {
+        await client.Scene("Intro").SetCurrentProgramAsync(ct);
+        await client.Scene(sceneGuid).SetNameAsync("Outro", ct);
+        await client.Input("Mic").SetMuteAsync(true, ct);
+        await client.Input("Mic").Filter("EQ").SetEnabledAsync(false, ct);
+    }
+
+    internal static async Task HandleResolveAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        SceneOperations intro = await client.Scene("Intro").ResolveAsync(ct);
+        _ = intro.Handle.IsResolved;
+    }
+
+    internal static void FreeSceneHandle(ObsWebSocketClient client)
+    {
+        client.Scenes.CurrentProgramSceneChanged += async (_, e) =>
+            await client.Scene(e.EventData.Scene).GetItemListAsync();
+    }
+
+    internal static async Task FreeResponseHandleAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        CreateSceneResponseData created = await client.Scenes.CreateSceneAsync(new("Intro"), ct);
+        await client.Scene(created.Scene).SetCurrentProgramAsync(ct);
+    }
+
+    internal static async Task SceneItemHandlesAsync(
+        ObsWebSocketClient client,
+        CancellationToken ct
+    )
+    {
+        SceneItemOperations logo = await client
+            .Scene("Intro")
+            .ItemAsync("Logo", cancellationToken: ct);
+        await logo.SetEnabledAsync(false, ct);
+        await logo.Scene.GetItemListAsync(ct);
+
+        await client.Scene("Intro").Item(3).SetIndexAsync(0, ct);
+    }
+
+    internal static async Task CanvasHandlesAsync(ObsWebSocketClient client, CancellationToken ct)
+    {
+        CanvasHandle vertical = await client.Canvases.ResolveAsync("Vertical", ct);
+        await client.Scene(vertical.Scene("Intro")).GetItemListAsync(ct);
     }
 
     internal static async Task GroupedSurfaceAsync(ObsWebSocketClient client, CancellationToken ct)
