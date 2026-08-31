@@ -1,7 +1,7 @@
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// Thrown when authentication against the OBS WebSocket server fails — typically because the
+/// Thrown when authentication against the OBS WebSocket server fails, typically because the
 /// configured password is wrong, missing, or otherwise rejected by the server's challenge.
 /// </summary>
 /// <remarks>

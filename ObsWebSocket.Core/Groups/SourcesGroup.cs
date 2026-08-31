@@ -163,7 +163,7 @@ public readonly partial struct SourcesGroup
     /// <param name="width">Optional output width. <see langword="null"/> uses the source width.</param>
     /// <param name="height">Optional output height. <see langword="null"/> uses the source height.</param>
     /// <param name="compressionQuality">
-    /// JPEG compression quality 0–100 (<c>-1</c> uses the OBS default).
+    /// JPEG compression quality 0 to 100 (<c>-1</c> uses the OBS default).
     /// Ignored for lossless formats.
     /// </param>
     /// <param name="sourceUuid">
@@ -222,7 +222,7 @@ public readonly partial struct SourcesGroup
     /// <param name="imageFormat">Image format: <c>"png"</c>, <c>"jpg"</c>, or <c>"bmp"</c>.</param>
     /// <param name="width">Optional output width. <see langword="null"/> uses the source width.</param>
     /// <param name="height">Optional output height. <see langword="null"/> uses the source height.</param>
-    /// <param name="compressionQuality">JPEG compression quality 0–100 (<c>-1</c> uses the OBS default).</param>
+    /// <param name="compressionQuality">JPEG compression quality 0 to 100 (<c>-1</c> uses the OBS default).</param>
     /// <param name="sourceUuid">
     /// Optional source UUID for unambiguous identification.
     /// When <see langword="null"/> the lookup is by <paramref name="sourceName"/> alone.

@@ -255,6 +255,178 @@ public sealed class StubArrayTests
     }
 
     /// <summary>
+    /// OBS copies the output dimensions straight out of <c>obs_output_get_width</c> and
+    /// <c>obs_output_get_height</c>, which return <c>uint32_t</c> and are not clamped on the way
+    /// out. An output that has never started can report a value past <see cref="int.MaxValue"/>; a
+    /// live OBS 32.2.2 sent 2586032160 for an idle virtual camera. As an <c>int</c> that
+    /// took the whole GetOutputList response down, not just the one field.
+    /// </summary>
+    [TestMethod]
+    public void OutputList_HeightAboveInt32Max_ReadsOverJson()
+    {
+        JsonElement payload = JsonDocument
+            .Parse(
+                """
+                {
+                  "outputs": [
+                    {
+                      "outputName": "virtualcam_output",
+                      "outputKind": "virtualcam_output",
+                      "outputActive": false,
+                      "outputWidth": 0,
+                      "outputHeight": 2586032160,
+                      "outputFlags": { "OBS_OUTPUT_VIDEO": true }
+                    }
+                  ]
+                }
+                """
+            )
+            .RootElement.Clone();
+
+        GetOutputListResponseData? read = CreateJsonSerializer()
+            .DeserializePayload<GetOutputListResponseData>(payload);
+
+        Assert.IsNotNull(read);
+        Assert.AreEqual(1, read.Outputs.Count);
+        Assert.AreEqual(2586032160L, read.Outputs[0].OutputHeight);
+    }
+
+    [TestMethod]
+    public void OutputList_HeightAboveInt32Max_RoundTripsOverMsgPack()
+    {
+        GetOutputListResponseData original = new()
+        {
+            Outputs =
+            [
+                new OutputStub
+                {
+                    OutputName = "virtualcam_output",
+                    OutputKind = "virtualcam_output",
+                    OutputActive = false,
+                    OutputWidth = 0,
+                    OutputHeight = 2586032160L,
+                },
+            ],
+        };
+
+        byte[] packed = MessagePackSerializer.Serialize(
+            original,
+            MsgPackMessageSerializer.s_msgPackOptions
+        );
+        GetOutputListResponseData read =
+            MessagePackSerializer.Deserialize<GetOutputListResponseData>(
+                packed,
+                MsgPackMessageSerializer.s_msgPackOptions
+            );
+
+        Assert.AreEqual(2586032160L, read.Outputs[0].OutputHeight);
+    }
+
+    /// <summary>
+    /// The same defect in the counters. The frame counts come from <c>uint32_t</c> and the session
+    /// message counts from <c>uint64_t</c>, none of them clamped, and a monotonic frame counter
+    /// passes <see cref="int.MaxValue"/> after roughly 414 days at 60fps.
+    /// </summary>
+    [TestMethod]
+    public void Stats_CountersAboveInt32Max_ReadOverJson()
+    {
+        JsonElement payload = JsonDocument
+            .Parse(
+                """
+                {
+                  "cpuUsage": 1.5,
+                  "memoryUsage": 512.0,
+                  "availableDiskSpace": 1024.0,
+                  "activeFps": 60.0,
+                  "averageFrameRenderTime": 1.2,
+                  "renderSkippedFrames": 4294967295,
+                  "renderTotalFrames": 3000000000,
+                  "outputSkippedFrames": 2147483648,
+                  "outputTotalFrames": 4000000000,
+                  "webSocketSessionIncomingMessages": 5000000000,
+                  "webSocketSessionOutgoingMessages": 6000000000
+                }
+                """
+            )
+            .RootElement.Clone();
+
+        GetStatsResponseData? read = CreateJsonSerializer()
+            .DeserializePayload<GetStatsResponseData>(payload);
+
+        Assert.IsNotNull(read);
+        Assert.AreEqual(4294967295L, read.RenderSkippedFrames);
+        Assert.AreEqual(3000000000L, read.RenderTotalFrames);
+        Assert.AreEqual(6000000000L, read.WebSocketSessionOutgoingMessages);
+    }
+
+    /// <summary>
+    /// A canvas-scoped scene list has no index to report, so OBS sends <c>sceneIndex</c> as null
+    /// rather than omitting it. As a non-nullable member that failed the whole response.
+    /// </summary>
+    [TestMethod]
+    public void SceneList_NullSceneIndex_ReadsOverJson()
+    {
+        JsonElement payload = JsonDocument
+            .Parse(
+                """
+                {
+                  "scenes": [
+                    {
+                      "sceneName": "Intro",
+                      "sceneUuid": "0e57ad4c-2b2d-4f5b-9d05-3f4b0f4f1f10",
+                      "sceneIndex": null
+                    }
+                  ]
+                }
+                """
+            )
+            .RootElement.Clone();
+
+        GetSceneListResponseData? read = CreateJsonSerializer()
+            .DeserializePayload<GetSceneListResponseData>(payload);
+
+        Assert.IsNotNull(read);
+        Assert.AreEqual(1, read.Scenes.Count);
+        Assert.IsNull(read.Scenes[0].SceneIndex);
+    }
+
+    /// <summary>
+    /// The alignment fields are <c>uint32_t</c> masks in <c>obs_transform_info</c>, and
+    /// obs-websocket validates writes to the whole unsigned range rather than to the flags it
+    /// defines, so a value past <see cref="int.MaxValue"/> reaches the client.
+    /// </summary>
+    [TestMethod]
+    public void SceneItemTransform_AlignmentAboveInt32Max_ReadsOverJson()
+    {
+        JsonElement payload = JsonDocument
+            .Parse(
+                """
+                {
+                  "sceneItemTransform": {
+                    "positionX": 0, "positionY": 0, "rotation": 0,
+                    "scaleX": 1, "scaleY": 1, "width": 100, "height": 100,
+                    "sourceWidth": 100, "sourceHeight": 100,
+                    "alignment": 4294967295,
+                    "boundsType": "OBS_BOUNDS_NONE",
+                    "boundsAlignment": 3000000000,
+                    "boundsWidth": 0, "boundsHeight": 0,
+                    "cropLeft": 0, "cropTop": 0, "cropRight": 0, "cropBottom": 0,
+                    "cropToBounds": false
+                  }
+                }
+                """
+            )
+            .RootElement.Clone();
+
+        GetSceneItemTransformResponseData? read = CreateJsonSerializer()
+            .DeserializePayload<GetSceneItemTransformResponseData>(payload);
+
+        Assert.IsNotNull(read);
+        Assert.AreEqual(4294967295L, read.SceneItemTransform.Alignment);
+        Assert.AreEqual(3000000000L, read.SceneItemTransform.BoundsAlignment);
+    }
+
+    /// <summary>
     /// The formatter that made an unmapped array readable at all. Nothing generated uses it now
     /// that every array is mapped, but it is what stands between a future unmapped array and a
     /// transport that cannot read the message.

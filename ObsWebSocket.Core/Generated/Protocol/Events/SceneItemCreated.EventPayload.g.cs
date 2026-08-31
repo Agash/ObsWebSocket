@@ -29,7 +29,7 @@ public sealed partial record SceneItemCreatedPayload
     /// </summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required int SceneItemId { get; init; }
+    public required long SceneItemId { get; init; }
 
     /// <summary>
     /// Index position of the item
@@ -75,7 +75,7 @@ public sealed partial record SceneItemCreatedPayload
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public SceneItemCreatedPayload(string sceneName, string sceneUuid, string sourceName, string sourceUuid, int sceneItemId, int sceneItemIndex)
+    public SceneItemCreatedPayload(string sceneName, string sceneUuid, string sourceName, string sourceUuid, long sceneItemId, int sceneItemIndex)
     {
         this.SceneName = sceneName;
         this.SceneUuid = sceneUuid;

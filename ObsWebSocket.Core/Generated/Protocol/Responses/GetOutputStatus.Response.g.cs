@@ -64,7 +64,7 @@ public sealed partial record GetOutputStatusResponseData
     /// </summary>
     [JsonPropertyName("outputSkippedFrames")]
     [Key("outputSkippedFrames")]
-    public required int OutputSkippedFrames { get; init; }
+    public required long OutputSkippedFrames { get; init; }
 
     /// <summary>
     /// Current formatted timecode string for the output
@@ -78,7 +78,7 @@ public sealed partial record GetOutputStatusResponseData
     /// </summary>
     [JsonPropertyName("outputTotalFrames")]
     [Key("outputTotalFrames")]
-    public required int OutputTotalFrames { get; init; }
+    public required long OutputTotalFrames { get; init; }
 
     /// <summary>Initializes a new instance for deserialization via <see cref="JsonConstructorAttribute"/>.</summary>
     [JsonConstructor]
@@ -89,7 +89,7 @@ public sealed partial record GetOutputStatusResponseData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public GetOutputStatusResponseData(bool outputActive, bool outputReconnecting, string outputTimecode, long outputDuration, double outputCongestion, long outputBytes, int outputSkippedFrames, int outputTotalFrames)
+    public GetOutputStatusResponseData(bool outputActive, bool outputReconnecting, string outputTimecode, long outputDuration, double outputCongestion, long outputBytes, long outputSkippedFrames, long outputTotalFrames)
     {
         this.OutputActive = outputActive;
         this.OutputReconnecting = outputReconnecting;

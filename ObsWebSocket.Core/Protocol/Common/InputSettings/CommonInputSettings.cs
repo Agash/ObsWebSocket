@@ -269,7 +269,7 @@ public sealed record WasapiOutputCaptureSettings(
 );
 
 /// <summary>Settings for the 'dshow_input' (Video Capture Device / DirectShow) input.</summary>
-/// <remarks>Device-identifying properties (device, device_id, video_device_id, audio_device_id) are not included — use a consumer-defined type to target a specific device.</remarks>
+/// <remarks>Device-identifying properties (device, device_id, video_device_id, audio_device_id) are not included. Use a consumer-defined type to target a specific device.</remarks>
 public sealed record DShowInputSettings(
     [property: JsonPropertyName("active")] bool? Active = null,
     [property: JsonPropertyName("hw_decode")] bool? HwDecode = null,

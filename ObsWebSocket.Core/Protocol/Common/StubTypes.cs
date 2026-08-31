@@ -22,9 +22,15 @@ public sealed class SceneStub
     public required string SceneUuid { get; init; }
 
     /// <summary>Scene index position.</summary>
+    /// <remarks>
+    /// Nullable because OBS sends null, not because the protocol says so. The main scene list
+    /// numbers its entries, but GetCanvasSceneList enumerates through a callback that has no index
+    /// to report and writes null in its place. As a non-nullable int that failed the whole
+    /// response rather than the one field.
+    /// </remarks>
     [JsonPropertyName("sceneIndex")]
     [Key("sceneIndex")]
-    public required int SceneIndex { get; init; }
+    public int? SceneIndex { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -50,7 +56,7 @@ public sealed class SceneItemOrderStub
     /// <summary>Numeric ID of the scene item.</summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required int SceneItemId { get; init; }
+    public required long SceneItemId { get; init; }
 
     /// <summary>Index of the scene item, counted from the bottom of the list.</summary>
     [JsonPropertyName("sceneItemIndex")]
@@ -306,11 +312,17 @@ public sealed class SceneItemTransformStub
     public required double SourceHeight { get; init; }
 
     /// <summary>
-    /// Alignment value.
+    /// Alignment of the scene item, as an <c>OBS_ALIGN_*</c> bit mask.
     /// </summary>
+    /// <remarks>
+    /// A mask, not a count, and OBS treats it as the full width of one: the field is
+    /// <c>uint32_t</c> in <c>obs_transform_info</c>, and obs-websocket validates writes to
+    /// <c>0 .. uint32_t max</c> rather than to the flags it defines. A value past
+    /// <see cref="int.MaxValue"/> is accepted on the way in and handed back on the way out.
+    /// </remarks>
     [JsonPropertyName("alignment")]
     [Key("alignment")]
-    public required int Alignment { get; init; }
+    public required long Alignment { get; init; }
 
     /// <summary>
     /// Bounds type value.
@@ -320,11 +332,12 @@ public sealed class SceneItemTransformStub
     public required string BoundsType { get; init; }
 
     /// <summary>
-    /// Bounds alignment value.
+    /// Alignment of the bounding box, as an <c>OBS_ALIGN_*</c> bit mask. See
+    /// <see cref="Alignment"/> for why this is 64 bits wide.
     /// </summary>
     [JsonPropertyName("boundsAlignment")]
     [Key("boundsAlignment")]
-    public required int BoundsAlignment { get; init; }
+    public required long BoundsAlignment { get; init; }
 
     /// <summary>
     /// Bounds width value.
@@ -367,6 +380,11 @@ public sealed class SceneItemTransformStub
     [JsonPropertyName("cropBottom")]
     [Key("cropBottom")]
     public required int CropBottom { get; init; }
+
+    /// <summary>Whether the crop is applied relative to the bounding box.</summary>
+    [JsonPropertyName("cropToBounds")]
+    [Key("cropToBounds")]
+    public bool? CropToBounds { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
@@ -454,11 +472,11 @@ public sealed class SceneItemTransformPatchStub
     public double? SourceHeight { get; init; }
 
     /// <summary>
-    /// Alignment value.
+    /// Alignment of the scene item, as an <c>OBS_ALIGN_*</c> bit mask.
     /// </summary>
     [JsonPropertyName("alignment")]
     [Key("alignment")]
-    public int? Alignment { get; init; }
+    public long? Alignment { get; init; }
 
     /// <summary>
     /// Bounds type value.
@@ -468,11 +486,11 @@ public sealed class SceneItemTransformPatchStub
     public string? BoundsType { get; init; }
 
     /// <summary>
-    /// Bounds alignment value.
+    /// Alignment of the bounding box, as an <c>OBS_ALIGN_*</c> bit mask.
     /// </summary>
     [JsonPropertyName("boundsAlignment")]
     [Key("boundsAlignment")]
-    public int? BoundsAlignment { get; init; }
+    public long? BoundsAlignment { get; init; }
 
     /// <summary>
     /// Bounds width value.
@@ -516,6 +534,11 @@ public sealed class SceneItemTransformPatchStub
     [Key("cropBottom")]
     public int? CropBottom { get; init; }
 
+    /// <summary>Whether the crop is applied relative to the bounding box.</summary>
+    [JsonPropertyName("cropToBounds")]
+    [Key("cropToBounds")]
+    public bool? CropToBounds { get; init; }
+
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
     [JsonExtensionData]
@@ -536,7 +559,7 @@ public sealed class SceneItemStub
     /// <summary>Scene item ID.</summary>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required int SceneItemId { get; init; }
+    public required long SceneItemId { get; init; }
 
     /// <summary>Scene item index position.</summary>
     [JsonPropertyName("sceneItemIndex")]
@@ -563,10 +586,47 @@ public sealed class SceneItemStub
     [Key("sceneItemLocked")]
     public required bool SceneItemLocked { get; init; }
 
-    /// <summary>Whether the source is a group.</summary>
+    /// <summary>
+    /// Kind of the input the item shows, or <see langword="null"/> when the item is a scene or a
+    /// group rather than an input.
+    /// </summary>
+    [JsonPropertyName("inputKind")]
+    [Key("inputKind")]
+    public string? InputKind { get; init; }
+
+    /// <summary>
+    /// Type of the source the item shows, as an <c>OBS_SOURCE_TYPE_*</c> value.
+    /// </summary>
+    [JsonPropertyName("sourceType")]
+    [Key("sourceType")]
+    public string? SourceType { get; init; }
+
+    /// <summary>
+    /// Whether the source is a group, or <see langword="null"/> when the item shows an input.
+    /// </summary>
+    /// <remarks>
+    /// OBS answers this only for items that could be a group. An input gets null rather than
+    /// false, so a null here means "not applicable", not "unknown".
+    /// </remarks>
     [JsonPropertyName("isGroup")]
     [Key("isGroup")]
     public bool? IsGroup { get; init; }
+
+    /// <summary>Blend mode of the scene item, as an <c>OBS_BLEND_*</c> value.</summary>
+    [JsonPropertyName("sceneItemBlendMode")]
+    [Key("sceneItemBlendMode")]
+    public string? SceneItemBlendMode { get; init; }
+
+    /// <summary>
+    /// Blend method of the scene item, as an <c>OBS_BLEND_METHOD_*</c> value.
+    /// </summary>
+    /// <remarks>
+    /// Nullable because it is newer than the rest: OBS 32.2.2 does not send it, so requiring it
+    /// would make the scene item list unreadable on every build that predates the field.
+    /// </remarks>
+    [JsonPropertyName("sceneItemBlendMethod")]
+    [Key("sceneItemBlendMethod")]
+    public string? SceneItemBlendMethod { get; init; }
 
     /// <summary>Transform data for the scene item.</summary>
     [JsonPropertyName("sceneItemTransform")]
@@ -652,6 +712,15 @@ public sealed class InputStub
     [Key("unversionedInputKind")]
     public required string UnversionedInputKind { get; init; }
 
+    /// <summary>Capability flags for the input's kind, as an <c>OBS_SOURCE_*</c> bit mask.</summary>
+    /// <remarks>
+    /// 64 bits wide because the wire value is: OBS fills it from
+    /// <c>obs_source_get_output_flags</c>, which returns <c>uint32_t</c> and is not clamped.
+    /// </remarks>
+    [JsonPropertyName("inputKindCaps")]
+    [Key("inputKindCaps")]
+    public long? InputKindCaps { get; init; }
+
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]
     [JsonExtensionData]
@@ -726,20 +795,37 @@ public sealed class OutputStub
     [Key("outputActive")]
     public required bool OutputActive { get; init; }
 
-    /// <summary>Output width.</summary>
+    /// <summary>
+    /// Output width in pixels, which an output that has never started may report as garbage.
+    /// </summary>
+    /// <remarks>
+    /// Wider than a pixel count needs to be, because the wire value is wider. OBS fills this from
+    /// <c>obs_output_get_width</c>, which returns <c>uint32_t</c> and is passed through unclamped,
+    /// and an idle output can report a value above <see cref="int.MaxValue"/>. A live OBS 32.2.2
+    /// sent 2586032160 for an inactive virtual camera. As an <see cref="int"/> that made the whole
+    /// <c>GetOutputList</c> response unreadable, intermittently, and only for whoever happened to
+    /// have such an output installed. Treat a value over 4096 as "not meaningful", not as a size.
+    /// </remarks>
     [JsonPropertyName("outputWidth")]
     [Key("outputWidth")]
-    public required int OutputWidth { get; init; }
+    public required long OutputWidth { get; init; }
 
-    /// <summary>Output height.</summary>
+    /// <summary>
+    /// Output height in pixels, which an output that has never started may report as garbage. See
+    /// <see cref="OutputWidth"/> for why this is 64 bits wide.
+    /// </summary>
     [JsonPropertyName("outputHeight")]
     [Key("outputHeight")]
-    public required int OutputHeight { get; init; }
+    public required long OutputHeight { get; init; }
 
-    /// <summary>Output settings.</summary>
-    [JsonPropertyName("outputSettings")]
-    [Key("outputSettings")]
-    public JsonElement? OutputSettings { get; init; }
+    /// <summary>Capability flags for the output, keyed by <c>OBS_OUTPUT_*</c> name.</summary>
+    /// <remarks>
+    /// Replaces an <c>outputSettings</c> member that was here for no reason: nothing in
+    /// <c>GetOutputList</c> writes one. Settings come from <c>GetOutputSettings</c>, per output.
+    /// </remarks>
+    [JsonPropertyName("outputFlags")]
+    [Key("outputFlags")]
+    public Dictionary<string, bool>? OutputFlags { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]

@@ -68,7 +68,7 @@ public sealed partial record DuplicateSceneItemRequestData
     /// </remarks>
     [JsonPropertyName("sceneItemId")]
     [Key("sceneItemId")]
-    public required int SceneItemId { get; init; }
+    public required long SceneItemId { get; init; }
 
     /// <summary>
     /// Name of the scene the item is in
@@ -101,7 +101,7 @@ public sealed partial record DuplicateSceneItemRequestData
     /// <para>Parameters are ordered with required properties first, then optional properties (with defaults). Follows protocol definition order where possible.</para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SetsRequiredMembers]
-    public DuplicateSceneItemRequestData(int sceneItemId, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? destinationSceneName = null, string? destinationSceneUuid = null)
+    public DuplicateSceneItemRequestData(long sceneItemId, string? canvasUuid = null, string? sceneName = null, string? sceneUuid = null, string? destinationSceneName = null, string? destinationSceneUuid = null)
     {
         this.CanvasUuid = canvasUuid;
         this.SceneName = sceneName;

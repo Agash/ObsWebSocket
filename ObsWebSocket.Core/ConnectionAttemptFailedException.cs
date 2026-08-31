@@ -2,7 +2,7 @@ namespace ObsWebSocket.Core;
 
 /// <summary>
 /// Thrown when a single connection attempt to the OBS WebSocket server fails for a non-auth
-/// reason — protocol mismatch, transport error, handshake timeout, or a server-rejected
+/// reason: protocol mismatch, transport error, handshake timeout, or a server-rejected
 /// configuration. Distinct from <see cref="AuthenticationFailureException"/> so consumers can
 /// decide whether to retry or stop.
 /// </summary>

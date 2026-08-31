@@ -111,7 +111,7 @@ Thank you again for your interest in contributing!
 
 - Name tests `{Method}_{Scenario}_{ExpectedResult}`.
 - Prefer the purpose-built MSTest assertions (`Assert.HasCount`, `Assert.Contains`,
-  `Assert.AreSequenceEqual`) over hand-rolled equality checks — the analyzers will point you at them.
+  `Assert.AreSequenceEqual`) over hand-rolled equality checks; the analyzers will point you at them.
 - No `Thread.Sleep`. Use `TaskCompletionSource`, channels, or a fake clock.
 - New behaviour needs a test. Bug fixes need a test that fails before the fix.
 
@@ -124,7 +124,7 @@ fix(webhooks): reject a signature computed over the decoded body
 ```
 
 Keep the subject under 50 characters and in the imperative mood. Add a body only when the reason for
-the change would not be obvious to the next reader — explain *why*, not *what*.
+the change would not be obvious to the next reader. Explain *why*, not *what*.
 
 One logical change per commit. Rebase rather than merge when updating a branch.
 

@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -307,6 +308,20 @@ internal sealed partial class Worker(
                 );
                 return false;
 
+            case "resolve":
+                if (args.Length == 0)
+                {
+                    UiWarn("Usage: resolve [scene name] [source name in that scene]");
+                    return false;
+                }
+
+                await ResolveDemoAsync(
+                    args[0],
+                    args.Length > 1 ? string.Join(" ", args[1..]) : null,
+                    cancellationToken
+                );
+                return false;
+
             case "mute":
             case "unmute":
                 if (args.Length == 0)
@@ -317,11 +332,12 @@ internal sealed partial class Worker(
 
                 string inputNameToMute = string.Join(" ", args);
                 _logger.LogInformation("Toggling mute for input: {InputName}", inputNameToMute);
-                ToggleInputMuteResponseData? muteState =
-                    await _obsClient.Inputs.ToggleInputMuteAsync(
-                        new ToggleInputMuteRequestData(inputNameToMute),
-                        cancellationToken: cancellationToken
-                    );
+
+                // Handle form. One call about one input, so the identity is said once and the
+                // method name drops the word the handle already carries.
+                ToggleInputMuteResponseData? muteState = await _obsClient
+                    .Input(inputNameToMute)
+                    .ToggleMuteAsync(cancellationToken);
                 if (muteState is null)
                 {
                     UiWarn($"Could not toggle mute state for {inputNameToMute}. Does it exist?");
@@ -346,7 +362,7 @@ internal sealed partial class Worker(
                 try
                 {
                     // First, find the scene item ID within the specified scene
-                    int sceneItemId = await GetSceneItemIdAsync(
+                    long sceneItemId = await GetSceneItemIdAsync(
                         sceneForGetSettings,
                         inputForGetSettings,
                         cancellationToken
@@ -393,7 +409,7 @@ internal sealed partial class Worker(
                 try
                 {
                     // Find the scene item ID first (optional but good practice)
-                    int sceneItemId = await GetSceneItemIdAsync(
+                    long sceneItemId = await GetSceneItemIdAsync(
                         sceneForSetText,
                         inputForSetText,
                         cancellationToken
@@ -405,7 +421,9 @@ internal sealed partial class Worker(
                         sceneForSetText
                     );
 
-                    // Uses SetInputTextAsync helper which serializes TextGdiPlusInputSettings internally.
+                    // Protocol level on purpose. SetInputTextAsync is a hand-written group helper
+                    // that serializes TextGdiPlusInputSettings internally; the handles are
+                    // generated from the protocol, so nothing hand-written appears on them.
                     await _obsClient.Inputs.SetInputTextAsync(
                         inputForSetText,
                         newText,
@@ -438,11 +456,12 @@ internal sealed partial class Worker(
                 }
 
                 string sourceForFilters = string.Join(" ", args);
-                GetSourceFilterListResponseData? filterList =
-                    await _obsClient.Filters.GetSourceFilterListAsync(
-                        new GetSourceFilterListRequestData(sourceName: sourceForFilters),
-                        cancellationToken: cancellationToken
-                    );
+
+                // A filter list belongs to the source, not to the Filters category, and the handle
+                // says so: client.Source(x).GetFilterListAsync, not Filters.GetSourceFilterList.
+                GetSourceFilterListResponseData? filterList = await _obsClient
+                    .Source(sourceForFilters)
+                    .GetFilterListAsync(cancellationToken);
                 if (filterList?.Filters is not null && filterList.Filters.Count > 0)
                 {
                     Table table = new()
@@ -456,7 +475,7 @@ internal sealed partial class Worker(
                     foreach (Core.Protocol.Common.FilterStub filterElement in filterList.Filters)
                     {
                         string filterIndex = filterElement.FilterIndex.ToString(
-                            System.Globalization.CultureInfo.InvariantCulture
+                            CultureInfo.InvariantCulture
                         );
                         string filterName =
                             Markup.Escape(filterElement.FilterName ?? "N/A") ?? "N/A";
@@ -489,16 +508,14 @@ internal sealed partial class Worker(
                 string sourceForToggle = args[0];
                 string filterToToggle = string.Join(" ", args[1..]);
 
-                // 1. Get current filter state
-                GetSourceFilterResponseData? currentFilterState =
-                    await _obsClient.Filters.GetSourceFilterAsync(
-                        new GetSourceFilterRequestData
-                        {
-                            SourceName = sourceForToggle,
-                            FilterName = filterToToggle,
-                        },
-                        cancellationToken: cancellationToken
-                    );
+                // Read then write, both about the same filter. Through the category group that is
+                // four strings across two request records, any one of which can be misspelled into
+                // a ResourceNotFound. Held as a handle it is two strings, once.
+                FilterOperations filter = _obsClient.Source(sourceForToggle).Filter(filterToToggle);
+
+                GetSourceFilterResponseData? currentFilterState = await filter.GetAsync(
+                    cancellationToken
+                );
 
                 if (currentFilterState is null)
                 {
@@ -508,17 +525,8 @@ internal sealed partial class Worker(
                     return false;
                 }
 
-                // 2. Toggle the state
                 bool newState = !currentFilterState.FilterEnabled;
-                await _obsClient.Filters.SetSourceFilterEnabledAsync(
-                    new SetSourceFilterEnabledRequestData
-                    {
-                        SourceName = sourceForToggle,
-                        FilterName = filterToToggle,
-                        FilterEnabled = newState,
-                    },
-                    cancellationToken: cancellationToken
-                );
+                await filter.SetEnabledAsync(newState, cancellationToken);
 
                 UiSuccess(
                     $"Filter '{filterToToggle}' on '{sourceForToggle}' toggled to {(newState ? "ENABLED" : "DISABLED")}"
@@ -530,6 +538,10 @@ internal sealed partial class Worker(
                 // Streams are the ergonomic way to observe events: subscribe for the lifetime
                 // of the loop, no handler bookkeeping, and cancellation ends it cleanly. The
                 // classic events on the client are untouched and still work alongside this.
+                //
+                // The event already says which scene, by uuid, so acting on it needs no lookup.
+                // Reading SceneName back off it and addressing the scene by name would add a round
+                // trip and reintroduce the rename race the uuid exists to close.
                 int seconds =
                     args.Length > 0 && int.TryParse(args[0], out int parsed) ? parsed : 15;
                 UiInfo($"Watching scene changes for {seconds}s. Switch scenes in OBS.");
@@ -546,7 +558,14 @@ internal sealed partial class Worker(
                         )
                     )
                     {
-                        UiSuccess($"Program scene is now '{sceneEvent.EventData.SceneName}'");
+                        GetSceneItemListResponseData items = await _obsClient
+                            .Scene(sceneEvent.EventData.Scene)
+                            .GetItemListAsync(watchCts.Token);
+
+                        UiSuccess(
+                            $"Program scene is now '{sceneEvent.EventData.SceneName}' "
+                                + $"({items.SceneItems.Count} item(s))"
+                        );
                     }
                 }
                 catch (OperationCanceledException)
@@ -1115,8 +1134,8 @@ internal sealed partial class Worker(
                 _ = summary.AddRow(
                     Markup.Escape(label),
                     pass
-                        ? $"[green]Pass[/] — {Markup.Escape(detail)}"
-                        : $"[red]Fail[/] — {Markup.Escape(detail)}"
+                        ? $"[green]Pass[/]: {Markup.Escape(detail)}"
+                        : $"[red]Fail[/]: {Markup.Escape(detail)}"
                 );
             }
             foreach ((string label, bool pass, string detail) in modernResults)
@@ -1143,9 +1162,13 @@ internal sealed partial class Worker(
 
     /// <summary>
     /// Validates all three settings API modes for both InputSettings and FilterSettings.
-    /// All operations are read-then-write-back (overlay:true) so they are non-destructive.
-    /// Requires at least one browser_source and one input with a gain_filter in OBS.
     /// </summary>
+    /// <remarks>
+    /// The browser source and the gain filter are created here and removed again, so a fresh OBS
+    /// install exercises the same checks as a populated one. Discovering an existing input instead
+    /// made the result depend on the machine: the run reported the modes as failing when all that
+    /// was missing was a source to try them on.
+    /// </remarks>
     private static async Task<
         List<(string Label, bool Pass, string Detail)>
     > ValidateSettingsModesAsync(
@@ -1162,16 +1185,110 @@ internal sealed partial class Worker(
         }
 
         // ── InputSettings ─────────────────────────────────────────────────────
-        string? browserInputName = inputs
-            .Inputs?.FirstOrDefault(i =>
-                string.Equals(i.InputKind, "browser_source", StringComparison.OrdinalIgnoreCase)
-            )
-            ?.InputName;
+        const string FixtureInputName = "__obsws_settings_browser";
+        const string FixtureFilter = "__obsws_settings_gain";
+
+        string? browserInputName = null;
+        string? filterSourceName = null;
+        string? gainFilterName = null;
+
+        try
+        {
+            GetCurrentProgramSceneResponseData programScene = await client
+                .Scenes.GetCurrentProgramSceneAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            await client
+                .Inputs.CreateInputAsync(
+                    inputKind: "browser_source",
+                    inputName: FixtureInputName,
+                    settings: new BrowserSourceSettings(
+                        Url: "https://obsproject.com",
+                        Width: 800,
+                        Height: 600
+                    ),
+                    sceneName: programScene.SceneName,
+                    sceneItemEnabled: true,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+            browserInputName = FixtureInputName;
+
+            await client
+                .Filters.CreateSourceFilterAsync(
+                    new CreateSourceFilterRequestData(
+                        filterKind: "gain_filter",
+                        filterName: FixtureFilter,
+                        sourceName: FixtureInputName
+                    ),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            filterSourceName = FixtureInputName;
+            gainFilterName = FixtureFilter;
+        }
+        catch (ObsWebSocketException ex)
+        {
+            results.Add(("Settings fixtures", false, $"could not be created: {ex.Message}"));
+        }
+
+        try
+        {
+            results.AddRange(
+                await RunSettingsModeChecksAsync(
+                        client,
+                        browserInputName,
+                        filterSourceName,
+                        gainFilterName,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false)
+            );
+        }
+        finally
+        {
+            // Removing the input takes its filter and its scene item with it.
+            if (browserInputName is not null)
+            {
+                try
+                {
+                    await client
+                        .Inputs.RemoveInputAsync(
+                            new(inputName: browserInputName),
+                            CancellationToken.None
+                        )
+                        .ConfigureAwait(false);
+                }
+                catch (ObsWebSocketException)
+                {
+                    // Nothing useful to do about a fixture that will not go away. The next run
+                    // recreates it by the same name and OBS rejects the duplicate visibly.
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// The settings-mode checks themselves, against fixtures the caller creates and removes.
+    /// </summary>
+    private static async Task<
+        List<(string Label, bool Pass, string Detail)>
+    > RunSettingsModeChecksAsync(
+        ObsWebSocketClient client,
+        string? browserInputName,
+        string? filterSourceName,
+        string? gainFilterName,
+        CancellationToken cancellationToken
+    )
+    {
+        List<(string Label, bool Pass, string Detail)> results = [];
 
         if (string.IsNullOrEmpty(browserInputName))
         {
             results.Add(
-                ("InputSettings [all modes]", false, "No browser_source in OBS — add one to test")
+                ("InputSettings [all modes]", false, "fixture browser source was not created")
             );
         }
         else
@@ -1267,45 +1384,10 @@ internal sealed partial class Worker(
         }
 
         // ── FilterSettings ────────────────────────────────────────────────────
-        // Find first gain_filter across the first 5 inputs.
-        string? filterSourceName = null;
-        string? gainFilterName = null;
-        foreach (
-            Core.Protocol.Common.InputStub input in inputs
-                .Inputs?.Where(i => !string.IsNullOrEmpty(i.InputName))
-                .Take(5)
-                ?? []
-        )
-        {
-            try
-            {
-                GetSourceFilterListResponseData? fl = await client.Filters.GetSourceFilterListAsync(
-                    new GetSourceFilterListRequestData(sourceName: input.InputName!),
-                    cancellationToken
-                );
-                Core.Protocol.Common.FilterStub? gain = fl?.Filters?.FirstOrDefault(f =>
-                    string.Equals(f.FilterKind, "gain_filter", StringComparison.OrdinalIgnoreCase)
-                );
-                if (gain?.FilterName is not null)
-                {
-                    filterSourceName = input.InputName;
-                    gainFilterName = gain.FilterName;
-                    break;
-                }
-            }
-            catch
-            { /* skip inputs we can't query */
-            }
-        }
-
         if (string.IsNullOrEmpty(filterSourceName) || string.IsNullOrEmpty(gainFilterName))
         {
             results.Add(
-                (
-                    "FilterSettings [all modes]",
-                    false,
-                    "No gain_filter found — add one to an input in OBS"
-                )
+                ("FilterSettings [all modes]", false, "fixture gain filter was not created")
             );
         }
         else
@@ -2150,14 +2232,14 @@ internal sealed partial class Worker(
                         "FindSceneItemIdAsync",
                         async () =>
                         {
-                            int? id = await client
+                            long? id = await client
                                 .SceneItems.FindSceneItemIdAsync(
                                     sceneName,
                                     inputName,
                                     cancellationToken
                                 )
                                 .ConfigureAwait(false);
-                            int? miss = await client
+                            long? miss = await client
                                 .SceneItems.FindSceneItemIdAsync(
                                     sceneName,
                                     "__absent__",
@@ -2364,7 +2446,7 @@ internal sealed partial class Worker(
                             // arrive as double. Writing one and reading it back proves the
                             // retype survives the wire in both directions, which matters most
                             // for MessagePack, where an int and a float are different encodings.
-                            int itemId =
+                            long itemId =
                                 await client
                                     .SceneItems.FindSceneItemIdAsync(
                                         sceneName,
@@ -2859,7 +2941,7 @@ internal sealed partial class Worker(
                                 return (false, "no scene items to reindex");
                             }
 
-                            int id = items.SceneItems[0].SceneItemId;
+                            long id = items.SceneItems[0].SceneItemId;
                             int index = items.SceneItems[0].SceneItemIndex;
 
                             Task<SceneItemListReindexedEventArgs> reindexed =
@@ -3008,6 +3090,147 @@ internal sealed partial class Worker(
                                         .ConfigureAwait(false);
                                 }
                             }
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "Handles address by name and by uuid",
+                        async () =>
+                        {
+                            // The point of a uuid handle is that it survives a rename. Both forms
+                            // have to reach the same scene for that to be worth anything.
+                            SceneHandle byName = sceneName;
+                            SceneOperations resolved = await client
+                                .Scene(byName)
+                                .ResolveAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            SceneHandle byUuid = resolved.Handle;
+
+                            GetSceneItemListResponseData viaName = await client
+                                .Scene(byName)
+                                .GetItemListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+                            GetSceneItemListResponseData viaUuid = await client
+                                .Scene(byUuid)
+                                .GetItemListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            string renamed = sceneName + "_renamed";
+                            await client
+                                .Scene(byUuid)
+                                .SetNameAsync(renamed, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            bool uuidStillWorks;
+                            try
+                            {
+                                _ = await client
+                                    .Scene(byUuid)
+                                    .GetItemListAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+                                uuidStillWorks = true;
+                            }
+                            catch (ObsWebSocketRequestException)
+                            {
+                                uuidStillWorks = false;
+                            }
+
+                            bool nameNowMisses;
+                            try
+                            {
+                                _ = await client
+                                    .Scene(byName)
+                                    .GetItemListAsync(cancellationToken)
+                                    .ConfigureAwait(false);
+                                nameNowMisses = false;
+                            }
+                            catch (ObsWebSocketRequestException)
+                            {
+                                nameNowMisses = true;
+                            }
+
+                            await client
+                                .Scene(byUuid)
+                                .SetNameAsync(sceneName, CancellationToken.None)
+                                .ConfigureAwait(false);
+
+                            return (
+                                byUuid.IsResolved
+                                    && viaName.SceneItems.Count == viaUuid.SceneItems.Count
+                                    && uuidStillWorks
+                                    && nameNowMisses,
+                                $"resolved to {byUuid.Uuid}, both read {viaUuid.SceneItems.Count} "
+                                    + $"item(s); after a rename the uuid still resolves "
+                                    + $"({uuidStillWorks}) and the name does not ({nameNowMisses})"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "A miss says what does exist",
+                        async () =>
+                        {
+                            // OBS answers ResourceNotFound and the name you already gave it. The
+                            // list is in hand from the lookup, so the client can do better.
+                            ObsWebSocketResourceNotFoundException ex =
+                                await ExpectThrowAsync<ObsWebSocketResourceNotFoundException>(() =>
+                                        client
+                                            .Scenes.ResolveAsync(
+                                                "__obsws_no_such_scene",
+                                                cancellationToken
+                                            )
+                                            .AsTask()
+                                    )
+                                    .ConfigureAwait(false);
+
+                            return (
+                                ex.Available.Count > 0
+                                    && ex.Message.Contains(
+                                        "__obsws_no_such_scene",
+                                        StringComparison.Ordinal
+                                    )
+                                    && ex.Available.Contains(sceneName, StringComparer.Ordinal),
+                                $"named {ex.Available.Count} scene(s), including the one the run made"
+                            );
+                        }
+                    )
+                    .ConfigureAwait(false)
+            );
+
+            results.Add(
+                await TrySettingsCheckAsync(
+                        "A scene item resolves by source name",
+                        async () =>
+                        {
+                            // The one lookup that is not a convenience: OBS addresses scene items
+                            // by a number nothing else reports.
+                            SceneItemOperations item = await client
+                                .Scene(sceneName)
+                                .ItemAsync(inputName, cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+
+                            GetSceneItemEnabledResponseData enabled = await item.GetEnabledAsync(
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
+
+                            // Navigating back up reaches the scene the item is in.
+                            GetSceneItemListResponseData siblings = await item
+                                .Scene.GetItemListAsync(cancellationToken)
+                                .ConfigureAwait(false);
+
+                            return (
+                                item.Handle.SceneItemId >= 0 && siblings.SceneItems.Count > 0,
+                                $"'{inputName}' is item {item.Handle.SceneItemId}, enabled "
+                                    + $"{enabled.SceneItemEnabled}, among {siblings.SceneItems.Count} "
+                                    + "in its scene"
+                            );
                         }
                     )
                     .ConfigureAwait(false)
@@ -3708,7 +3931,7 @@ internal sealed partial class Worker(
         };
 
     // --- Helper to find Scene Item ID ---
-    private async Task<int> GetSceneItemIdAsync(
+    private async Task<long> GetSceneItemIdAsync(
         string sceneName,
         string sourceName,
         CancellationToken cancellationToken
@@ -3724,6 +3947,76 @@ internal sealed partial class Worker(
                 $"Source '{sourceName}' not found in scene '{sceneName}'."
             )
             : response.SceneItemId;
+    }
+
+    /// <summary>
+    /// Shows what resolving a handle costs, what it buys, and what a miss reports.
+    /// </summary>
+    /// <remarks>
+    /// The rest of the interactive commands address things by name, which is right for a name the
+    /// operator just typed. This one is the counterpart: it turns a name into a uuid once, and
+    /// everything after that survives a rename in OBS.
+    /// </remarks>
+    private async Task ResolveDemoAsync(
+        string sceneName,
+        string? sourceName,
+        CancellationToken cancellationToken
+    )
+    {
+        // One round trip. The protocol has no "uuid of the scene called X" request, so this is
+        // GetSceneList and a scan.
+        SceneOperations resolved = await _obsClient
+            .Scene(sceneName)
+            .ResolveAsync(cancellationToken);
+
+        RenderKeyValueTable(
+            "Resolved scene",
+            [
+                ("Given", sceneName),
+                ("UUID", resolved.Handle.Uuid ?? "N/A"),
+                ("Survives a rename", resolved.Handle.IsResolved ? "yes" : "no"),
+            ]
+        );
+
+        // Held by uuid, so this reads the same scene even if it is renamed between the two calls.
+        GetSceneItemListResponseData items = await resolved.GetItemListAsync(cancellationToken);
+        UiInfo($"'{sceneName}' holds {items.SceneItems.Count} scene item(s).");
+
+        if (sourceName is not null)
+        {
+            // The one lookup that is not a convenience: OBS addresses scene items by a number that
+            // only GetSceneItemId reports, so an item known by source name cannot be acted on until
+            // it has been resolved. The type system says so: ItemAsync returns the actable type.
+            SceneItemOperations item = await resolved.ItemAsync(
+                sourceName,
+                cancellationToken: cancellationToken
+            );
+            GetSceneItemEnabledResponseData enabled = await item.GetEnabledAsync(cancellationToken);
+
+            RenderKeyValueTable(
+                "Resolved scene item",
+                [
+                    ("Source", sourceName),
+                    ("Item id", item.Handle.SceneItemId.ToString(CultureInfo.InvariantCulture)),
+                    ("Enabled", enabled.SceneItemEnabled ? "yes" : "no"),
+                    ("Back up to", item.Scene.Handle.Uuid ?? item.Scene.Handle.Name ?? "N/A"),
+                ]
+            );
+        }
+
+        // A miss is worth showing: the lookup already fetched the list, so the client can name what
+        // does exist. OBS itself can only answer ResourceNotFound and the name you gave it.
+        try
+        {
+            _ = await _obsClient.Scenes.ResolveAsync(
+                sceneName + "__no_such_scene",
+                cancellationToken
+            );
+        }
+        catch (ObsWebSocketResourceNotFoundException ex)
+        {
+            UiInfo($"A miss reports what exists: {ex.Message}");
+        }
     }
 
     private async Task GetAllSettingsTypesAsync(CancellationToken cancellationToken)
@@ -4042,7 +4335,7 @@ internal sealed partial class Worker(
                 .ToList()
             ?? [];
 
-        // Step 4: Prompt — create new source or update an existing browser source
+        // Step 4: Prompt to create a new source or update an existing browser source
         const string CreateNewChoice = "+ Create new browser source";
         List<string> sourceChoices = [CreateNewChoice, .. existingBrowserSourcesInScene];
 
@@ -4104,13 +4397,19 @@ internal sealed partial class Worker(
             RestartWhenActive: true
         );
 
-        int sceneItemId;
+        // The two paths below reach the same scene item by different routes: creating one answers
+        // with its id, finding an existing one costs the lookup only OBS can answer. From here on
+        // the rest of the method does not care which, because both produce the same handle.
+        SceneItemOperations item;
 
         // Step 8: Create new input or update existing source settings
         if (isNewSource)
         {
             UiInfo($"Creating browser source '{sourceName}' in scene '{selectedScene}'...");
 
+            // Protocol level: the typed-settings CreateInput is a hand-written group helper, so it
+            // has no handle form. Its response carries the new scene item's id, which is what the
+            // handle below is built from.
             CreateInputResponseData? createResult = await _obsClient.Inputs.CreateInputAsync(
                 inputKind: "browser_source",
                 inputName: sourceName,
@@ -4126,14 +4425,14 @@ internal sealed partial class Worker(
                 return;
             }
 
-            sceneItemId = createResult.SceneItemId;
-            UiSuccess($"Created '{sourceName}' (scene item ID: {sceneItemId}).");
+            item = _obsClient.Scene(selectedScene).Item(createResult.SceneItemId);
+            UiSuccess($"Created '{sourceName}' (scene item ID: {createResult.SceneItemId}).");
         }
         else
         {
             UiInfo($"Updating browser source '{sourceName}' settings...");
 
-            // overlay: false — reset to defaults then apply all new settings cleanly
+            // overlay: false resets to defaults, then applies all new settings cleanly
             await _obsClient.Inputs.SetInputSettingsAsync(
                 inputName: sourceName,
                 settings: browserSettings,
@@ -4141,19 +4440,14 @@ internal sealed partial class Worker(
                 cancellationToken: cancellationToken
             );
 
-            sceneItemId = await GetSceneItemIdAsync(selectedScene, sourceName, cancellationToken);
-            UiSuccess($"Updated '{sourceName}' (scene item ID: {sceneItemId}).");
+            item = await _obsClient
+                .Scene(selectedScene)
+                .ItemAsync(sourceName, cancellationToken: cancellationToken);
+            UiSuccess($"Updated '{sourceName}' (scene item ID: {item.Handle.SceneItemId}).");
         }
 
         // Step 9: Set Blend Mode to Normal (explicit, even though it is the default)
-        await _obsClient.SceneItems.SetSceneItemBlendModeAsync(
-            new SetSceneItemBlendModeRequestData(
-                sceneItemId: sceneItemId,
-                sceneItemBlendMode: "OBS_BLEND_NORMAL",
-                sceneName: selectedScene
-            ),
-            cancellationToken: cancellationToken
-        );
+        await item.SetBlendModeAsync("OBS_BLEND_NORMAL", cancellationToken);
 
         // The obs-websocket v5 protocol does not expose SetSceneItemPrivateSettings,
         // so Blending Method (SRGB Off) cannot be set programmatically via this API.
@@ -4165,7 +4459,7 @@ internal sealed partial class Worker(
         );
 
         RenderKeyValueTable(
-            $"Browser Source — {(isNewSource ? "Created" : "Updated")}",
+            $"Browser Source: {(isNewSource ? "Created" : "Updated")}",
             [
                 ("Name", sourceName),
                 ("Scene", selectedScene),
@@ -4177,7 +4471,7 @@ internal sealed partial class Worker(
                 ("OBS Control Level", "Full (webpage_control_level: 5)"),
                 ("Refresh on Scene Active", "Yes (restart_when_active: true)"),
                 ("Blend Mode", "Normal (OBS_BLEND_NORMAL)"),
-                ("Blending Method", "sRGB Off — set manually in OBS (not exposed by WebSocket v5)"),
+                ("Blending Method", "sRGB Off, set manually in OBS (not exposed by WebSocket v5)"),
             ]
         );
     }
@@ -4196,8 +4490,12 @@ internal sealed partial class Worker(
         );
         _ = commandTable.AddRow(Markup.Escape("scene"), Markup.Escape("Get current program scene"));
         _ = commandTable.AddRow(
+            Markup.Escape("resolve [scene] [source]"),
+            Markup.Escape("Resolve a name to a uuid handle, and show what a miss reports")
+        );
+        _ = commandTable.AddRow(
             Markup.Escape("mute [input name]"),
-            Markup.Escape("Toggle mute for audio input")
+            Markup.Escape("Toggle mute for audio input, through an input handle")
         );
         _ = commandTable.AddRow(
             Markup.Escape("unmute [input name]"),
@@ -4213,11 +4511,11 @@ internal sealed partial class Worker(
         );
         _ = commandTable.AddRow(
             Markup.Escape("list-filters [source]"),
-            Markup.Escape("List filters for source")
+            Markup.Escape("List filters for source, through a source handle")
         );
         _ = commandTable.AddRow(
             Markup.Escape("toggle-filter [source] [filter]"),
-            Markup.Escape("Toggle filter enabled state")
+            Markup.Escape("Toggle filter enabled state, through one filter handle")
         );
         _ = commandTable.AddRow(
             Markup.Escape("media [input] [action]"),
@@ -4225,7 +4523,9 @@ internal sealed partial class Worker(
         );
         _ = commandTable.AddRow(
             Markup.Escape("watch [seconds]"),
-            Markup.Escape("Stream scene changes with await foreach (default 15s)")
+            Markup.Escape(
+                "Stream scene changes with await foreach, acting on the event's free handle (default 15s)"
+            )
         );
         _ = commandTable.AddRow(
             Markup.Escape("batch-example"),
@@ -4312,7 +4612,7 @@ internal sealed partial class Worker(
         GetSceneItemListResponseData items = await client
             .SceneItems.GetSceneItemListAsync(new(sceneName: sceneName), cancellationToken)
             .ConfigureAwait(false);
-        int sceneItemId = items.SceneItems.Count > 0 ? items.SceneItems[0].SceneItemId : -1;
+        long sceneItemId = items.SceneItems.Count > 0 ? items.SceneItems[0].SceneItemId : -1;
         string? itemSourceName = items.SceneItems.Count > 0 ? items.SceneItems[0].SourceName : null;
 
         GetInputKindListResponseData inputKinds = await client
@@ -4962,7 +5262,7 @@ internal sealed partial class Worker(
             GetSceneItemListResponseData fixtureItems = await client
                 .SceneItems.GetSceneItemListAsync(new(sceneName: sceneName), cancellationToken)
                 .ConfigureAwait(false);
-            int itemId = fixtureItems.SceneItems[0].SceneItemId;
+            long itemId = fixtureItems.SceneItems[0].SceneItemId;
 
             // ── Scenes ───────────────────────────────────────────────────────
             await Probe(
@@ -5058,7 +5358,7 @@ internal sealed partial class Worker(
                 )
                 .ConfigureAwait(false);
 
-            int? addedItemId = null;
+            long? addedItemId = null;
             try
             {
                 CreateSceneItemResponseData added = await client
@@ -5075,7 +5375,7 @@ internal sealed partial class Worker(
                 declined.Add($"CreateSceneItem ({ex.StatusCode})");
             }
 
-            int? duplicatedItemId = null;
+            long? duplicatedItemId = null;
             try
             {
                 DuplicateSceneItemResponseData duplicated = await client
@@ -5094,7 +5394,7 @@ internal sealed partial class Worker(
 
             // Only the two this sweep added. Removing the last scene item that references an input
             // destroys the input, which took the audio and media fixtures with it.
-            foreach (int extra in new[] { addedItemId, duplicatedItemId }.OfType<int>())
+            foreach (long extra in new[] { addedItemId, duplicatedItemId }.OfType<long>())
             {
                 await Probe(
                         "RemoveSceneItem",
@@ -5662,6 +5962,26 @@ internal sealed partial class Worker(
                     : string.Join(" | ", unsendable.Take(3))
             ),
         ];
+    }
+
+    /// <summary>
+    /// Runs an action expected to throw, and hands back the exception it threw.
+    /// </summary>
+    private static async Task<TException> ExpectThrowAsync<TException>(Func<Task> action)
+        where TException : Exception
+    {
+        try
+        {
+            await action().ConfigureAwait(false);
+        }
+        catch (TException expected)
+        {
+            return expected;
+        }
+
+        throw new InvalidOperationException(
+            $"Expected {typeof(TException).Name}, but the call succeeded."
+        );
     }
 
     private static void RenderKeyValueTable(

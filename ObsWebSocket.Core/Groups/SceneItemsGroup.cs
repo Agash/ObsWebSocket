@@ -31,7 +31,7 @@ public readonly partial struct SceneItemsGroup
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     public async Task<bool> SetSceneItemEnabledAsync(
         string sceneName,
-        int sceneItemId,
+        long sceneItemId,
         bool? isEnabled = null, // If null, toggles; otherwise sets to the specified state
         CancellationToken cancellationToken = default
     )
@@ -99,7 +99,7 @@ public readonly partial struct SceneItemsGroup
         ArgumentException.ThrowIfNullOrEmpty(sourceName);
         client.EnsureConnected();
 
-        int? sceneItemId = await client
+        long? sceneItemId = await client
             .SceneItems.FindSceneItemIdAsync(sceneName, sourceName, cancellationToken)
             .ConfigureAwait(false);
 
@@ -126,7 +126,7 @@ public readonly partial struct SceneItemsGroup
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The scene item id, or <see langword="null"/> if the source is not in the scene.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
-    public async Task<int?> FindSceneItemIdAsync(
+    public async Task<long?> FindSceneItemIdAsync(
         string sceneName,
         string sourceName,
         CancellationToken cancellationToken = default
@@ -155,20 +155,4 @@ public readonly partial struct SceneItemsGroup
         }
         // Let other ObsWebSocketExceptions or different exception types propagate
     }
-
-    /// <summary>
-    /// Returns the scene item id for a source within a scene as an <see cref="int"/>, or
-    /// <see langword="null"/> when the scene does not contain it.
-    /// </summary>
-    /// <param name="sceneName">The name of the scene to search.</param>
-    /// <param name="sourceName">The name of the source to locate.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    [Obsolete(
-        "FindSceneItemIdAsync now returns int?, so this variant is redundant. This forwarder will be removed in a future release."
-    )]
-    public Task<int?> FindSceneItemIdInt32Async(
-        string sceneName,
-        string sourceName,
-        CancellationToken cancellationToken = default
-    ) => FindSceneItemIdAsync(sceneName, sourceName, cancellationToken);
 }
