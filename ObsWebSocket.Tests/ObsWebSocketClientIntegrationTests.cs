@@ -114,15 +114,15 @@ public class ObsWebSocketClientIntegrationTests
         ILogger<ObsWebSocketClient> logger = s_serviceProvider.GetRequiredService<
             ILogger<ObsWebSocketClient>
         >();
-        IWebSocketMessageSerializer serializer =
-            s_serviceProvider.GetRequiredService<IWebSocketMessageSerializer>();
+        ObsSerializerFactory serializerFactory =
+            s_serviceProvider.GetRequiredService<ObsSerializerFactory>();
         IOptions<ObsWebSocketClientOptions> options = s_serviceProvider.GetRequiredService<
             IOptions<ObsWebSocketClientOptions>
         >();
         IWebSocketConnectionFactory connectionFactory =
             s_serviceProvider.GetRequiredService<IWebSocketConnectionFactory>();
 
-        return new ObsWebSocketClient(logger, serializer, options, connectionFactory);
+        return new ObsWebSocketClient(logger, serializerFactory, options, connectionFactory);
     }
 
     // --- Test Cases ---

@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Reflection;
@@ -127,13 +127,20 @@ public class ObsWebSocketClientEventTests
         Assert.IsNotNull(clientLifetimeCts, "Client lifetime CTS not found.");
         CancellationToken clientLifetimeToken = clientLifetimeCts.Token;
 
-        Func<CancellationToken, Task>? receiveLoopDelegate = GetPrivateMethodDelegate<
-            Func<CancellationToken, Task>
+        // The loop reads its socket, serializer and cancellation from the connection it was
+        // started for, so the test hands it the same connection the client is holding.
+        ObsConnectionContext? connection = TestUtils.GetPrivateField<ObsConnectionContext>(
+            client,
+            "_connection"
+        );
+        Assert.IsNotNull(connection, "Client connection not found.");
+
+        Func<ObsConnectionContext, Task>? receiveLoopDelegate = GetPrivateMethodDelegate<
+            Func<ObsConnectionContext, Task>
         >(client, "ReceiveLoopAsync");
         Assert.IsNotNull(receiveLoopDelegate, "ReceiveLoopAsync delegate not found.");
 
-        // Start the loop on a background thread, passing the client's lifetime token
-        return Task.Run(() => receiveLoopDelegate(clientLifetimeToken), clientLifetimeToken);
+        return Task.Run(() => receiveLoopDelegate(connection), clientLifetimeToken);
     }
 
     /// <summary>
@@ -243,7 +250,9 @@ public class ObsWebSocketClientEventTests
 
         // Mock Serializer
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(incomingMessage);
         EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
             "SceneListChanged",
@@ -287,7 +296,8 @@ public class ObsWebSocketClientEventTests
 
         // Verify mocks
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
         mockSerializer.Verify(
@@ -349,7 +359,9 @@ public class ObsWebSocketClientEventTests
 
         // Mock Serializer
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(incomingMessage);
         EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
             "StudioModeStateChanged",
@@ -397,7 +409,8 @@ public class ObsWebSocketClientEventTests
             Times.AtLeastOnce
         );
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
         mockSerializer.Verify(
@@ -454,7 +467,9 @@ public class ObsWebSocketClientEventTests
 
         // Mock Serializer
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(incomingMessage);
         // Mock only the base deserialization, as EventData is null
         EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
@@ -487,7 +502,8 @@ public class ObsWebSocketClientEventTests
             Times.AtLeastOnce
         );
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
         mockSerializer.Verify(
@@ -521,8 +537,17 @@ public class ObsWebSocketClientEventTests
         TestUtils.SetPrivateField(client, "_logger", mockLogger.Object);
         TestUtils.SetPrivateField(client, "_connectionState", ConnectionState.Connected);
         TestUtils.SetPrivateProperty(client, "IsConnected", true);
-        TestUtils.SetPrivateField(client, "_webSocket", mockWebSocket.Object);
-        TestUtils.SetPrivateField(client, "_clientLifetimeCts", new CancellationTokenSource());
+        CancellationTokenSource lifetime = new();
+        TestUtils.SetPrivateField(client, "_clientLifetimeCts", lifetime);
+        TestUtils.SetPrivateField(
+            client,
+            "_connection",
+            TestUtils.CreateConnectionContext(
+                mockWebSocket.Object,
+                mockSerializer.Object,
+                lifetime.Token
+            )
+        );
 
         string unhandledEventType = "ThisEventDoesNotExist";
         JsonElement innerEventData = TestUtils.ToJsonElement(new { some = "data" })!.Value;
@@ -542,7 +567,9 @@ public class ObsWebSocketClientEventTests
 
         // --- Mock Serializer ---
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(incomingMessage);
         // Mock ONLY the base deserialization
         EventPayloadBase<object>? envelope = new EventPayloadBase<object>(
@@ -587,7 +614,8 @@ public class ObsWebSocketClientEventTests
             Times.AtLeastOnce
         );
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
         mockSerializer.Verify(
@@ -621,8 +649,17 @@ public class ObsWebSocketClientEventTests
         TestUtils.SetPrivateField(client, "_logger", mockLogger.Object);
         TestUtils.SetPrivateField(client, "_connectionState", ConnectionState.Connected);
         TestUtils.SetPrivateProperty(client, "IsConnected", true);
-        TestUtils.SetPrivateField(client, "_webSocket", mockWebSocket.Object);
-        TestUtils.SetPrivateField(client, "_clientLifetimeCts", new CancellationTokenSource());
+        CancellationTokenSource lifetime = new();
+        TestUtils.SetPrivateField(client, "_clientLifetimeCts", lifetime);
+        TestUtils.SetPrivateField(
+            client,
+            "_connection",
+            TestUtils.CreateConnectionContext(
+                mockWebSocket.Object,
+                mockSerializer.Object,
+                lifetime.Token
+            )
+        );
 
         string eventType = "StudioModeStateChanged";
         JsonElement innerEventDataJsonElement = TestUtils
@@ -648,7 +685,9 @@ public class ObsWebSocketClientEventTests
 
         // --- Mock Serializer ---
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync(incomingMessage);
         // Base deserialization succeeds
         EventPayloadBase<object>? envelope = new(
@@ -703,7 +742,8 @@ public class ObsWebSocketClientEventTests
             Times.AtLeastOnce
         );
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
         mockSerializer.Verify(

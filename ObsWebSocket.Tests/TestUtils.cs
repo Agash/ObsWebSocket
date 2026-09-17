@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
@@ -116,7 +116,9 @@ internal static class TestUtils
         // IWebSocketMessageSerializer (Defaults)
         _ = mockSerializer.SetupGet(s => s.ProtocolSubProtocol).Returns("obswebsocket.json");
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync((object?)null);
         _ = mockSerializer
             .Setup(s =>
@@ -160,6 +162,10 @@ internal static class TestUtils
         // --- DI Registration ---
         _ = services.AddOptions();
         _ = services.AddSingleton(mockSerializer.Object);
+
+        // The client picks its serializer per connection now, so the mock is supplied through the
+        // factory. Returning it for every format is what keeps these tests format agnostic.
+        _ = services.AddSingleton<ObsSerializerFactory>(_ => _ => mockSerializer.Object);
         _ = services.AddSingleton(mockConnectionFactory.Object);
         _ = services.Configure<ObsWebSocketClientOptions>(opts =>
         {
@@ -177,9 +183,11 @@ internal static class TestUtils
         ServiceProvider provider = services.BuildServiceProvider();
         ObsWebSocketClient client = provider.GetRequiredService<ObsWebSocketClient>();
 
-        IWebSocketMessageSerializer? injectedSerializer =
-            GetPrivateField<IWebSocketMessageSerializer>(client, "_serializer");
-        return injectedSerializer != mockSerializer.Object
+        ObsSerializerFactory? injectedFactory = GetPrivateField<ObsSerializerFactory>(
+            client,
+            "_serializerFactory"
+        );
+        return injectedFactory?.Invoke(SerializationFormat.Json) != mockSerializer.Object
             ? throw new InvalidOperationException(
                 "DI failed to inject the mocked IWebSocketMessageSerializer."
             )
@@ -210,10 +218,15 @@ internal static class TestUtils
             _
         ) = BuildMockedClientInfrastructure(timeProvider: timeProvider);
 
-        SetPrivateField(client, "_webSocket", mockConnection.Object);
+        CancellationTokenSource lifetime = new();
+        SetPrivateField(client, "_clientLifetimeCts", lifetime);
+        SetPrivateField(
+            client,
+            "_connection",
+            CreateConnectionContext(mockConnection.Object, mockSerializer.Object, lifetime.Token)
+        );
         SetPrivateField(client, "_connectionState", ConnectionState.Connected);
         SetPrivateProperty(client, "IsConnected", true);
-        SetPrivateField(client, "_clientLifetimeCts", new CancellationTokenSource());
 
         _ = mockConnection.SetupGet(c => c.State).Returns(WebSocketState.Open);
 
@@ -247,11 +260,40 @@ internal static class TestUtils
             PlatformDescription = "Windows 11",
         };
 
+    /// <summary>
+    /// Builds a connection context, as the client does when a connection is established.
+    /// </summary>
+    /// <param name="transport">The socket the connection runs on.</param>
+    /// <param name="serializer">The serializer for the connection's format.</param>
+    /// <param name="lifetime">The client-wide token.</param>
+    internal static ObsConnectionContext CreateConnectionContext(
+        IWebSocketConnection transport,
+        IWebSocketMessageSerializer serializer,
+        CancellationToken lifetime = default
+    ) =>
+        new(
+            transport,
+            serializer,
+            ObsConnectionSettings.Capture(
+                new ObsWebSocketClientOptions { ServerUri = new Uri("ws://testhost:4455") }
+            ),
+            lifetime
+        );
+
+    /// <summary>
+    /// Dispatches a message as the receive loop would, on the client's current connection.
+    /// </summary>
     internal static void InvokeProcessIncomingMessage(
         ObsWebSocketClient client,
         object messageObject
     )
     {
+        ObsConnectionContext connection =
+            GetPrivateField<ObsConnectionContext>(client, "_connection")
+            ?? throw new InvalidOperationException(
+                "The client has no connection; use SetupConnectedClientForceState first."
+            );
+
         MethodInfo? method =
             typeof(ObsWebSocketClient).GetMethod(
                 "ProcessIncomingMessage",
@@ -259,7 +301,7 @@ internal static class TestUtils
             ) ?? throw new MissingMethodException("ObsWebSocketClient", "ProcessIncomingMessage");
         try
         {
-            _ = method.Invoke(client, [messageObject]);
+            _ = method.Invoke(client, [connection, messageObject]);
         }
         catch (TargetInvocationException ex)
         {
