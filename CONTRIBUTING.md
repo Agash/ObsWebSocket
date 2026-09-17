@@ -62,18 +62,24 @@ To contribute code, you'll need to set up a local development environment:
     *(This will also run the source generators)*
 4.  **Run Unit Tests:**
     ```bash
-    dotnet test ObsWebSocket.Tests/ObsWebSocket.Tests.csproj
+    dotnet test --project ObsWebSocket.Tests -- --filter "TestCategory!=Integration"
     ```
 5.  **(Optional) Run Integration Tests:**
-    *   These require a running OBS instance configured with specific scenes/sources (details TBD).
-    *   Use the Test Explorer in your IDE or `dotnet test --filter TestCategory=Integration`.
+    *   These need a running OBS with obs-websocket enabled; point `Obs__ServerUri` and
+        `Obs__Password` at it.
+    *   `dotnet test --project ObsWebSocket.Tests -- --filter "TestCategory=Integration"`
+6.  **(Optional) Validate both wire formats against that OBS:**
+    ```bash
+    dotnet run --project ObsWebSocket.Example -- run-transport-tests
+    ```
+    Exits non-zero on the first failed check.
 
 ## Pull Request Process 🚀
 
-1.  **Fork the repository** and create your branch from `main`.
+1.  **Fork the repository** and create your branch from `master`.
 2.  **Make your changes.** Ensure code follows the project's style guidelines.
 3.  **Add tests** for any new functionality or bug fixes.
-4.  **Ensure all tests pass** (`dotnet test`).
+4.  **Ensure all tests pass** (`dotnet test --project ObsWebSocket.Tests`).
 5.  **Update documentation** (README.md, XML comments) if you added or changed APIs.
 6.  **Commit your changes** using descriptive commit messages.
 7.  **Push your branch** to your fork.
@@ -106,6 +112,39 @@ Thank you again for your interest in contributing!
 - **The package is trim- and AOT-clean.** `IsAotCompatible` is set, so the trim and AOT analyzers run
   on every build. Serialization goes through a source-generated `JsonSerializerContext`, never the
   reflection-based `JsonSerializer` overloads.
+
+## Connection state
+
+`ObsConnectionContext` (internal, `Core/Networking`) owns one connection: socket, serializer,
+`ObsConnectionSettings`, cancellation and handshake waiters. The client holds one at a time and
+replaces it whole, which keeps those parts from disagreeing with each other.
+
+When working there:
+
+- Do not add a mutable connection field to the client. It belongs on the context.
+- Take the connection into a local via `RequireConnection()` so one operation cannot straddle two.
+- Decode with the connection's serializer, threaded through the dispatch path, never a field.
+- `Close()` is synchronous and callable from inside the receive loop; `DisposeAsync()` also awaits
+  that loop, so a server-initiated close must use `Close()`.
+- Options a connection is built from go in `ObsConnectionSettings`; the rest stay on the monitor and
+  take effect without a reconnect.
+
+## The protocol definition
+
+The request and event types are generated from `protocol.json`, which is checked in and pinned by
+upstream commit and SHA-256 in `protocol.lock.json`. The build verifies that hash and never fetches
+anything, so the same revision of this repository always generates the same public API.
+
+Editing `protocol.json` by hand therefore fails the build. To move to a newer upstream revision:
+
+```bash
+dotnet build ObsWebSocket.Core -t:RefreshObsProtocol -p:ObsProtocolCommit=<upstream-sha>
+```
+
+That fetches exactly that commit, re-pins the lock and regenerates. Commit the generated diff along
+with `protocol.json` and `protocol.lock.json`, and run the live validation
+(`ObsWebSocket.Example run-transport-tests`) before opening the pull request: a refresh is the change
+most likely to alter a field's order, width or nullability, and that is not visible to the compiler.
 
 ## Tests
 
