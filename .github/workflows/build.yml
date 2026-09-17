@@ -38,16 +38,17 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         fetch-depth: 0 # Required for MinVer to determine the version from Git history
 
-    - name: Setup .NET 10 SDK
-      uses: actions/setup-dotnet@v6
+    - name: Setup .NET SDKs
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
       with:
         dotnet-version: |
+          9.x
           10.x
-          11.0.100-preview.7.26381.103
+          11.0.100-rc.1.26425.128
 
     - name: Restore dependencies
       run: dotnet restore ObsWebSocket.sln
@@ -60,36 +61,16 @@ jobs:
     - name: Build Solution
       run: dotnet build ObsWebSocket.sln --configuration Release --no-restore
 
-    - name: Restore Example for AOT RID graph
-      run: >
-        dotnet restore ObsWebSocket.Example/ObsWebSocket.Example.csproj
-        -p:TargetFramework=net10.0
-        --runtime linux-x64
-        -p:SelfContained=true
-        -p:PublishAot=true
-
-    - name: Native AOT Smoke Publish (ObsWebSocket.Example)
-      run: >
-        dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj
-        --configuration Release
-        --framework net10.0
-        --runtime linux-x64
-        --self-contained true
-        /p:PublishAot=true
-        /p:ILLinkTreatWarningsAsErrors=true
-        /p:IlcTreatWarningsAsErrors=true
-        /p:WarningsNotAsErrors=IL2104%3BIL3053
-
     - name: Run Unit Tests
-      # Run tests specifically for the ObsWebSocket.Tests project
-      # Exclude integration tests which require a live OBS instance
+      # Integration tests need a live OBS; the live-obs workflow runs those.
       run: >
-        dotnet test ObsWebSocket.Tests/ObsWebSocket.Tests.csproj
+        dotnet test --project ${{ github.workspace }}/ObsWebSocket.Tests/ObsWebSocket.Tests.csproj
         --configuration Release
         --no-build
         --verbosity normal
-        --filter "TestCategory!=Integration"
-        -- --coverage --coverage-settings coverage.settings.xml --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
+        --results-directory-layout per-module
+        -- --filter "TestCategory!=Integration"
+        --coverage --coverage-settings coverage.settings.xml --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
 
     # --- Packing is now done on push to master OR on release event ---
     - name: Summarize coverage
@@ -136,7 +117,7 @@ jobs:
 
     - name: Upload coverage report
       if: always()
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: coverage
         if-no-files-found: warn
@@ -157,22 +138,94 @@ jobs:
       # exact package files. Anyone who downloads the package can verify it came from this repository
       # rather than from someone who republished it under the same name.
       if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
-      uses: actions/attest-build-provenance@v4
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
       with:
         subject-path: ${{ env.NuGetDirectory }}/*.nupkg
     - name: Upload NuGet Package Artifact (on master push or release)
       # Upload if it's a push to master OR if the event is a release (so publish job can get it)
       if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || github.event_name == 'release'
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nuget-package
         if-no-files-found: error
         retention-days: 1
         path: ${{ env.NuGetDirectory }}/*.nupkg
 
+  native_aot:
+    name: Native AOT (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+      with:
+        dotnet-version: |
+          10.x
+          11.0.100-rc.1.26425.128
+
+    - name: Restore for the AOT RID graph
+      run: >
+        dotnet restore ObsWebSocket.Example/ObsWebSocket.Example.csproj
+        -p:TargetFramework=net10.0
+        --runtime ${{ matrix.rid }}
+        -p:SelfContained=true
+        -p:PublishAot=true
+
+    - name: Publish Native AOT
+      # TrimmerSingleWarn=false itemises warnings instead of collapsing them into the IL2104 and
+      # IL3053 aggregates, so each can be attributed to the assembly that raised it.
+      run: >
+        dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj
+        --configuration Release
+        --framework net10.0
+        --runtime ${{ matrix.rid }}
+        --self-contained true
+        -p:PublishAot=true
+        -p:TrimmerSingleWarn=false
+        2>&1 | tee aot-${{ matrix.rid }}.log
+      shell: bash
+
+    - name: Check that no AOT warning comes from this library
+      # MessagePack resolves formatters reflectively and accounts for every warning this publish
+      # raises. Failing on all of them would fail on the dependency; excusing all of them would
+      # hide ours. The gate is attribution: this library must contribute none.
+      shell: bash
+      run: |
+        set -euo pipefail
+        if grep -E 'IL[0-9]{4}:' "aot-${{ matrix.rid }}.log" \
+             | grep -vE 'IL[0-9]{4}: MessagePack' > offending.log; then
+          echo "::error::Native AOT warnings were raised outside the MessagePack dependency."
+          cat offending.log
+          exit 1
+        fi
+        echo "No AOT warning outside MessagePack."
+        grep -cE 'IL[0-9]{4}: MessagePack' "aot-${{ matrix.rid }}.log" \
+          | xargs -I{} echo "MessagePack accounted for {} warnings." >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload the AOT log
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      with:
+        name: aot-${{ matrix.rid }}
+        if-no-files-found: warn
+        path: aot-${{ matrix.rid }}.log
+
   publish_nuget:
     name: Publish NuGet Package
-    needs: [build_and_test]
+    needs: [build_and_test, native_aot]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     # Declaring an environment is what makes GitHub record a deployment, which is what
@@ -186,16 +239,16 @@ jobs:
 
     steps:
     - name: Download NuGet Package Artifact
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         name: nuget-package
         path: ${{ env.NuGetDirectory }}
 
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
 
     - name: NuGet login
-      uses: NuGet/login@v1
+      uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
       id: login
       with:
         user: Agash

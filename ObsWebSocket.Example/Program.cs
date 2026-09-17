@@ -9,10 +9,18 @@ using Spectre.Console;
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 AnsiConsole.Write(new Rule("[cyan]ObsWebSocket Example Tool[/]") { Justification = Justify.Left });
 
-// Reads appsettings.json, environment variables, command-line args
-builder
+// Reads appsettings.json, then environment variables, then command-line args.
+//
+// The last two are re-added deliberately. HostApplicationBuilder has already registered them, and
+// adding the JSON file afterwards put it on top of both, so the file silently won over anything
+// passed in. That made the tool unconfigurable from outside its own directory: pointing it at a
+// different OBS with Obs__ServerUri appeared to work and connected to the configured endpoint
+// anyway. Re-adding them restores the usual precedence, where what the caller supplies wins.
+_ = builder
     .Configuration.SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));

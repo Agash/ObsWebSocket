@@ -1,0 +1,155 @@
+# The protocol contract is only testable against a real OBS: field order, numeric width,
+# nullability and response shape are invisible to a suite built on synthetic payloads.
+#
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Live OBS validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Weekly, to catch an OBS release that changes a payload.
+    - cron: "17 5 * * 2"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: true
+  OBS_WEBSOCKET_PORT: "4455"
+  OBS_WEBSOCKET_PASSWORD: "obsws-ci-password"
+
+jobs:
+  validate:
+    name: Validate JSON and MessagePack against OBS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            10.x
+            11.0.100-rc.1.26425.128
+
+      - name: Install OBS Studio
+        # The project PPA, not the distribution archive, which lags upstream.
+        run: |
+          set -euo pipefail
+          sudo add-apt-repository -y ppa:obsproject/obs-studio
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            obs-studio xvfb x11-utils pulseaudio netcat-openbsd
+
+      - name: Report the versions under test
+        run: |
+          set -euo pipefail
+          obs --version | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure obs-websocket
+        # Before first launch: OBS otherwise generates a random password nothing can connect with.
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config/obs-studio/plugin_config/obs-websocket
+          cat > ~/.config/obs-studio/plugin_config/obs-websocket/config.json <<JSON
+          {
+            "alerts_enabled": false,
+            "auth_required": true,
+            "first_load": false,
+            "server_enabled": true,
+            "server_password": "${OBS_WEBSOCKET_PASSWORD}",
+            "server_port": ${OBS_WEBSOCKET_PORT}
+          }
+          JSON
+
+      - name: Install the fixture scene collection
+        # obs-websocket has no CreateGroup, so a group can only come from a scene collection on
+        # disk. Without one, GetGroupSceneItemList goes unexercised.
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config/obs-studio/basic/scenes
+          cp .github/fixtures/obsws-ci-scenes.json ~/.config/obs-studio/basic/scenes/
+          cat > ~/.config/obs-studio/user.ini <<INI
+          [General]
+          FirstRun=true
+
+          [Basic]
+          SceneCollection=obsws-ci
+          SceneCollectionFile=obsws-ci-scenes.json
+          INI
+
+      - name: Start a virtual display and audio
+        # OBS will not start headless, and refuses to initialise the suite's audio capture input
+        # with no sound server.
+        run: |
+          set -euo pipefail
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_sink
+
+      - name: Start OBS
+        env:
+          DISPLAY: ":99"
+        run: |
+          set -euo pipefail
+          obs --minimize-to-tray --disable-updater --disable-shutdown-check \
+            > obs-stdout.log 2>&1 &
+          echo $! > obs.pid
+
+          # Waited for rather than slept: pipeline init time varies with the runner.
+          for _ in $(seq 1 90); do
+            if nc -z localhost "${OBS_WEBSOCKET_PORT}"; then
+              echo "obs-websocket is listening."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::obs-websocket never started listening on ${OBS_WEBSOCKET_PORT}."
+          cat obs-stdout.log
+          exit 1
+
+      - name: Validate both transports
+        # One process, both wire formats, one OBS. Exits non-zero on failure.
+        env:
+          DISPLAY: ":99"
+          Obs__ServerUri: ws://localhost:4455
+          Obs__Password: ${{ env.OBS_WEBSOCKET_PASSWORD }}
+        run: >
+          dotnet run --project ObsWebSocket.Example --configuration Release
+          -- run-transport-tests
+
+      - name: Collect OBS logs
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p obs-logs
+          cp obs-stdout.log obs-logs/ 2>/dev/null || true
+          cp -r ~/.config/obs-studio/logs obs-logs/obs-studio-logs 2>/dev/null || true
+
+      - name: Upload OBS logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: obs-logs
+          if-no-files-found: warn
+          path: obs-logs
+
+      - name: Stop OBS
+        if: always()
+        run: |
+          # Terminated, not killed, so OBS clears its unclean-shutdown marker.
+          if [ -f obs.pid ]; then
+            kill "$(cat obs.pid)" 2>/dev/null || true
+            sleep 5
+          fi
