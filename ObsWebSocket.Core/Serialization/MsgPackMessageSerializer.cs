@@ -62,36 +62,47 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
             throw new ArgumentException("Stream must be readable.", nameof(messageStream));
         }
 
-        if (messageStream.Length == 0)
+        // No Length check: a Stream need not be seekable, and this is copied out in full anyway.
+        await using MemoryStream buffer = new();
+        await messageStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        return await DeserializeAsync(buffer.ToArray(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public ValueTask<object?> DeserializeAsync(
+        ReadOnlyMemory<byte> message,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (message.IsEmpty)
         {
             _logger.LogAttemptedToDeserializeAnEmptyMessageStream();
-            return null;
+            return ValueTask.FromResult<object?>(null);
         }
 
         try
         {
-            await using MemoryStream buffer = new();
-            await messageStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-            IncomingMessage<ReadOnlyMemory<byte>> message = DeserializeIncomingEnvelope(
-                buffer.ToArray()
-            );
+            // MessagePack reads from memory, so no stream round trip is needed.
+            IncomingMessage<ReadOnlyMemory<byte>> envelope = DeserializeIncomingEnvelope(message);
 
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogDeserializedMessagepackMessageOp(message.Op);
+                _logger.LogDeserializedMessagepackMessageOp(envelope.Op);
             }
 
-            return message;
+            return ValueTask.FromResult<object?>(envelope);
         }
         catch (MessagePackSerializationException ex)
         {
             _logger.LogMessagepackDeserializationFailed(ex);
-            return null;
+            return ValueTask.FromResult<object?>(null);
         }
         catch (Exception ex)
         {
             _logger.LogFailedToDeserializeMessageFromStream(ex);
-            return null;
+            return ValueTask.FromResult<object?>(null);
         }
     }
 

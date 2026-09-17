@@ -485,6 +485,13 @@ internal static partial class ObsWebSocketClientLog
     public static partial void LogReceivedEmptyMessage(this ILogger logger);
 
     [LoggerMessage(
+        EventId = 100,
+        Level = LogLevel.Error,
+        Message = "An incoming message exceeded the {MaxBytes} byte limit; closing the connection."
+    )]
+    public static partial void LogIncomingMessageExceededLimit(this ILogger logger, int maxBytes);
+
+    [LoggerMessage(
         EventId = 53,
         Level = LogLevel.Warning,
         Message = "Deserialization returned null (Length: {BufferLength})."

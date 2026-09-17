@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
@@ -41,6 +42,28 @@ public static class EventStream
         int capacity = DefaultCapacity,
         CancellationToken cancellationToken = default
     )
+        where TEventArgs : ObsEventArgs =>
+        Create(subscribe, unsubscribe, capacity, metrics: null, cancellationToken);
+
+    /// <summary>
+    /// Subscribes to an event, recording drops to the supplied instruments.
+    /// </summary>
+    /// <typeparam name="TEventArgs">The event args type carried by the event.</typeparam>
+    /// <param name="subscribe">Attaches the supplied handler to the event.</param>
+    /// <param name="unsubscribe">Detaches the supplied handler from the event.</param>
+    /// <param name="capacity">How many events to buffer when the consumer falls behind.</param>
+    /// <param name="metrics">
+    /// Instruments to count drops on, or <see langword="null"/> to use the shared ones.
+    /// </param>
+    /// <param name="cancellationToken">Ends the enumeration and unsubscribes.</param>
+    /// <returns>An async sequence of events, running until canceled.</returns>
+    public static IAsyncEnumerable<TEventArgs> Create<TEventArgs>(
+        Action<EventHandler<TEventArgs>> subscribe,
+        Action<EventHandler<TEventArgs>> unsubscribe,
+        int capacity,
+        ObsWebSocketMetrics? metrics,
+        CancellationToken cancellationToken = default
+    )
         where TEventArgs : ObsEventArgs
     {
         // Validate here rather than in the iterator, so bad arguments throw at the call site
@@ -49,13 +72,14 @@ public static class EventStream
         ArgumentNullException.ThrowIfNull(unsubscribe);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
 
-        return Iterate(subscribe, unsubscribe, capacity, cancellationToken);
+        return Iterate(subscribe, unsubscribe, capacity, metrics, cancellationToken);
     }
 
     private static async IAsyncEnumerable<TEventArgs> Iterate<TEventArgs>(
         Action<EventHandler<TEventArgs>> subscribe,
         Action<EventHandler<TEventArgs>> unsubscribe,
         int capacity,
+        ObsWebSocketMetrics? metrics,
         [EnumeratorCancellation] CancellationToken cancellationToken
     )
         where TEventArgs : ObsEventArgs
@@ -69,7 +93,22 @@ public static class EventStream
             }
         );
 
-        void Handler(object? sender, TEventArgs e) => channel.Writer.TryWrite(e);
+        ObsWebSocketMetrics instruments = metrics ?? ObsWebSocketMetrics.Shared;
+        TagList dropTags = new() { { "obsws.event_type", typeof(TEventArgs).Name } };
+
+        // Counted here rather than inferred from TryWrite, which reports success even when it
+        // evicted an older event to make room. Tracking the depth is the only way to tell the
+        // two apart, and an eviction is exactly what a consumer needs to be told about.
+        int buffered = 0;
+
+        void Handler(object? sender, TEventArgs e)
+        {
+            if (channel.Writer.TryWrite(e) && Interlocked.Increment(ref buffered) > capacity)
+            {
+                _ = Interlocked.Decrement(ref buffered);
+                instruments.EventsDropped.Add(1, dropTags);
+            }
+        }
 
         subscribe(Handler);
         try
@@ -80,6 +119,7 @@ public static class EventStream
                     .ConfigureAwait(false)
             )
             {
+                _ = Interlocked.Decrement(ref buffered);
                 yield return item;
             }
         }

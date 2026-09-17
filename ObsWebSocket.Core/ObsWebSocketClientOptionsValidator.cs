@@ -55,6 +55,17 @@ internal sealed class ObsWebSocketClientOptionsValidator
             failures.Add("ReconnectBackoffMultiplier must be at least 1.0.");
         }
 
+        // Rejected here rather than clamped at the receive loop, so a limit too small to carry a
+        // real response is reported as misconfiguration instead of as a connection that keeps
+        // dying on the first screenshot.
+        if (options.MaxIncomingMessageBytes < ObsWebSocketClient.ReceiveBufferSize)
+        {
+            failures.Add(
+                "MaxIncomingMessageBytes must be at least the "
+                    + $"{ObsWebSocketClient.ReceiveBufferSize} byte receive buffer."
+            );
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);

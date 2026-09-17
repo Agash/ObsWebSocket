@@ -7,6 +7,7 @@ using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core.Events;
@@ -47,30 +48,53 @@ internal enum ConnectionState
 /// <remarks>
 /// Initializes a new instance of the <see cref="ObsWebSocketClient"/> class.
 /// </remarks>
-public sealed partial class ObsWebSocketClient(
-    ILogger<ObsWebSocketClient> logger,
-    IWebSocketMessageSerializer serializer,
-    IOptions<ObsWebSocketClientOptions> options,
-    IWebSocketConnectionFactory? connectionFactory = null,
-    TimeProvider? timeProvider = null,
-    ObsWebSocketMetrics? metrics = null
-) : IAsyncDisposable
+public sealed partial class ObsWebSocketClient : IAsyncDisposable
 {
+    #region Construction
+
+    /// <summary>
+    /// Initializes a client that selects its serializer per connection.
+    /// </summary>
+    /// <remarks>
+    /// To fix a client to one serializer, pass a factory that ignores the format:
+    /// <c>_ => serializer</c>.
+    /// </remarks>
+    /// <param name="logger">Logger for connection and protocol activity.</param>
+    /// <param name="serializerFactory">Supplies the serializer for a format.</param>
+    /// <param name="options">The client's options, read live.</param>
+    /// <param name="connectionFactory">Creates the underlying sockets.</param>
+    /// <param name="timeProvider">Source of time for timeouts and backoff.</param>
+    /// <param name="metrics">The instruments to record to.</param>
+    public ObsWebSocketClient(
+        ILogger<ObsWebSocketClient> logger,
+        ObsSerializerFactory serializerFactory,
+        IOptions<ObsWebSocketClientOptions> options,
+        IWebSocketConnectionFactory? connectionFactory = null,
+        TimeProvider? timeProvider = null,
+        ObsWebSocketMetrics? metrics = null
+    )
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serializerFactory =
+            serializerFactory ?? throw new ArgumentNullException(nameof(serializerFactory));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _connectionFactory = connectionFactory ?? new WebSocketConnectionFactory();
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _metrics = metrics ?? ObsWebSocketMetrics.Shared;
+    }
+
+    #endregion
+
     #region Fields
-    internal readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly IWebSocketMessageSerializer _serializer =
-        serializer ?? throw new ArgumentNullException(nameof(serializer));
-    internal readonly IOptions<ObsWebSocketClientOptions> _options =
-        options ?? throw new ArgumentNullException(nameof(options));
-    private readonly IWebSocketConnectionFactory _connectionFactory =
-        connectionFactory ?? new WebSocketConnectionFactory();
+    internal readonly ILogger _logger;
+    private readonly ObsSerializerFactory _serializerFactory;
+    internal readonly IOptions<ObsWebSocketClientOptions> _options;
+    private readonly IWebSocketConnectionFactory _connectionFactory;
 
     /// <summary>Source of time for all timeouts and reconnect delays.</summary>
-    internal readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    internal readonly TimeProvider _timeProvider;
 
-    private readonly ObsWebSocketMetrics _metrics = metrics ?? ObsWebSocketMetrics.Shared;
-
-    private ReconnectDelays _reconnectDelays = ReconnectDelays.Disabled;
+    private readonly ObsWebSocketMetrics _metrics;
 
     /// <summary>
     /// Default size of the receive buffer for WebSocket messages.
@@ -92,17 +116,36 @@ public sealed partial class ObsWebSocketClient(
     /// </summary>
     public const int DefaultBatchTimeoutMultiplier = 2;
 
-    private IWebSocketConnection? _webSocket;
-    private CancellationTokenSource? _receiveCts;
-    private Task? _receiveTask;
+    /// <summary>
+    /// Default ceiling on the size of a single inbound message, in bytes (64 MiB).
+    /// </summary>
+    /// <remarks>
+    /// Chosen to sit well above the largest response OBS realistically sends - a 4K
+    /// <c>GetSourceScreenshot</c> data URI runs to single-digit megabytes - while still bounding
+    /// what a peer can make this process allocate.
+    /// </remarks>
+    public const int DefaultMaxIncomingMessageBytes = 64 * 1024 * 1024;
+
+    /// <summary>
+    /// The live connection, or <see langword="null"/> when there is none.
+    /// </summary>
+    private volatile ObsConnectionContext? _connection;
+
     private volatile ConnectionState _connectionState = ConnectionState.Disconnected;
     private Task? _connectionLoopTask;
     private CancellationTokenSource? _clientLifetimeCts;
     private readonly Lock _connectionLock = new();
     private Exception? _completionException;
 
-    private TaskCompletionSource<object>? _helloTcs;
-    private TaskCompletionSource<object>? _identifiedTcs;
+    /// <summary>
+    /// Serializes re-identification, which the protocol cannot correlate on its own.
+    /// </summary>
+    /// <remarks>
+    /// <c>Identified</c> carries no request id, so concurrent operations cannot be correlated to
+    /// their replies.
+    /// </remarks>
+    private readonly SemaphoreSlim _reidentifyGate = new(1, 1);
+
     private readonly ConcurrentDictionary<string, TaskCompletionSource<object>> _pendingRequests =
         new();
     private readonly ConcurrentDictionary<
@@ -167,15 +210,8 @@ public sealed partial class ObsWebSocketClient(
     /// <inheritdoc/>
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        ObsWebSocketClientOptions currentOptions = _options.Value;
-        ArgumentNullException.ThrowIfNull(
-            currentOptions.ServerUri,
-            nameof(currentOptions.ServerUri)
-        );
-        if (currentOptions.ReconnectBackoffMultiplier < 1.0)
-        {
-            currentOptions.ReconnectBackoffMultiplier = 1.0;
-        }
+        // Captured once so a reload mid-sequence cannot change what is being connected to.
+        ObsConnectionSettings settings = ObsConnectionSettings.Capture(_options.Value);
 
         Task? loopTask;
         TaskCompletionSource currentInitialConnectionTcs; // Capture the TCS for this specific call
@@ -197,22 +233,19 @@ public sealed partial class ObsWebSocketClient(
             currentInitialConnectionTcs = _initialConnectionTcs; // Capture it
 
             loopTask = _connectionLoopTask = Task.Run(
-                () => ConnectionLoopAsync(currentOptions, cancellationToken),
+                () => ConnectionLoopAsync(settings, cancellationToken),
                 CancellationToken.None
             );
         }
 
-        _logger.LogStartingConnectionSequenceFor(currentOptions.ServerUri);
+        _logger.LogStartingConnectionSequenceFor(settings.ServerUri);
 
         try
         {
             // Await the initial connection TCS, not the whole loop task
             using CancellationTokenSource linkedTimeoutCts =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            int overallTimeout = Math.Max(
-                options.Value.HandshakeTimeoutMs * 2,
-                DefaultRequestTimeoutMs
-            ); // Be generous
+            int overallTimeout = Math.Max(settings.HandshakeTimeoutMs * 2, DefaultRequestTimeoutMs); // Be generous
             linkedTimeoutCts.CancelAfterUsing(
                 _timeProvider,
                 TimeSpan.FromMilliseconds(overallTimeout)
@@ -262,57 +295,74 @@ public sealed partial class ObsWebSocketClient(
             _clientLifetimeCts.Token
         );
 
-        _identifiedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously); // Reset for re-identify
-        int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
-
+        // Held across send/wait/publish: holding it only for the send would leave two callers
+        // waiting on the same uncorrelated reply.
+        await _reidentifyGate.WaitAsync(linkedCts.Token).ConfigureAwait(false);
         try
         {
-            await SendMessageAsync(
-                    WebSocketOpCode.Reidentify,
-                    new ReidentifyPayload(eventSubscriptions),
-                    linkedCts.Token
-                )
-                .ConfigureAwait(false);
-
-            _logger.LogWaitingForIdentifiedAfterReidentifyTimeoutMs(effectiveTimeout);
-            object identifiedMessageObj = await WaitForHandshakeMessageAsync(
-                    _identifiedTcs,
-                    effectiveTimeout,
-                    "Identified (after Reidentify)",
-                    _timeProvider,
-                    linkedCts.Token
-                )
-                .ConfigureAwait(false);
-            IdentifiedPayload identifiedPayload = ExtractPayloadFromHandshake<IdentifiedPayload>(
-                identifiedMessageObj,
-                "Identified (after Reidentify)"
+            // Re-read after the gate: waiting for it may have outlasted the connection.
+            ObsConnectionContext connection = RequireConnection();
+            TaskCompletionSource<object> identified = new(
+                TaskCreationOptions.RunContinuationsAsynchronously
             );
+            connection.Identified = identified;
+            int effectiveTimeout = timeoutMs ?? _options.Value.RequestTimeoutMs;
 
-            _logger.LogReIdentificationSuccessfulRpcVersion(identifiedPayload.NegotiatedRpcVersion);
+            try
+            {
+                await SendMessageAsync(
+                        WebSocketOpCode.Reidentify,
+                        new ReidentifyPayload(eventSubscriptions),
+                        linkedCts.Token
+                    )
+                    .ConfigureAwait(false);
 
-            NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
-            CurrentEventSubscriptions = eventSubscriptions is null
-                ? null
-                : (EventSubscription)eventSubscriptions.Value;
-        }
-        catch (Exception ex)
-            when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogReidentifyasyncFailed(ex);
-            _ = (_identifiedTcs?.TrySetException(ex));
-            throw ex is ObsWebSocketException or OperationCanceledException
-                ? ex
-                : new ObsWebSocketException($"Reidentify failed: {ex.Message}", ex);
-        }
-        catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
-        {
-            _logger.LogReidentifyasyncCanceledDueToClientShutdown();
-            _ = (_identifiedTcs?.TrySetCanceled(_clientLifetimeCts.Token));
-            throw;
+                _logger.LogWaitingForIdentifiedAfterReidentifyTimeoutMs(effectiveTimeout);
+                object identifiedMessageObj = await WaitForHandshakeMessageAsync(
+                        identified,
+                        effectiveTimeout,
+                        "Identified (after Reidentify)",
+                        _timeProvider,
+                        linkedCts.Token
+                    )
+                    .ConfigureAwait(false);
+                IdentifiedPayload identifiedPayload =
+                    ExtractPayloadFromHandshake<IdentifiedPayload>(
+                        connection,
+                        identifiedMessageObj,
+                        "Identified (after Reidentify)"
+                    );
+
+                _logger.LogReIdentificationSuccessfulRpcVersion(
+                    identifiedPayload.NegotiatedRpcVersion
+                );
+
+                NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
+                CurrentEventSubscriptions = eventSubscriptions is null
+                    ? null
+                    : (EventSubscription)eventSubscriptions.Value;
+            }
+            catch (Exception ex)
+                when (ex is not OperationCanceledException
+                    || cancellationToken.IsCancellationRequested
+                )
+            {
+                _logger.LogReidentifyasyncFailed(ex);
+                _ = identified.TrySetException(ex);
+                throw ex is ObsWebSocketException or OperationCanceledException
+                    ? ex
+                    : new ObsWebSocketException($"Reidentify failed: {ex.Message}", ex);
+            }
+            catch (OperationCanceledException) when (_clientLifetimeCts.IsCancellationRequested)
+            {
+                _logger.LogReidentifyasyncCanceledDueToClientShutdown();
+                _ = identified.TrySetCanceled(_clientLifetimeCts.Token);
+                throw;
+            }
         }
         finally
         {
-            _identifiedTcs = null;
+            _ = _reidentifyGate.Release();
         }
     }
 
@@ -458,7 +508,8 @@ public sealed partial class ObsWebSocketClient(
             // them, so attempting it fails on a request that actually succeeded.
             return typeof(TResponse) == typeof(object)
                 ? null
-                : _serializer.DeserializePayload<TResponse>(response.ResponseData);
+                : RequireConnection()
+                    .Serializer.DeserializePayload<TResponse>(response.ResponseData);
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
@@ -562,9 +613,8 @@ public sealed partial class ObsWebSocketClient(
 
             ProcessResponseStatus(response.RequestStatus, requestType, requestId);
 
-            TResponse? result = _serializer.DeserializeValuePayload<TResponse>(
-                response.ResponseData
-            );
+            TResponse? result = RequireConnection()
+                .Serializer.DeserializeValuePayload<TResponse>(response.ResponseData);
             return (!result.HasValue && Nullable.GetUnderlyingType(typeof(TResponse)) == null)
                 ? throw new ObsWebSocketException(
                     $"Null deserialization for non-nullable value type '{typeof(TResponse).Name}'."
@@ -802,13 +852,12 @@ public sealed partial class ObsWebSocketClient(
     #region Connection Loop and Internal Logic
 
     private async Task ConnectionLoopAsync(
-        ObsWebSocketClientOptions options,
+        ObsConnectionSettings settings,
         CancellationToken externalCancellationToken
     )
     {
         int attempt = 0;
-        _reconnectDelays = new ReconnectDelays(options);
-        IWebSocketConnection? previousWebSocket = null;
+        ReconnectDelays reconnectDelays = new(settings);
         Debug.Assert(_clientLifetimeCts != null);
         CancellationToken clientLifetimeToken = _clientLifetimeCts.Token;
 
@@ -829,7 +878,7 @@ public sealed partial class ObsWebSocketClient(
                 attempt++;
                 bool isConnectedThisAttempt = false;
                 Exception? attemptException = null;
-                IWebSocketConnection? currentWebSocket = null;
+                ObsConnectionContext? connection = null;
 
                 try
                 {
@@ -848,9 +897,9 @@ public sealed partial class ObsWebSocketClient(
 
                     if (attempt > 1) // Delay before Retry
                     {
-                        int maxAttempts = options.MaxReconnectAttempts;
+                        int maxAttempts = settings.MaxReconnectAttempts;
                         if (
-                            !options.AutoReconnectEnabled
+                            !settings.AutoReconnectEnabled
                             || (maxAttempts >= 0 && (attempt - 1) >= maxAttempts)
                         )
                         {
@@ -863,7 +912,7 @@ public sealed partial class ObsWebSocketClient(
                             break;
                         }
 
-                        TimeSpan backoff = await _reconnectDelays
+                        TimeSpan backoff = await reconnectDelays
                             .GetDelayAsync(attempt - 2, loopToken)
                             .ConfigureAwait(false);
                         _logger.LogReconnectingAttemptAfterMs(
@@ -875,12 +924,9 @@ public sealed partial class ObsWebSocketClient(
                         await Task.Delay(backoff, _timeProvider, loopToken).ConfigureAwait(false);
                     }
 
-                    previousWebSocket?.Dispose();
-                    previousWebSocket = null;
-                    currentWebSocket = _connectionFactory.CreateConnection();
-                    RaiseConnectingEvent(options.ServerUri!, attempt);
+                    RaiseConnectingEvent(settings.ServerUri, attempt);
 
-                    await TryConnectAndIdentifyAsync(options, currentWebSocket, attempt, loopToken)
+                    connection = await TryConnectAndIdentifyAsync(settings, attempt, loopToken)
                         .ConfigureAwait(false);
 
                     isConnectedThisAttempt = true;
@@ -889,8 +935,6 @@ public sealed partial class ObsWebSocketClient(
                         if (_connectionState == ConnectionState.Disconnecting)
                         {
                             _logger.LogConnectedAttemptButDisconnectRequestedAborting(attempt);
-                            previousWebSocket = currentWebSocket;
-                            _webSocket = null;
                             _completionException = new TaskCanceledException(
                                 "Disconnect requested during connect."
                             );
@@ -900,14 +944,6 @@ public sealed partial class ObsWebSocketClient(
 
                         _connectionState = ConnectionState.Connected;
                         IsConnected = true;
-                        _webSocket = currentWebSocket;
-                        previousWebSocket = null; // Prevent disposal
-
-                        // Receive loop is now started within TryConnectAndIdentifyAsync *before* handshake
-                        Debug.Assert(
-                            _receiveTask != null,
-                            "Receive task should have been started by successful TryConnectAndIdentifyAsync."
-                        );
                         _logger.LogAttemptHandshakeCompleteReceiveLoopIsRunning(attempt);
                     }
 
@@ -917,9 +953,9 @@ public sealed partial class ObsWebSocketClient(
                     _ = initialTcs.TrySetResult(); // Signal successful initial connection
                     attempt = 0; // Reset attempt count only on full success
 
-                    Debug.Assert(_receiveTask != null);
+                    Debug.Assert(connection.ReceiveTask != null);
                     _logger.LogConnectionEstablishedWaitingForReceiveLoopCompletion();
-                    await _receiveTask.WaitAsync(loopToken).ConfigureAwait(false); // Wait for disconnect/shutdown
+                    await connection.ReceiveTask!.WaitAsync(loopToken).ConfigureAwait(false); // Wait for disconnect/shutdown
                     _logger.LogReceiveLoopTaskCompletedWhileConnected();
                 }
                 catch (OperationCanceledException ex) when (loopToken.IsCancellationRequested)
@@ -933,7 +969,7 @@ public sealed partial class ObsWebSocketClient(
                 {
                     _logger.LogAuthenticationFailedAttemptStopping(authEx, attempt);
                     attemptException = authEx;
-                    RaiseAuthenticationFailureEvent(options.ServerUri!, attempt, authEx);
+                    RaiseAuthenticationFailureEvent(settings.ServerUri, attempt, authEx);
                     _ = initialTcs.TrySetException(authEx); // Signal auth failure
                     break; // Auth failure is fatal
                 }
@@ -944,11 +980,11 @@ public sealed partial class ObsWebSocketClient(
                         attempt
                     );
                     attemptException = connEx;
-                    RaiseConnectionFailedEvent(options.ServerUri!, attempt, connEx);
+                    RaiseConnectionFailedEvent(settings.ServerUri, attempt, connEx);
                     // Only fail initial TCS if retries are disabled or exhausted on the *first* attempt
                     if (
                         attempt == 1
-                        && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
+                        && (!settings.AutoReconnectEnabled || settings.MaxReconnectAttempts == 0)
                     )
                     {
                         _ = initialTcs.TrySetException(connEx);
@@ -961,10 +997,10 @@ public sealed partial class ObsWebSocketClient(
                         attempt
                     );
                     attemptException = wsEx;
-                    RaiseConnectionFailedEvent(options.ServerUri!, attempt, wsEx);
+                    RaiseConnectionFailedEvent(settings.ServerUri, attempt, wsEx);
                     if (
                         attempt == 1
-                        && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
+                        && (!settings.AutoReconnectEnabled || settings.MaxReconnectAttempts == 0)
                     )
                     {
                         _ = initialTcs.TrySetException(
@@ -976,10 +1012,10 @@ public sealed partial class ObsWebSocketClient(
                 {
                     _logger.LogUnexpectedErrorInConnectionLoopAttemptRetrying(ex, attempt);
                     attemptException = ex;
-                    RaiseConnectionFailedEvent(options.ServerUri!, attempt, ex);
+                    RaiseConnectionFailedEvent(settings.ServerUri, attempt, ex);
                     if (
                         attempt == 1
-                        && (!options.AutoReconnectEnabled || options.MaxReconnectAttempts == 0)
+                        && (!settings.AutoReconnectEnabled || settings.MaxReconnectAttempts == 0)
                     )
                     {
                         _ = initialTcs.TrySetException(
@@ -1004,17 +1040,19 @@ public sealed partial class ObsWebSocketClient(
                             if (_connectionState != ConnectionState.Disconnecting)
                             {
                                 IsConnected = false;
-                                _receiveCts?.Cancel();
-                                _receiveCts?.Dispose();
-                                _receiveCts = null;
-                                _receiveTask = null;
-                                if (ReferenceEquals(_webSocket, currentWebSocket))
-                                {
-                                    _webSocket = null;
-                                }
-
-                                previousWebSocket = currentWebSocket;
                             }
+
+                            // A later attempt may already have published its own.
+                            if (ReferenceEquals(_connection, connection))
+                            {
+                                _connection = null;
+                            }
+                        }
+
+                        if (connection is not null)
+                        {
+                            // Awaited so two receive loops never overlap across attempts.
+                            await connection.DisposeAsync().ConfigureAwait(false);
                         }
 
                         if (isConnectedThisAttempt && attemptException != null)
@@ -1043,7 +1081,6 @@ public sealed partial class ObsWebSocketClient(
                         "Connection loop exited unexpectedly before initial connection completed."
                     )
             );
-            previousWebSocket?.Dispose();
             await FinalizeDisconnectionAsync(
                     WebSocketCloseStatus.NormalClosure,
                     "Connection loop ended.",
@@ -1053,49 +1090,55 @@ public sealed partial class ObsWebSocketClient(
         }
     }
 
-    /// <summary> Attempts a single connection and handshake sequence. Starts the receive loop upon successful connection. </summary>
-    private async Task TryConnectAndIdentifyAsync(
-        ObsWebSocketClientOptions options,
-        IWebSocketConnection ws,
+    /// <summary>
+    /// Makes one connection attempt and, if it succeeds, publishes it as the live connection.
+    /// </summary>
+    /// <remarks>
+    /// The serializer comes from this attempt's settings, so the sub-protocol offered during
+    /// the handshake and the serializer used afterwards cannot drift apart.
+    /// </remarks>
+    /// <param name="settings">The settings this attempt connects with.</param>
+    /// <param name="attempt">Attempt number, for logging.</param>
+    /// <param name="ct">Cancels the attempt.</param>
+    /// <returns>The established connection.</returns>
+    private async Task<ObsConnectionContext> TryConnectAndIdentifyAsync(
+        ObsConnectionSettings settings,
         int attempt,
         CancellationToken ct
     )
     {
-        _helloTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _identifiedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Debug.Assert(_clientLifetimeCts != null);
 
-        CancellationTokenSource? localReceiveCts = null;
-        Task? localReceiveTask = null;
+        IWebSocketConnection ws = _connectionFactory.CreateConnection();
+        IWebSocketMessageSerializer serializer = _serializerFactory(settings.Format);
+        ObsConnectionContext connection = new(ws, serializer, settings, _clientLifetimeCts.Token);
 
         try
         {
             // Add SubProtocol only if needed
             if (
                 string.IsNullOrEmpty(ws.SubProtocol)
-                || ws.SubProtocol != _serializer.ProtocolSubProtocol
+                || ws.SubProtocol != serializer.ProtocolSubProtocol
             )
             {
                 try
                 {
-                    ws.Options.AddSubProtocol(_serializer.ProtocolSubProtocol);
+                    ws.Options.AddSubProtocol(serializer.ProtocolSubProtocol);
                 }
                 catch (ArgumentException ex)
                 {
-                    _logger.LogAttemptedDuplicateSubprotocolAdd(
-                        ex,
-                        _serializer.ProtocolSubProtocol
-                    );
+                    _logger.LogAttemptedDuplicateSubprotocolAdd(ex, serializer.ProtocolSubProtocol);
                 }
             }
 
             // Connect
-            using CancellationTokenSource connectTimeoutCts = new(options.HandshakeTimeoutMs);
+            using CancellationTokenSource connectTimeoutCts = new(settings.HandshakeTimeoutMs);
             using CancellationTokenSource linkedConnectCts =
                 CancellationTokenSource.CreateLinkedTokenSource(ct, connectTimeoutCts.Token);
             _logger.LogAttemptConnecting(attempt);
             try
             {
-                await ws.ConnectAsync(options.ServerUri!, linkedConnectCts.Token)
+                await ws.ConnectAsync(settings.ServerUri, linkedConnectCts.Token)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (connectTimeoutCts.IsCancellationRequested)
@@ -1118,25 +1161,26 @@ public sealed partial class ObsWebSocketClient(
             );
 
             // --- Start Receive Loop *before* Handshake ---
-            localReceiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            _webSocket = ws; // Assign the current socket temporarily for ReceiveLoopAsync
-            localReceiveTask = Task.Run(
-                () => ReceiveLoopAsync(localReceiveCts.Token),
-                localReceiveCts.Token
-            ); // TCS are now initialized before this runs
+            // Published first: the loop reads the connection, and Hello can arrive immediately.
+            _connection = connection;
+            connection.ReceiveTask = Task.Run(
+                () => ReceiveLoopAsync(connection),
+                connection.ConnectionClosed
+            );
             _logger.LogAttemptReceiveLoopStartedForHandshake(attempt);
 
             // --- Handshake ---
             _logger.LogAttemptWaitingForHello(attempt);
             object helloMsgObj = await WaitForHandshakeMessageAsync(
-                    _helloTcs,
-                    options.HandshakeTimeoutMs,
+                    connection.Hello,
+                    settings.HandshakeTimeoutMs,
                     "Hello",
                     _timeProvider,
                     ct
                 )
                 .ConfigureAwait(false);
             HelloPayload helloPayload = ExtractPayloadFromHandshake<HelloPayload>(
+                connection,
                 helloMsgObj,
                 "Hello"
             );
@@ -1145,7 +1189,7 @@ public sealed partial class ObsWebSocketClient(
             if (helloPayload.Authentication != null)
             {
                 _logger.LogAttemptAuthenticationRequired(attempt);
-                if (string.IsNullOrEmpty(options.Password))
+                if (string.IsNullOrEmpty(settings.Password))
                 {
                     throw new AuthenticationFailureException(
                         "Authentication required by server, but no password was provided."
@@ -1155,12 +1199,11 @@ public sealed partial class ObsWebSocketClient(
                 authResponse = AuthenticationHelper.GenerateAuthenticationString(
                     helloPayload.Authentication.Salt,
                     helloPayload.Authentication.Challenge,
-                    options.Password
+                    settings.Password
                 );
             }
 
-            EventSubscription requestedEventSubs =
-                options.EventSubscriptions ?? EventSubscription.All;
+            EventSubscription requestedEventSubs = settings.EventSubscriptions;
 
             await SendMessageAsync(
                     WebSocketOpCode.Identify,
@@ -1174,8 +1217,8 @@ public sealed partial class ObsWebSocketClient(
                 .ConfigureAwait(false);
             _logger.LogAttemptWaitingForIdentified(attempt);
             object identifiedMsgObj = await WaitForHandshakeMessageAsync(
-                    _identifiedTcs,
-                    options.HandshakeTimeoutMs,
+                    connection.Identified,
+                    settings.HandshakeTimeoutMs,
                     "Identified",
                     _timeProvider,
                     ct
@@ -1183,6 +1226,7 @@ public sealed partial class ObsWebSocketClient(
                 .ConfigureAwait(false);
 
             IdentifiedPayload identifiedPayload = ExtractPayloadFromHandshake<IdentifiedPayload>(
+                connection,
                 identifiedMsgObj,
                 "Identified"
             );
@@ -1193,43 +1237,27 @@ public sealed partial class ObsWebSocketClient(
             );
 
             NegotiatedRpcVersion = identifiedPayload.NegotiatedRpcVersion;
-            CurrentEventSubscriptions = requestedEventSubs; //
+            CurrentEventSubscriptions = requestedEventSubs;
 
-            // Success! Transfer ownership of CTS/Task to class members. ConnectionLoopAsync sets final state.
-            _receiveCts = localReceiveCts;
-            _receiveTask = localReceiveTask;
-            localReceiveCts = null; // Prevent disposal in finally block
-            localReceiveTask = null;
+            return connection;
         }
         catch (Exception ex)
         {
             NegotiatedRpcVersion = null;
             CurrentEventSubscriptions = null;
 
-            _webSocket = null; // Detach socket on failure
+            _ = connection.Hello.TrySetException(ex);
+            _ = connection.Identified.TrySetException(ex);
 
-            // Ensure TCS are cleaned up on failure
-            _ = (_helloTcs?.TrySetException(ex));
-            _ = (_identifiedTcs?.TrySetException(ex));
-            _helloTcs = null; // Clear fields after attempting to set exception
-            _identifiedTcs = null;
-
-            // Clean up this attempt's specific receive loop resources
-            try
+            using (_connectionLock.EnterScope())
             {
-                localReceiveCts?.Cancel();
-            }
-            catch
-            { /* Ignore */
+                if (ReferenceEquals(_connection, connection))
+                {
+                    _connection = null;
+                }
             }
 
-            try
-            {
-                localReceiveCts?.Dispose();
-            }
-            catch
-            { /* Ignore */
-            }
+            await connection.DisposeAsync().ConfigureAwait(false);
 
             // Rethrow specific exceptions
             if (
@@ -1258,18 +1286,22 @@ public sealed partial class ObsWebSocketClient(
     }
 
     /// <summary> Receives messages from the WebSocket. </summary>
-    private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
+    private async Task ReceiveLoopAsync(ObsConnectionContext connection)
     {
+        CancellationToken cancellationToken = connection.ConnectionClosed;
         using MemoryStream bufferStream = new();
         byte[] buffer = ArrayPool<byte>.Shared.Rent(ReceiveBufferSize);
-        IWebSocketConnection? currentWebSocket = _webSocket;
+        IWebSocketConnection currentWebSocket = connection.Transport;
+
+        // Per connection, so a reload cannot move the ceiling mid-message.
+        int maxMessageBytes = Math.Max(1, _options.Value.MaxIncomingMessageBytes);
 
         try
         {
-            if (currentWebSocket is null || currentWebSocket.State != WebSocketState.Open)
+            if (currentWebSocket.State != WebSocketState.Open)
             {
                 throw new InvalidOperationException(
-                    $"Receive loop started with WebSocket not open or null. State: {currentWebSocket?.State}"
+                    $"Receive loop started with WebSocket not open. State: {currentWebSocket.State}"
                 );
             }
 
@@ -1298,8 +1330,18 @@ public sealed partial class ObsWebSocketClient(
                     cancellationToken.ThrowIfCancellationRequested();
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        HandleServerClose();
+                        HandleServerClose(connection);
                         return;
+                    }
+
+                    // Before the write, so the growth the limit prevents never happens.
+                    // Subtraction because the sum can overflow int.
+                    if (result.Count > maxMessageBytes - bufferStream.Length)
+                    {
+                        throw new ObsWebSocketMessageTooLargeException(
+                            maxMessageBytes,
+                            bufferStream.Length + result.Count
+                        );
                     }
 
                     await bufferStream
@@ -1316,20 +1358,30 @@ public sealed partial class ObsWebSocketClient(
                 // Deserialize from a copy. The payload is parsed later, off this thread, and
                 // the assembly buffer is reused by the next message, so anything pointing into
                 // it would be reading the following message by then.
-                using MemoryStream messageStream = new(bufferStream.ToArray(), writable: false);
-                object? incomingMsgObj = await _serializer
-                    .DeserializeAsync(messageStream, cancellationToken)
+                ReadOnlyMemory<byte> message = bufferStream.ToArray();
+                object? incomingMsgObj = await connection
+                    .Serializer.DeserializeAsync(message, cancellationToken)
                     .ConfigureAwait(false);
                 if (incomingMsgObj is null)
                 {
-                    _logger.LogDeserializationReturnedNullLength(messageStream.Length);
+                    _logger.LogDeserializationReturnedNullLength(message.Length);
+                    _metrics.MessagesDropped.Add(
+                        1,
+                        new TagList { { "obsws.drop_reason", "undeserializable" } }
+                    );
                     continue;
                 }
 
-                ProcessIncomingMessage(incomingMsgObj);
+                ProcessIncomingMessage(connection, incomingMsgObj);
             }
 
             _logger.LogReceiveLoopExitingCancellationRequested();
+        }
+        catch (ObsWebSocketMessageTooLargeException ex)
+        {
+            // Unskippable: framing is past the point where the rest could be discarded safely.
+            _logger.LogIncomingMessageExceededLimit(ex.MaxBytes);
+            throw;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -1355,12 +1407,12 @@ public sealed partial class ObsWebSocketClient(
     }
 
     /// <summary> Handles server-initiated close frame. </summary>
-    private void HandleServerClose()
+    private void HandleServerClose(ObsConnectionContext connection)
     {
-        IWebSocketConnection? ws = _webSocket;
+        IWebSocketConnection ws = connection.Transport;
         bool expectedClosure = _clientLifetimeCts?.IsCancellationRequested ?? false;
-        string? desc = ws?.CloseStatusDescription;
-        WebSocketCloseStatus? status = ws?.CloseStatus;
+        string? desc = ws.CloseStatusDescription;
+        WebSocketCloseStatus? status = ws.CloseStatus;
 
         if (expectedClosure)
         {
@@ -1376,7 +1428,7 @@ public sealed partial class ObsWebSocketClient(
         );
         CleanupConnectionOnly(closeEx);
 
-        if (ws?.State == WebSocketState.CloseReceived)
+        if (ws.State == WebSocketState.CloseReceived)
         {
             _logger.LogAcknowledgingServerCloseFrame();
             _ = Task.Run(async () =>
@@ -1411,55 +1463,31 @@ public sealed partial class ObsWebSocketClient(
         NegotiatedRpcVersion = null;
         CurrentEventSubscriptions = null;
 
-        CancellationTokenSource? receiveLoopCts = Interlocked.Exchange(ref _receiveCts, null);
-        CancellationToken tokenForFailure =
-            receiveLoopCts?.Token ?? _clientLifetimeCts?.Token ?? CancellationToken.None;
+        ObsConnectionContext? connection;
+        using (_connectionLock.EnterScope())
+        {
+            connection = _connection;
+            _connection = null;
+        }
 
-        _ = (_helloTcs?.TrySetException(reasonException));
-        _helloTcs = null;
-        _ = (_identifiedTcs?.TrySetException(reasonException));
-        _identifiedTcs = null;
+        CancellationToken tokenForFailure =
+            connection?.ConnectionClosed ?? _clientLifetimeCts?.Token ?? CancellationToken.None;
+
+        if (connection is not null)
+        {
+            _ = connection.Hello.TrySetException(reasonException);
+            _ = connection.Identified.TrySetException(reasonException);
+        }
 
         FailPendingRequests(_pendingRequests, reasonException, tokenForFailure);
         FailPendingRequests(_pendingBatchRequests, reasonException, tokenForFailure);
 
-        try
+        if (connection is not null)
         {
-            receiveLoopCts?.Cancel();
-        }
-        catch (ObjectDisposedException) { }
-        catch (Exception ex)
-        {
-            _logger.LogExceptionCancellingReceiveCtsDuringCleanup(ex);
-        }
+            _logger.LogDisposingWebsocketInstance(RuntimeHelpers.GetHashCode(connection.Transport));
 
-        try
-        {
-            receiveLoopCts?.Dispose();
-        }
-        catch (ObjectDisposedException) { }
-        catch (Exception ex)
-        {
-            _logger.LogExceptionDisposingReceiveCtsDuringCleanup(ex);
-        }
-
-        _receiveTask = null;
-
-        IWebSocketConnection? socket = Interlocked.Exchange(ref _webSocket, null);
-        if (socket != null)
-        {
-            _logger.LogDisposingWebsocketInstance(RuntimeHelpers.GetHashCode(socket));
-            try
-            {
-                socket.Abort();
-            }
-            catch { }
-
-            try
-            {
-                socket.Dispose();
-            }
-            catch { }
+            // Not DisposeAsync: a server-initiated close runs this on the receive loop itself.
+            connection.Close();
         }
     }
 
@@ -1525,11 +1553,19 @@ public sealed partial class ObsWebSocketClient(
     #region Message Processing
     private static readonly FrozenDictionary<
         string,
-        Action<ObsWebSocketClient, object?>
+        Action<ObsWebSocketClient, IWebSocketMessageSerializer, object?>
     > s_eventHandlers = InitializeEventHandlers().ToFrozenDictionary();
 
-    private void ProcessIncomingMessage(object messageObject)
+    /// <summary>
+    /// Dispatches one message, using the serializer belonging to the connection it arrived on.
+    /// </summary>
+    /// <remarks>
+    /// Threaded through rather than read from a field, so a reconnect onto a different format
+    /// cannot decode a message with the wrong serializer.
+    /// </remarks>
+    private void ProcessIncomingMessage(ObsConnectionContext connection, object messageObject)
     {
+        IWebSocketMessageSerializer serializer = connection.Serializer;
         WebSocketOpCode opCode;
         object? payloadData;
         switch (messageObject)
@@ -1551,20 +1587,20 @@ public sealed partial class ObsWebSocketClient(
         {
             case WebSocketOpCode.Hello:
                 _logger.LogProcessingHelloMessage();
-                _ = (_helloTcs?.TrySetResult(messageObject));
+                _ = connection.Hello.TrySetResult(messageObject);
                 break;
             case WebSocketOpCode.Identified:
                 _logger.LogProcessingIdentifiedMessage();
-                _ = (_identifiedTcs?.TrySetResult(messageObject));
+                _ = connection.Identified.TrySetResult(messageObject);
                 break;
             case WebSocketOpCode.Event:
-                HandleEventMessage(payloadData);
+                HandleEventMessage(serializer, payloadData);
                 break;
             case WebSocketOpCode.RequestResponse:
-                HandleRequestResponseMessage(payloadData);
+                HandleRequestResponseMessage(serializer, payloadData);
                 break;
             case WebSocketOpCode.RequestBatchResponse:
-                HandleRequestBatchResponseMessage(payloadData);
+                HandleRequestBatchResponseMessage(serializer, payloadData);
                 break;
             default:
                 _logger.LogReceivedMessageWithUnhandledOpcode(opCode);
@@ -1572,7 +1608,10 @@ public sealed partial class ObsWebSocketClient(
         }
     }
 
-    private void HandleRequestResponseMessage(object? payloadData)
+    private void HandleRequestResponseMessage(
+        IWebSocketMessageSerializer serializer,
+        object? payloadData
+    )
     {
         if (payloadData == null)
         {
@@ -1586,7 +1625,7 @@ public sealed partial class ObsWebSocketClient(
             // so there is no pending request to fault. The awaiting caller times out instead,
             // and this log is the only record of why.
             if (
-                !_serializer.TryDeserializePayload(
+                !serializer.TryDeserializePayload(
                     payloadData,
                     out RequestResponsePayload<object>? response
                 ) || response is null
@@ -1623,7 +1662,10 @@ public sealed partial class ObsWebSocketClient(
         }
     }
 
-    private void HandleRequestBatchResponseMessage(object? payloadData)
+    private void HandleRequestBatchResponseMessage(
+        IWebSocketMessageSerializer serializer,
+        object? payloadData
+    )
     {
         if (payloadData == null)
         {
@@ -1634,7 +1676,7 @@ public sealed partial class ObsWebSocketClient(
         try
         {
             if (
-                !_serializer.TryDeserializePayload(
+                !serializer.TryDeserializePayload(
                     payloadData,
                     out RequestBatchResponsePayload<object>? response
                 ) || response is null
@@ -1671,7 +1713,7 @@ public sealed partial class ObsWebSocketClient(
         }
     }
 
-    private void HandleEventMessage(object? payloadData)
+    private void HandleEventMessage(IWebSocketMessageSerializer serializer, object? payloadData)
     {
         if (payloadData == null)
         {
@@ -1685,7 +1727,7 @@ public sealed partial class ObsWebSocketClient(
             // Tolerant on purpose: a newer OBS sending an event this build cannot model must not
             // tear the connection down.
             if (
-                !_serializer.TryDeserializePayload(payloadData, out eventPayloadBase)
+                !serializer.TryDeserializePayload(payloadData, out eventPayloadBase)
                 || eventPayloadBase is null
             )
             {
@@ -1697,13 +1739,17 @@ public sealed partial class ObsWebSocketClient(
             if (
                 s_eventHandlers.TryGetValue(
                     eventPayloadBase.EventType,
-                    out Action<ObsWebSocketClient, object?>? handlerAction
+                    out Action<
+                        ObsWebSocketClient,
+                        IWebSocketMessageSerializer,
+                        object?
+                    >? handlerAction
                 )
             )
             {
                 try
                 {
-                    handlerAction(this, eventPayloadBase.EventData);
+                    handlerAction(this, serializer, eventPayloadBase.EventData);
                 }
                 catch (Exception ex)
                 {
@@ -1739,13 +1785,14 @@ public sealed partial class ObsWebSocketClient(
     /// than nesting it under that name. Deserializing into the generated record therefore looks
     /// one level too deep and always yields null, so the raw element is taken as the payload.
     /// </remarks>
+    /// <param name="serializer">The serializer belonging to the connection this arrived on.</param>
     /// <param name="rawData">The raw event data payload, as produced by the active serializer.</param>
-    private void HandleCustomEvent(object? rawData)
+    private void HandleCustomEvent(IWebSocketMessageSerializer serializer, object? rawData)
     {
         try
         {
             if (
-                !_serializer.TryDeserializeValuePayload(rawData, out JsonElement? broadcastData)
+                !serializer.TryDeserializeValuePayload(rawData, out JsonElement? broadcastData)
                 || broadcastData is null
             )
             {
@@ -1762,6 +1809,7 @@ public sealed partial class ObsWebSocketClient(
     }
 
     private void TryHandleEvent<TPayload, TEventArgs>(
+        IWebSocketMessageSerializer serializer,
         string eventType,
         object? rawData,
         Func<TPayload, TEventArgs> argsFactory,
@@ -1772,7 +1820,7 @@ public sealed partial class ObsWebSocketClient(
     {
         try
         {
-            _ = _serializer.TryDeserializePayload(rawData, out TPayload? payload);
+            _ = serializer.TryDeserializePayload(rawData, out TPayload? payload);
             if (payload is not null)
             {
                 _metrics.EventsReceived.Add(1, new TagList { { "obsws.event_type", eventType } });
@@ -1791,387 +1839,451 @@ public sealed partial class ObsWebSocketClient(
 
     private static Dictionary<
         string,
-        Action<ObsWebSocketClient, object?>
+        Action<ObsWebSocketClient, IWebSocketMessageSerializer, object?>
     > InitializeEventHandlers() =>
         new(StringComparer.Ordinal)
         {
             // Config
-            ["CurrentSceneCollectionChanging"] = (c, d) =>
+            ["CurrentSceneCollectionChanging"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentSceneCollectionChangingPayload,
                     CurrentSceneCollectionChangingEventArgs
                 >(
+                    s,
                     "CurrentSceneCollectionChanging",
                     d,
                     p => new(p),
                     c.OnCurrentSceneCollectionChanging
                 ),
-            ["CurrentSceneCollectionChanged"] = (c, d) =>
+            ["CurrentSceneCollectionChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentSceneCollectionChangedPayload,
                     CurrentSceneCollectionChangedEventArgs
                 >(
+                    s,
                     "CurrentSceneCollectionChanged",
                     d,
                     p => new(p),
                     c.OnCurrentSceneCollectionChanged
                 ),
-            ["SceneCollectionListChanged"] = (c, d) =>
+            ["SceneCollectionListChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SceneCollectionListChangedPayload,
                     SceneCollectionListChangedEventArgs
-                >("SceneCollectionListChanged", d, p => new(p), c.OnSceneCollectionListChanged),
-            ["CurrentProfileChanging"] = (c, d) =>
+                >(s, "SceneCollectionListChanged", d, p => new(p), c.OnSceneCollectionListChanged),
+            ["CurrentProfileChanging"] = (c, s, d) =>
                 c.TryHandleEvent<CurrentProfileChangingPayload, CurrentProfileChangingEventArgs>(
+                    s,
                     "CurrentProfileChanging",
                     d,
                     p => new(p),
                     c.OnCurrentProfileChanging
                 ),
-            ["CurrentProfileChanged"] = (c, d) =>
+            ["CurrentProfileChanged"] = (c, s, d) =>
                 c.TryHandleEvent<CurrentProfileChangedPayload, CurrentProfileChangedEventArgs>(
+                    s,
                     "CurrentProfileChanged",
                     d,
                     p => new(p),
                     c.OnCurrentProfileChanged
                 ),
-            ["ProfileListChanged"] = (c, d) =>
+            ["ProfileListChanged"] = (c, s, d) =>
                 c.TryHandleEvent<ProfileListChangedPayload, ProfileListChangedEventArgs>(
+                    s,
                     "ProfileListChanged",
                     d,
                     p => new(p),
                     c.OnProfileListChanged
                 ),
             // Filters
-            ["SourceFilterListReindexed"] = (c, d) =>
+            ["SourceFilterListReindexed"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SourceFilterListReindexedPayload,
                     SourceFilterListReindexedEventArgs
-                >("SourceFilterListReindexed", d, p => new(p), c.OnSourceFilterListReindexed),
-            ["SourceFilterCreated"] = (c, d) =>
+                >(s, "SourceFilterListReindexed", d, p => new(p), c.OnSourceFilterListReindexed),
+            ["SourceFilterCreated"] = (c, s, d) =>
                 c.TryHandleEvent<SourceFilterCreatedPayload, SourceFilterCreatedEventArgs>(
+                    s,
                     "SourceFilterCreated",
                     d,
                     p => new(p),
                     c.OnSourceFilterCreated
                 ),
-            ["SourceFilterRemoved"] = (c, d) =>
+            ["SourceFilterRemoved"] = (c, s, d) =>
                 c.TryHandleEvent<SourceFilterRemovedPayload, SourceFilterRemovedEventArgs>(
+                    s,
                     "SourceFilterRemoved",
                     d,
                     p => new(p),
                     c.OnSourceFilterRemoved
                 ),
-            ["SourceFilterNameChanged"] = (c, d) =>
+            ["SourceFilterNameChanged"] = (c, s, d) =>
                 c.TryHandleEvent<SourceFilterNameChangedPayload, SourceFilterNameChangedEventArgs>(
+                    s,
                     "SourceFilterNameChanged",
                     d,
                     p => new(p),
                     c.OnSourceFilterNameChanged
                 ),
-            ["SourceFilterSettingsChanged"] = (c, d) =>
+            ["SourceFilterSettingsChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SourceFilterSettingsChangedPayload,
                     SourceFilterSettingsChangedEventArgs
-                >("SourceFilterSettingsChanged", d, p => new(p), c.OnSourceFilterSettingsChanged),
-            ["SourceFilterEnableStateChanged"] = (c, d) =>
+                >(
+                    s,
+                    "SourceFilterSettingsChanged",
+                    d,
+                    p => new(p),
+                    c.OnSourceFilterSettingsChanged
+                ),
+            ["SourceFilterEnableStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SourceFilterEnableStateChangedPayload,
                     SourceFilterEnableStateChangedEventArgs
                 >(
+                    s,
                     "SourceFilterEnableStateChanged",
                     d,
                     p => new(p),
                     c.OnSourceFilterEnableStateChanged
                 ),
             // General
-            ["ExitStarted"] = (c, d) => c.OnExitStarted(new ExitStartedEventArgs()),
-            ["VendorEvent"] = (c, d) =>
+            ["ExitStarted"] = (c, _, d) => c.OnExitStarted(new ExitStartedEventArgs()),
+            ["VendorEvent"] = (c, s, d) =>
                 c.TryHandleEvent<VendorEventPayload, VendorEventEventArgs>(
+                    s,
                     "VendorEvent",
                     d,
                     p => new(p),
                     c.OnVendorEvent
                 ),
-            ["CustomEvent"] = (c, d) => c.HandleCustomEvent(d),
+            ["CustomEvent"] = (c, s, d) => c.HandleCustomEvent(s, d),
             // Inputs
-            ["InputCreated"] = (c, d) =>
+            ["InputCreated"] = (c, s, d) =>
                 c.TryHandleEvent<InputCreatedPayload, InputCreatedEventArgs>(
+                    s,
                     "InputCreated",
                     d,
                     p => new(p),
                     c.OnInputCreated
                 ),
-            ["InputRemoved"] = (c, d) =>
+            ["InputRemoved"] = (c, s, d) =>
                 c.TryHandleEvent<InputRemovedPayload, InputRemovedEventArgs>(
+                    s,
                     "InputRemoved",
                     d,
                     p => new(p),
                     c.OnInputRemoved
                 ),
-            ["InputNameChanged"] = (c, d) =>
+            ["InputNameChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputNameChangedPayload, InputNameChangedEventArgs>(
+                    s,
                     "InputNameChanged",
                     d,
                     p => new(p),
                     c.OnInputNameChanged
                 ),
-            ["InputSettingsChanged"] = (c, d) =>
+            ["InputSettingsChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputSettingsChangedPayload, InputSettingsChangedEventArgs>(
+                    s,
                     "InputSettingsChanged",
                     d,
                     p => new(p),
                     c.OnInputSettingsChanged
                 ),
-            ["InputActiveStateChanged"] = (c, d) =>
+            ["InputActiveStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputActiveStateChangedPayload, InputActiveStateChangedEventArgs>(
+                    s,
                     "InputActiveStateChanged",
                     d,
                     p => new(p),
                     c.OnInputActiveStateChanged
                 ),
-            ["InputShowStateChanged"] = (c, d) =>
+            ["InputShowStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputShowStateChangedPayload, InputShowStateChangedEventArgs>(
+                    s,
                     "InputShowStateChanged",
                     d,
                     p => new(p),
                     c.OnInputShowStateChanged
                 ),
-            ["InputMuteStateChanged"] = (c, d) =>
+            ["InputMuteStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputMuteStateChangedPayload, InputMuteStateChangedEventArgs>(
+                    s,
                     "InputMuteStateChanged",
                     d,
                     p => new(p),
                     c.OnInputMuteStateChanged
                 ),
-            ["InputVolumeChanged"] = (c, d) =>
+            ["InputVolumeChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputVolumeChangedPayload, InputVolumeChangedEventArgs>(
+                    s,
                     "InputVolumeChanged",
                     d,
                     p => new(p),
                     c.OnInputVolumeChanged
                 ),
-            ["InputAudioBalanceChanged"] = (c, d) =>
+            ["InputAudioBalanceChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     InputAudioBalanceChangedPayload,
                     InputAudioBalanceChangedEventArgs
-                >("InputAudioBalanceChanged", d, p => new(p), c.OnInputAudioBalanceChanged),
-            ["InputAudioSyncOffsetChanged"] = (c, d) =>
+                >(s, "InputAudioBalanceChanged", d, p => new(p), c.OnInputAudioBalanceChanged),
+            ["InputAudioSyncOffsetChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     InputAudioSyncOffsetChangedPayload,
                     InputAudioSyncOffsetChangedEventArgs
-                >("InputAudioSyncOffsetChanged", d, p => new(p), c.OnInputAudioSyncOffsetChanged),
-            ["InputAudioTracksChanged"] = (c, d) =>
+                >(
+                    s,
+                    "InputAudioSyncOffsetChanged",
+                    d,
+                    p => new(p),
+                    c.OnInputAudioSyncOffsetChanged
+                ),
+            ["InputAudioTracksChanged"] = (c, s, d) =>
                 c.TryHandleEvent<InputAudioTracksChangedPayload, InputAudioTracksChangedEventArgs>(
+                    s,
                     "InputAudioTracksChanged",
                     d,
                     p => new(p),
                     c.OnInputAudioTracksChanged
                 ),
-            ["InputAudioMonitorTypeChanged"] = (c, d) =>
+            ["InputAudioMonitorTypeChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     InputAudioMonitorTypeChangedPayload,
                     InputAudioMonitorTypeChangedEventArgs
-                >("InputAudioMonitorTypeChanged", d, p => new(p), c.OnInputAudioMonitorTypeChanged),
-            ["InputVolumeMeters"] = (c, d) =>
+                >(
+                    s,
+                    "InputAudioMonitorTypeChanged",
+                    d,
+                    p => new(p),
+                    c.OnInputAudioMonitorTypeChanged
+                ),
+            ["InputVolumeMeters"] = (c, s, d) =>
                 c.TryHandleEvent<InputVolumeMetersPayload, InputVolumeMetersEventArgs>(
+                    s,
                     "InputVolumeMeters",
                     d,
                     p => new(p),
                     c.OnInputVolumeMeters
                 ),
             // Media Inputs
-            ["MediaInputPlaybackStarted"] = (c, d) =>
+            ["MediaInputPlaybackStarted"] = (c, s, d) =>
                 c.TryHandleEvent<
                     MediaInputPlaybackStartedPayload,
                     MediaInputPlaybackStartedEventArgs
-                >("MediaInputPlaybackStarted", d, p => new(p), c.OnMediaInputPlaybackStarted),
-            ["MediaInputPlaybackEnded"] = (c, d) =>
+                >(s, "MediaInputPlaybackStarted", d, p => new(p), c.OnMediaInputPlaybackStarted),
+            ["MediaInputPlaybackEnded"] = (c, s, d) =>
                 c.TryHandleEvent<MediaInputPlaybackEndedPayload, MediaInputPlaybackEndedEventArgs>(
+                    s,
                     "MediaInputPlaybackEnded",
                     d,
                     p => new(p),
                     c.OnMediaInputPlaybackEnded
                 ),
-            ["MediaInputActionTriggered"] = (c, d) =>
+            ["MediaInputActionTriggered"] = (c, s, d) =>
                 c.TryHandleEvent<
                     MediaInputActionTriggeredPayload,
                     MediaInputActionTriggeredEventArgs
-                >("MediaInputActionTriggered", d, p => new(p), c.OnMediaInputActionTriggered),
+                >(s, "MediaInputActionTriggered", d, p => new(p), c.OnMediaInputActionTriggered),
             // Outputs
-            ["StreamStateChanged"] = (c, d) =>
+            ["StreamStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<StreamStateChangedPayload, StreamStateChangedEventArgs>(
+                    s,
                     "StreamStateChanged",
                     d,
                     p => new(p),
                     c.OnStreamStateChanged
                 ),
-            ["RecordStateChanged"] = (c, d) =>
+            ["RecordStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<RecordStateChangedPayload, RecordStateChangedEventArgs>(
+                    s,
                     "RecordStateChanged",
                     d,
                     p => new(p),
                     c.OnRecordStateChanged
                 ),
-            ["RecordFileChanged"] = (c, d) =>
+            ["RecordFileChanged"] = (c, s, d) =>
                 c.TryHandleEvent<RecordFileChangedPayload, RecordFileChangedEventArgs>(
+                    s,
                     "RecordFileChanged",
                     d,
                     p => new(p),
                     c.OnRecordFileChanged
                 ),
-            ["ReplayBufferStateChanged"] = (c, d) =>
+            ["ReplayBufferStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     ReplayBufferStateChangedPayload,
                     ReplayBufferStateChangedEventArgs
-                >("ReplayBufferStateChanged", d, p => new(p), c.OnReplayBufferStateChanged),
-            ["VirtualcamStateChanged"] = (c, d) =>
+                >(s, "ReplayBufferStateChanged", d, p => new(p), c.OnReplayBufferStateChanged),
+            ["VirtualcamStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<VirtualcamStateChangedPayload, VirtualcamStateChangedEventArgs>(
+                    s,
                     "VirtualcamStateChanged",
                     d,
                     p => new(p),
                     c.OnVirtualcamStateChanged
                 ),
-            ["ReplayBufferSaved"] = (c, d) =>
+            ["ReplayBufferSaved"] = (c, s, d) =>
                 c.TryHandleEvent<ReplayBufferSavedPayload, ReplayBufferSavedEventArgs>(
+                    s,
                     "ReplayBufferSaved",
                     d,
                     p => new(p),
                     c.OnReplayBufferSaved
                 ),
             // Scene Items
-            ["SceneItemCreated"] = (c, d) =>
+            ["SceneItemCreated"] = (c, s, d) =>
                 c.TryHandleEvent<SceneItemCreatedPayload, SceneItemCreatedEventArgs>(
+                    s,
                     "SceneItemCreated",
                     d,
                     p => new(p),
                     c.OnSceneItemCreated
                 ),
-            ["SceneItemRemoved"] = (c, d) =>
+            ["SceneItemRemoved"] = (c, s, d) =>
                 c.TryHandleEvent<SceneItemRemovedPayload, SceneItemRemovedEventArgs>(
+                    s,
                     "SceneItemRemoved",
                     d,
                     p => new(p),
                     c.OnSceneItemRemoved
                 ),
-            ["SceneItemListReindexed"] = (c, d) =>
+            ["SceneItemListReindexed"] = (c, s, d) =>
                 c.TryHandleEvent<SceneItemListReindexedPayload, SceneItemListReindexedEventArgs>(
+                    s,
                     "SceneItemListReindexed",
                     d,
                     p => new(p),
                     c.OnSceneItemListReindexed
                 ),
-            ["SceneItemEnableStateChanged"] = (c, d) =>
+            ["SceneItemEnableStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SceneItemEnableStateChangedPayload,
                     SceneItemEnableStateChangedEventArgs
-                >("SceneItemEnableStateChanged", d, p => new(p), c.OnSceneItemEnableStateChanged),
-            ["SceneItemLockStateChanged"] = (c, d) =>
+                >(
+                    s,
+                    "SceneItemEnableStateChanged",
+                    d,
+                    p => new(p),
+                    c.OnSceneItemEnableStateChanged
+                ),
+            ["SceneItemLockStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SceneItemLockStateChangedPayload,
                     SceneItemLockStateChangedEventArgs
-                >("SceneItemLockStateChanged", d, p => new(p), c.OnSceneItemLockStateChanged),
-            ["SceneItemSelected"] = (c, d) =>
+                >(s, "SceneItemLockStateChanged", d, p => new(p), c.OnSceneItemLockStateChanged),
+            ["SceneItemSelected"] = (c, s, d) =>
                 c.TryHandleEvent<SceneItemSelectedPayload, SceneItemSelectedEventArgs>(
+                    s,
                     "SceneItemSelected",
                     d,
                     p => new(p),
                     c.OnSceneItemSelected
                 ),
-            ["SceneItemTransformChanged"] = (c, d) =>
+            ["SceneItemTransformChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SceneItemTransformChangedPayload,
                     SceneItemTransformChangedEventArgs
-                >("SceneItemTransformChanged", d, p => new(p), c.OnSceneItemTransformChanged),
+                >(s, "SceneItemTransformChanged", d, p => new(p), c.OnSceneItemTransformChanged),
             // Scenes
-            ["SceneCreated"] = (c, d) =>
+            ["SceneCreated"] = (c, s, d) =>
                 c.TryHandleEvent<SceneCreatedPayload, SceneCreatedEventArgs>(
+                    s,
                     "SceneCreated",
                     d,
                     p => new(p),
                     c.OnSceneCreated
                 ),
-            ["SceneRemoved"] = (c, d) =>
+            ["SceneRemoved"] = (c, s, d) =>
                 c.TryHandleEvent<SceneRemovedPayload, SceneRemovedEventArgs>(
+                    s,
                     "SceneRemoved",
                     d,
                     p => new(p),
                     c.OnSceneRemoved
                 ),
-            ["SceneNameChanged"] = (c, d) =>
+            ["SceneNameChanged"] = (c, s, d) =>
                 c.TryHandleEvent<SceneNameChangedPayload, SceneNameChangedEventArgs>(
+                    s,
                     "SceneNameChanged",
                     d,
                     p => new(p),
                     c.OnSceneNameChanged
                 ),
-            ["CurrentProgramSceneChanged"] = (c, d) =>
+            ["CurrentProgramSceneChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentProgramSceneChangedPayload,
                     CurrentProgramSceneChangedEventArgs
-                >("CurrentProgramSceneChanged", d, p => new(p), c.OnCurrentProgramSceneChanged),
-            ["CurrentPreviewSceneChanged"] = (c, d) =>
+                >(s, "CurrentProgramSceneChanged", d, p => new(p), c.OnCurrentProgramSceneChanged),
+            ["CurrentPreviewSceneChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentPreviewSceneChangedPayload,
                     CurrentPreviewSceneChangedEventArgs
-                >("CurrentPreviewSceneChanged", d, p => new(p), c.OnCurrentPreviewSceneChanged),
-            ["SceneListChanged"] = (c, d) =>
+                >(s, "CurrentPreviewSceneChanged", d, p => new(p), c.OnCurrentPreviewSceneChanged),
+            ["SceneListChanged"] = (c, s, d) =>
                 c.TryHandleEvent<SceneListChangedPayload, SceneListChangedEventArgs>(
+                    s,
                     "SceneListChanged",
                     d,
                     p => new(p),
                     c.OnSceneListChanged
                 ),
             // Transitions
-            ["CurrentSceneTransitionChanged"] = (c, d) =>
+            ["CurrentSceneTransitionChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentSceneTransitionChangedPayload,
                     CurrentSceneTransitionChangedEventArgs
                 >(
+                    s,
                     "CurrentSceneTransitionChanged",
                     d,
                     p => new(p),
                     c.OnCurrentSceneTransitionChanged
                 ),
-            ["CurrentSceneTransitionDurationChanged"] = (c, d) =>
+            ["CurrentSceneTransitionDurationChanged"] = (c, s, d) =>
                 c.TryHandleEvent<
                     CurrentSceneTransitionDurationChangedPayload,
                     CurrentSceneTransitionDurationChangedEventArgs
                 >(
+                    s,
                     "CurrentSceneTransitionDurationChanged",
                     d,
                     p => new(p),
                     c.OnCurrentSceneTransitionDurationChanged
                 ),
-            ["SceneTransitionStarted"] = (c, d) =>
+            ["SceneTransitionStarted"] = (c, s, d) =>
                 c.TryHandleEvent<SceneTransitionStartedPayload, SceneTransitionStartedEventArgs>(
+                    s,
                     "SceneTransitionStarted",
                     d,
                     p => new(p),
                     c.OnSceneTransitionStarted
                 ),
-            ["SceneTransitionEnded"] = (c, d) =>
+            ["SceneTransitionEnded"] = (c, s, d) =>
                 c.TryHandleEvent<SceneTransitionEndedPayload, SceneTransitionEndedEventArgs>(
+                    s,
                     "SceneTransitionEnded",
                     d,
                     p => new(p),
                     c.OnSceneTransitionEnded
                 ),
-            ["SceneTransitionVideoEnded"] = (c, d) =>
+            ["SceneTransitionVideoEnded"] = (c, s, d) =>
                 c.TryHandleEvent<
                     SceneTransitionVideoEndedPayload,
                     SceneTransitionVideoEndedEventArgs
-                >("SceneTransitionVideoEnded", d, p => new(p), c.OnSceneTransitionVideoEnded),
+                >(s, "SceneTransitionVideoEnded", d, p => new(p), c.OnSceneTransitionVideoEnded),
             // UI
-            ["StudioModeStateChanged"] = (c, d) =>
+            ["StudioModeStateChanged"] = (c, s, d) =>
                 c.TryHandleEvent<StudioModeStateChangedPayload, StudioModeStateChangedEventArgs>(
+                    s,
                     "StudioModeStateChanged",
                     d,
                     p => new(p),
                     c.OnStudioModeStateChanged
                 ),
-            ["ScreenshotSaved"] = (c, d) =>
+            ["ScreenshotSaved"] = (c, s, d) =>
                 c.TryHandleEvent<ScreenshotSavedPayload, ScreenshotSavedEventArgs>(
+                    s,
                     "ScreenshotSaved",
                     d,
                     p => new(p),
@@ -2182,20 +2294,34 @@ public sealed partial class ObsWebSocketClient(
 
     #region Helper Methods (Static & Instance)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void EnsureConnected()
+    internal void EnsureConnected() => _ = RequireConnection();
+
+    /// <summary>
+    /// Returns the live connection, or explains that there is not one.
+    /// </summary>
+    /// <remarks>
+    /// Returned so a caller acts on one connection for the whole operation.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
+    private ObsConnectionContext RequireConnection()
     {
-        if (
+        ObsConnectionContext? connection = _connection;
+        return
             _connectionState != ConnectionState.Connected
-            || _webSocket?.State != WebSocketState.Open
-        )
-        {
-            throw new InvalidOperationException(
-                $"Client is not connected (State: {_connectionState}, Socket: {_webSocket?.State})."
-            );
-        }
+            || connection is null
+            || connection.Transport.State != WebSocketState.Open
+            ? throw new InvalidOperationException(
+                $"Client is not connected (State: {_connectionState}, "
+                    + $"Socket: {connection?.Transport.State.ToString() ?? "none"})."
+            )
+            : connection;
     }
 
-    private TPayload ExtractPayloadFromHandshake<TPayload>(object messageObject, string messageName)
+    private static TPayload ExtractPayloadFromHandshake<TPayload>(
+        ObsConnectionContext connection,
+        object messageObject,
+        string messageName
+    )
         where TPayload : class
     {
         object? rawPayload = messageObject switch
@@ -2206,7 +2332,7 @@ public sealed partial class ObsWebSocketClient(
                 $"Unexpected message type during {messageName} handshake: {messageObject.GetType().Name}"
             ),
         };
-        TPayload? specificPayload = _serializer.DeserializePayload<TPayload>(rawPayload);
+        TPayload? specificPayload = connection.Serializer.DeserializePayload<TPayload>(rawPayload);
         return specificPayload
             ?? throw new ObsWebSocketException($"Received null or invalid {messageName} payload.");
     }
@@ -2472,8 +2598,14 @@ public sealed partial class ObsWebSocketClient(
         CancellationToken linkedToken
     )
     {
-        IWebSocketConnection? currentWebSocket = _webSocket;
-        if (currentWebSocket is null || currentWebSocket.State != WebSocketState.Open)
+        // Encoded for the socket it goes out on, not the most recently configured format.
+        ObsConnectionContext? connection = _connection;
+        IWebSocketConnection? currentWebSocket = connection?.Transport;
+        if (
+            connection is null
+            || currentWebSocket is null
+            || currentWebSocket.State != WebSocketState.Open
+        )
         {
             throw new InvalidOperationException(
                 $"Cannot send '{opCode}', WebSocket not open or available (State: {currentWebSocket?.State})."
@@ -2488,8 +2620,8 @@ public sealed partial class ObsWebSocketClient(
         byte[] messageBytes;
         try
         {
-            messageBytes = await _serializer
-                .SerializeAsync(message, linkedToken)
+            messageBytes = await connection
+                .Serializer.SerializeAsync(message, linkedToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -2498,7 +2630,7 @@ public sealed partial class ObsWebSocketClient(
             throw new ObsWebSocketException($"Serialization failed for {opCode}.", ex);
         }
 
-        WebSocketMessageType messageType = _serializer.ProtocolSubProtocol.Contains(
+        WebSocketMessageType messageType = connection.Serializer.ProtocolSubProtocol.Contains(
             "json",
             StringComparison.OrdinalIgnoreCase
         )
@@ -2619,7 +2751,7 @@ public sealed partial class ObsWebSocketClient(
     {
         if (
             _connectionState != ConnectionState.Disconnected
-            || _webSocket != null
+            || _connection != null
             || _clientLifetimeCts != null
         )
         {
@@ -2638,13 +2770,7 @@ public sealed partial class ObsWebSocketClient(
 
             try
             {
-                _webSocket?.Abort();
-            }
-            catch { }
-
-            try
-            {
-                _webSocket?.Dispose();
+                _connection?.Close();
             }
             catch { }
         }

@@ -53,6 +53,16 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
     )
     {
         ArgumentNullException.ThrowIfNull(messageStream);
+
+        // Measuring and re-reading on failure both need seeking, so copy once if it cannot.
+        if (!messageStream.CanSeek)
+        {
+            using MemoryStream seekable = new();
+            await messageStream.CopyToAsync(seekable, cancellationToken).ConfigureAwait(false);
+            return await DeserializeAsync(seekable.ToArray(), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         if (messageStream.Length == 0)
         {
             _logger.LogAttemptedToDeserializeAnEmptyMessageStream();
@@ -102,6 +112,64 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         {
             _logger.LogFailedToDeserializeMessageFromStream(ex);
             return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public ValueTask<object?> DeserializeAsync(
+        ReadOnlyMemory<byte> message,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (message.IsEmpty)
+        {
+            _logger.LogAttemptedToDeserializeAnEmptyMessageStream();
+            return ValueTask.FromResult<object?>(null);
+        }
+
+        try
+        {
+            // Utf8JsonReader over the buffer keeps the parse synchronous and copy free.
+            Utf8JsonReader reader = new(message.Span);
+            JsonTypeInfo<IncomingMessage<JsonElement>> typeInfo =
+                (JsonTypeInfo<IncomingMessage<JsonElement>>)
+                    s_options.GetTypeInfo(typeof(IncomingMessage<JsonElement>));
+            IncomingMessage<JsonElement>? parsed = JsonSerializer.Deserialize(ref reader, typeInfo);
+
+            if (parsed is null)
+            {
+                _logger.LogJsonDeserializationResultedInNull();
+                return ValueTask.FromResult<object?>(null);
+            }
+
+            // The payload is read after the document it was parsed from is gone, so it has to
+            // own its data rather than point into that document.
+            IncomingMessage<JsonElement> owned = new(parsed.Op, parsed.D.Clone());
+
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogDeserializedJsonMessageOp(owned.Op);
+            }
+
+            return ValueTask.FromResult<object?>(owned);
+        }
+        catch (JsonException ex)
+        {
+            string rawJson = Encoding.UTF8.GetString(
+                message.Span[..Math.Min(message.Length, 1024)]
+            );
+            _logger.LogJsonDeserializationFailedRawJson(
+                ex,
+                message.Length > 1024 ? rawJson + "..." : rawJson
+            );
+            return ValueTask.FromResult<object?>(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogFailedToDeserializeMessageFromStream(ex);
+            return ValueTask.FromResult<object?>(null);
         }
     }
 
