@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- Reproducibility is delegated to DotNet.ReproducibleBuilds rather than restated here.
          It sets DebugType to embedded (so the portable PDB with its Source Link map travels
@@ -9,7 +9,9 @@
     <TargetFrameworks>net10.0;net9.0;net11.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
+    <!-- Explicit rather than 'latest', which ties accepted syntax to the installed compiler.
+         Extension blocks are used, so the net9.0 default of C# 13 will not compile this. -->
+    <LangVersion>15.0</LangVersion>
     <AssemblyName>ObsWebSocket.Core</AssemblyName>
     <RootNamespace>ObsWebSocket.Core</RootNamespace>
     <PackageId>ObsWebSocket.Core</PackageId>
@@ -114,7 +116,6 @@
     <GenerateObsWebSocketSourcesTask
       ProtocolPath="$(ObsCodegenProtocolPath)"
       OutputDirectory="$(ObsCodegenOutputPath)"
-      DownloadIfMissing="true"
     />
   </Target>
   <Target
@@ -130,7 +131,20 @@
     <GenerateObsWebSocketSourcesTask
       ProtocolPath="$(ObsCodegenProtocolPath)"
       OutputDirectory="$(ObsCodegenOutputPath)"
-      DownloadIfMissing="true"
+    />
+  </Target>
+  <!-- Fetches a new upstream revision, re-pins protocol.lock.json and regenerates. The only
+       target that goes to the network, and must be asked for by name:
+         dotnet build ObsWebSocket.Core -t:RefreshObsProtocol -p:ObsProtocolCommit=<sha> -->
+  <Target Name="RefreshObsProtocol" DependsOnTargets="BuildObsCodegenTask">
+    <Error
+      Condition="'$(ObsProtocolCommit)' == ''"
+      Text="Set ObsProtocolCommit to the upstream obs-websocket commit to refresh to, for example -p:ObsProtocolCommit=bc50ba19b7007c84647bf2afbfac9ac42503fc34."
+    />
+    <GenerateObsWebSocketSourcesTask
+      ProtocolPath="$(ObsCodegenProtocolPath)"
+      OutputDirectory="$(ObsCodegenOutputPath)"
+      RefreshCommit="$(ObsProtocolCommit)"
     />
   </Target>
   <ItemGroup>

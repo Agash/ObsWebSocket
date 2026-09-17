@@ -6,13 +6,10 @@ namespace ObsWebSocket.Codegen.Tasks;
 
 internal static class ProtocolCodegenRunner
 {
-    private const string ProtocolUrl =
-        "https://raw.githubusercontent.com/obsproject/obs-websocket/master/docs/generated/protocol.json";
-
     public static async Task<int> GenerateAsync(
         string protocolPath,
         string outputDirectory,
-        bool downloadIfMissing,
+        string? refreshCommit,
         CancellationToken cancellationToken,
         Action<string>? logInfo = null,
         Action<string>? logWarning = null,
@@ -26,22 +23,49 @@ internal static class ProtocolCodegenRunner
         {
             string fullProtocolPath = Path.GetFullPath(protocolPath);
             string fullOutputDirectory = Path.GetFullPath(outputDirectory);
+            ProtocolLock pinned = ProtocolLock.Read(fullProtocolPath);
+
+            if (!string.IsNullOrEmpty(refreshCommit))
+            {
+                pinned = await RefreshProtocolAsync(
+                        fullProtocolPath,
+                        pinned,
+                        refreshCommit,
+                        cancellationToken,
+                        logInfo
+                    )
+                    .ConfigureAwait(false);
+            }
 
             if (!File.Exists(fullProtocolPath))
             {
-                if (!downloadIfMissing)
-                {
-                    logError?.Invoke($"Protocol file not found: {fullProtocolPath}");
-                    return 2;
-                }
-
-                await DownloadProtocolAsync(fullProtocolPath, cancellationToken)
-                    .ConfigureAwait(false);
-                logInfo?.Invoke($"Downloaded protocol.json to '{fullProtocolPath}'.");
+                // Not downloaded: the generated types are this library's public API, so a build
+                // must derive them from repository content.
+                logError?.Invoke(
+                    $"Protocol definition not found: {fullProtocolPath}. It is checked in, so "
+                        + "restore it from git rather than regenerating it, or run the target "
+                        + "'RefreshObsProtocol' to fetch the pinned revision explicitly."
+                );
+                return 2;
             }
 
-            string protocolJson = await File.ReadAllTextAsync(fullProtocolPath, cancellationToken)
+            byte[] protocolBytes = await ReadAllBytesAsync(fullProtocolPath, cancellationToken)
                 .ConfigureAwait(false);
+            string actualHash = ProtocolLock.HashOf(protocolBytes);
+            if (!string.Equals(actualHash, pinned.Sha256, StringComparison.Ordinal))
+            {
+                logError?.Invoke(
+                    $"'{fullProtocolPath}' does not match the revision pinned in "
+                        + $"{ProtocolLock.FileName}.{Environment.NewLine}"
+                        + $"  expected {pinned.Sha256} (upstream {pinned.Commit}){Environment.NewLine}"
+                        + $"  actual   {actualHash}{Environment.NewLine}"
+                        + "Edit the definition by refreshing it to a new upstream commit, so the "
+                        + "lock records where the generated API came from."
+                );
+                return 2;
+            }
+
+            string protocolJson = Encoding.UTF8.GetString(protocolBytes);
             (IReadOnlyDictionary<string, string> sources, IReadOnlyList<Diagnostic> diagnostics) =
                 ProtocolCodeGenerator.Generate(protocolJson);
 
@@ -89,26 +113,65 @@ internal static class ProtocolCodegenRunner
         }
     }
 
-    private static async Task DownloadProtocolAsync(
+    /// <summary>
+    /// Fetches an upstream revision and re-pins the lock to it. The only path here that touches
+    /// the network, addressed by commit so the lock records exactly what was fetched.
+    /// </summary>
+    private static async Task<ProtocolLock> RefreshProtocolAsync(
         string protocolPath,
+        ProtocolLock pinned,
+        string commit,
+        CancellationToken cancellationToken,
+        Action<string>? logInfo
+    )
+    {
+        ProtocolLock target = pinned with { Commit = commit };
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(protocolPath)!);
+
+        using HttpClient http = new();
+        using HttpResponseMessage response = await http.GetAsync(target.RawUrl, cancellationToken)
+            .ConfigureAwait(false);
+        _ = response.EnsureSuccessStatusCode();
+        byte[] protocolBytes = await response
+            .Content.ReadAsByteArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        string hash = ProtocolLock.HashOf(protocolBytes);
+        await WriteAllBytesAsync(protocolPath, protocolBytes, cancellationToken)
+            .ConfigureAwait(false);
+        pinned.Write(protocolPath, commit, hash);
+
+        logInfo?.Invoke(
+            hash == pinned.Sha256
+                ? $"Protocol definition at {commit} is identical to the pinned revision."
+                : $"Refreshed the protocol definition to {commit} ({hash})."
+        );
+
+        return target with
+        {
+            Sha256 = hash,
+        };
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(
+        string path,
         CancellationToken cancellationToken
     )
     {
-        _ = Directory.CreateDirectory(Path.GetDirectoryName(protocolPath)!);
-        using HttpClient http = new();
-        using HttpResponseMessage response = await http.GetAsync(ProtocolUrl, cancellationToken)
-            .ConfigureAwait(false);
-        _ = response.EnsureSuccessStatusCode();
-        string protocolJson = await response
-            .Content.ReadAsStringAsync(cancellationToken)
-            .ConfigureAwait(false);
-        await File.WriteAllTextAsync(
-                protocolPath,
-                protocolJson,
-                new UTF8Encoding(false),
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        using FileStream stream = File.OpenRead(path);
+        using MemoryStream buffer = new();
+        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        return buffer.ToArray();
+    }
+
+    private static async Task WriteAllBytesAsync(
+        string path,
+        byte[] bytes,
+        CancellationToken cancellationToken
+    )
+    {
+        using FileStream stream = File.Create(path);
+        await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
     }
 
     private static void WriteSources(

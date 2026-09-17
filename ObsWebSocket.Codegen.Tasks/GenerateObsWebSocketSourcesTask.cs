@@ -10,7 +10,14 @@ public sealed class GenerateObsWebSocketSourcesTask : Microsoft.Build.Utilities.
     [Required]
     public string OutputDirectory { get; set; } = string.Empty;
 
-    public bool DownloadIfMissing { get; set; }
+    /// <summary>
+    /// An upstream commit to refresh the checked-in protocol definition to before generating.
+    /// </summary>
+    /// <remarks>
+    /// Empty for every ordinary build, which then generates purely from repository content. Set
+    /// only by an explicit refresh, so the network is never a silent build input.
+    /// </remarks>
+    public string RefreshCommit { get; set; } = string.Empty;
 
     public override bool Execute()
     {
@@ -18,7 +25,7 @@ public sealed class GenerateObsWebSocketSourcesTask : Microsoft.Build.Utilities.
             .GenerateAsync(
                 protocolPath: ProtocolPath,
                 outputDirectory: OutputDirectory,
-                downloadIfMissing: DownloadIfMissing,
+                refreshCommit: RefreshCommit,
                 cancellationToken: CancellationToken.None,
                 logInfo: message => Log.LogMessage(MessageImportance.High, message),
                 logWarning: message => Log.LogWarning(message),
