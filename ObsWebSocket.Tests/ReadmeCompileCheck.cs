@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Events.Generated;
 using ObsWebSocket.Core.Protocol;
@@ -7,6 +9,7 @@ using ObsWebSocket.Core.Protocol.Common.InputSettings;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
+using ObsWebSocket.Core.Serialization;
 
 namespace ObsWebSocket.Tests;
 
@@ -586,5 +589,25 @@ internal static class ReadmeCompileCheck
             _ = $"{ex.RequestType} failed with {(int?)ex.StatusCode}: {ex.Comment}";
         }
         catch (ObsWebSocketTimeoutException) { }
+    }
+
+    internal static async Task WithoutDependencyInjectionAsync(ILoggerFactory loggerFactory)
+    {
+        await using ObsWebSocketClient client = new(
+            loggerFactory.CreateLogger<ObsWebSocketClient>(),
+            format =>
+                format is SerializationFormat.MsgPack
+                    ? new MsgPackMessageSerializer(
+                        loggerFactory.CreateLogger<MsgPackMessageSerializer>()
+                    )
+                    : new JsonMessageSerializer(
+                        loggerFactory.CreateLogger<JsonMessageSerializer>()
+                    ),
+            Options.Create(
+                new ObsWebSocketClientOptions { ServerUri = new Uri("ws://localhost:4455") }
+            )
+        );
+
+        await client.ConnectAsync();
     }
 }

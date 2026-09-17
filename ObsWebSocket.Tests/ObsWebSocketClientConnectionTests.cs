@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Microsoft.Extensions.Time.Testing;
@@ -172,23 +172,18 @@ public class ObsWebSocketClientConnectionTests
 
         // Mock Serializer
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
             .Returns(
-                (Stream stream, CancellationToken ct) =>
+                (ReadOnlyMemory<byte> message, CancellationToken ct) =>
                 {
-                    byte[] receivedBytes;
-                    using (MemoryStream ms = new())
-                    {
-                        stream.CopyTo(ms);
-                        receivedBytes = ms.ToArray();
-                    }
-
-                    stream.Position = 0; // Reset stream for potential re-read by logger etc.
-                    return receivedBytes.SequenceEqual(helloBytes)
-                            ? Task.FromResult<object?>(helloMsg)
-                        : receivedBytes.SequenceEqual(identifiedBytes)
-                            ? Task.FromResult<object?>(identifiedMsg)
-                        : Task.FromResult<object?>(null);
+                    byte[] receivedBytes = message.ToArray();
+                    return ValueTask.FromResult<object?>(
+                        receivedBytes.SequenceEqual(helloBytes) ? helloMsg
+                        : receivedBytes.SequenceEqual(identifiedBytes) ? identifiedMsg
+                        : null
+                    );
                 }
             );
         SetupHandshakePayloadDeserialization(mockSerializer, helloPayload, identifiedPayload);
@@ -315,7 +310,8 @@ public class ObsWebSocketClientConnectionTests
             Times.AtLeast(2) // Expect Hello, Identified, then block
         );
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2) // Hello, Identified
         );
 
@@ -463,21 +459,19 @@ public class ObsWebSocketClientConnectionTests
 
         // Mock Serializer
         _ = mockSerializer
-            .Setup(s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-                (Stream stream, CancellationToken ct) =>
-                {
-                    if (receiveCallCount == 1)
-                    {
-                        stream.Position = 0;
-                        return JsonSerializer.Deserialize<IncomingMessage<JsonElement>>(
-                            stream,
-                            TestUtils.s_jsonSerializerOptions
-                        );
-                    }
-
-                    return null;
-                }
+            .Setup(s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>())
+            )
+            .Returns(
+                (ReadOnlyMemory<byte> message, CancellationToken ct) =>
+                    ValueTask.FromResult<object?>(
+                        receiveCallCount == 1
+                            ? JsonSerializer.Deserialize<IncomingMessage<JsonElement>>(
+                                message.Span,
+                                TestUtils.s_jsonSerializerOptions
+                            )
+                            : null
+                    )
             );
         SetupHandshakePayloadDeserialization(
             mockSerializer,
@@ -531,7 +525,8 @@ public class ObsWebSocketClientConnectionTests
         );
         mockFactory.Verify(f => f.CreateConnection(), Times.Once());
         mockSerializer.Verify(
-            s => s.DeserializeAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()),
+            s =>
+                s.DeserializeAsync(It.IsAny<ReadOnlyMemory<byte>>(), It.IsAny<CancellationToken>()),
             Times.Once() // Only called for the Hello message
         );
         mockSerializer.Verify(

@@ -96,8 +96,9 @@ public class ObsWebSocketDiTests
 
         // Check the serializer injected into the client instance
         Assert.IsNotNull(resolvedClient);
-        IWebSocketMessageSerializer? injectedSerializer =
-            TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
+        IWebSocketMessageSerializer? injectedSerializer = TestUtils
+            .GetPrivateField<ObsSerializerFactory>(resolvedClient, "_serializerFactory")
+            ?.Invoke(SerializationFormat.Json);
         Assert.IsNotNull(injectedSerializer);
         _ = Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.json", injectedSerializer.ProtocolSubProtocol);
@@ -127,8 +128,9 @@ public class ObsWebSocketDiTests
         Assert.IsNotNull(resolvedSerializer);
         _ = Assert.IsInstanceOfType<JsonMessageSerializer>(resolvedSerializer);
         Assert.IsNotNull(resolvedClient);
-        IWebSocketMessageSerializer? injectedSerializer =
-            TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
+        IWebSocketMessageSerializer? injectedSerializer = TestUtils
+            .GetPrivateField<ObsSerializerFactory>(resolvedClient, "_serializerFactory")
+            ?.Invoke(SerializationFormat.Json);
         Assert.IsNotNull(injectedSerializer);
         _ = Assert.IsInstanceOfType<JsonMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.json", injectedSerializer.ProtocolSubProtocol);
@@ -158,8 +160,9 @@ public class ObsWebSocketDiTests
         Assert.IsNotNull(resolvedSerializer);
         _ = Assert.IsInstanceOfType<MsgPackMessageSerializer>(resolvedSerializer);
         Assert.IsNotNull(resolvedClient);
-        IWebSocketMessageSerializer? injectedSerializer =
-            TestUtils.GetPrivateField<IWebSocketMessageSerializer>(resolvedClient, "_serializer");
+        IWebSocketMessageSerializer? injectedSerializer = TestUtils
+            .GetPrivateField<ObsSerializerFactory>(resolvedClient, "_serializerFactory")
+            ?.Invoke(SerializationFormat.MsgPack);
         Assert.IsNotNull(injectedSerializer);
         _ = Assert.IsInstanceOfType<MsgPackMessageSerializer>(injectedSerializer);
         Assert.AreEqual("obswebsocket.msgpack", injectedSerializer.ProtocolSubProtocol);
