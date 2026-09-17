@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -41,63 +41,49 @@ public static class ObsWebSocketServiceCollectionExtensions
             _ = optionsBuilder.Configure(configureOptions);
         }
 
-        services.TryAddSingleton<JsonMessageSerializer>();
-        services.TryAddSingleton<MsgPackMessageSerializer>();
+        AddSharedServices(services);
 
-        // This factory determines which concrete serializer to use based on options.
+        // For callers resolving a serializer directly; the client uses the factory per connection.
         _ = services.AddSingleton<IWebSocketMessageSerializer>(sp =>
-        {
-            ObsWebSocketClientOptions options = sp.GetRequiredService<
-                IOptions<ObsWebSocketClientOptions>
-            >().Value;
-            return options.Format switch
-            {
-                SerializationFormat.MsgPack => sp.GetRequiredService<MsgPackMessageSerializer>(),
-                SerializationFormat.Json or _ => sp.GetRequiredService<JsonMessageSerializer>(), // Default to JSON
-            };
-        });
-
-        services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
-
-        services.TryAddSingleton(TimeProvider.System);
+            sp.GetRequiredService<ObsSerializerFactory>()(
+                sp.GetRequiredService<IOptions<ObsWebSocketClientOptions>>().Value.Format
+            )
+        );
 
         // Resolve options through the monitor, so a configuration change is picked up rather
         // than the values captured when the container was built.
         _ = services.AddSingleton<IOptions<ObsWebSocketClientOptions>>(
             sp => new MonitorBackedOptions(
-                sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>()
+                sp.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>(),
+                name: null
             )
         );
+
+        services.TryAddSingleton(sp => Create(sp, name: null));
+
+        return new ObsWebSocketClientBuilder(services, name: null);
+    }
+
+    /// <summary>Registers what every client needs, named or not.</summary>
+    /// <remarks>Shared so the named and unnamed registration paths cannot drift.</remarks>
+    private static void AddSharedServices(IServiceCollection services)
+    {
+        services.TryAddSingleton<JsonMessageSerializer>();
+        services.TryAddSingleton<MsgPackMessageSerializer>();
+        services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
+        services.TryAddSingleton(TimeProvider.System);
         _ = services.AddMetrics();
         services.TryAddSingleton<ObsWebSocketMetrics>();
 
-        services.TryAddSingleton(sp =>
-        {
-            ILogger<ObsWebSocketClient> logger = sp.GetRequiredService<
-                ILogger<ObsWebSocketClient>
-            >();
-            IWebSocketMessageSerializer serializer =
-                sp.GetRequiredService<IWebSocketMessageSerializer>();
-            IOptions<ObsWebSocketClientOptions> options = sp.GetRequiredService<
-                IOptions<ObsWebSocketClientOptions>
-            >();
-            IWebSocketConnectionFactory factory =
-                sp.GetRequiredService<IWebSocketConnectionFactory>();
-
-            TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
-
-            // Pass dependencies to the constructor
-            return new ObsWebSocketClient(
-                logger,
-                serializer,
-                options,
-                factory,
-                timeProvider,
-                sp.GetRequiredService<ObsWebSocketMetrics>()
-            );
-        });
-
-        return new ObsWebSocketClientBuilder(services, name: null);
+        services.TryAddSingleton<ObsSerializerFactory>(sp =>
+            format =>
+                format switch
+                {
+                    SerializationFormat.MsgPack =>
+                        sp.GetRequiredService<MsgPackMessageSerializer>(),
+                    SerializationFormat.Json or _ => sp.GetRequiredService<JsonMessageSerializer>(),
+                }
+        );
     }
 
     /// <summary>
@@ -134,49 +120,50 @@ public static class ObsWebSocketServiceCollectionExtensions
             _ = optionsBuilder.Configure(configureOptions);
         }
 
-        services.TryAddSingleton<JsonMessageSerializer>();
-        services.TryAddSingleton<MsgPackMessageSerializer>();
-        services.TryAddSingleton<IWebSocketConnectionFactory, WebSocketConnectionFactory>();
-        services.TryAddSingleton(TimeProvider.System);
+        AddSharedServices(services);
 
-        _ = services.AddKeyedSingleton(
-            name,
-            (sp, key) =>
-            {
-                ObsWebSocketClientOptions options = sp.GetRequiredService<
-                    IOptionsMonitor<ObsWebSocketClientOptions>
-                >()
-                    .Get((string)key!);
-
-                IWebSocketMessageSerializer serializer = options.Format switch
-                {
-                    SerializationFormat.MsgPack =>
-                        sp.GetRequiredService<MsgPackMessageSerializer>(),
-                    SerializationFormat.Json or _ => sp.GetRequiredService<JsonMessageSerializer>(),
-                };
-
-                return new ObsWebSocketClient(
-                    sp.GetRequiredService<ILogger<ObsWebSocketClient>>(),
-                    serializer,
-                    Options.Create(options),
-                    sp.GetRequiredService<IWebSocketConnectionFactory>(),
-                    sp.GetRequiredService<TimeProvider>(),
-                    sp.GetRequiredService<ObsWebSocketMetrics>()
-                );
-            }
-        );
+        _ = services.AddKeyedSingleton(name, (sp, key) => Create(sp, (string)key!));
 
         return new ObsWebSocketClientBuilder(services, name);
+    }
+
+    /// <summary>
+    /// Builds a client for one registration, named or not.
+    /// </summary>
+    /// <param name="services">The provider to resolve from.</param>
+    /// <param name="name">The client's key, or <see langword="null"/> for the unnamed client.</param>
+    private static ObsWebSocketClient Create(IServiceProvider services, string? name)
+    {
+        MonitorBackedOptions options = new(
+            services.GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>(),
+            name
+        );
+
+        // Surfaces misconfiguration at resolve rather than on the first connect. Does not
+        // freeze anything; the client goes on reading the monitor per call.
+        _ = options.Value;
+
+        return new ObsWebSocketClient(
+            services.GetRequiredService<ILogger<ObsWebSocketClient>>(),
+            services.GetRequiredService<ObsSerializerFactory>(),
+            options,
+            services.GetRequiredService<IWebSocketConnectionFactory>(),
+            services.GetRequiredService<TimeProvider>(),
+            services.GetRequiredService<ObsWebSocketMetrics>()
+        );
     }
 }
 
 /// <summary>
-/// Presents the current monitored value as <see cref="IOptions{T}"/>.
+/// Presents one client's current monitored options as <see cref="IOptions{T}"/>.
 /// </summary>
 /// <param name="monitor">The monitor to read from.</param>
-internal sealed class MonitorBackedOptions(IOptionsMonitor<ObsWebSocketClientOptions> monitor)
-    : IOptions<ObsWebSocketClientOptions>
+/// <param name="name">The client's key, or <see langword="null"/> for the unnamed client.</param>
+internal sealed class MonitorBackedOptions(
+    IOptionsMonitor<ObsWebSocketClientOptions> monitor,
+    string? name
+) : IOptions<ObsWebSocketClientOptions>
 {
     /// <inheritdoc/>
-    public ObsWebSocketClientOptions Value => monitor.CurrentValue;
+    public ObsWebSocketClientOptions Value => monitor.Get(name ?? Options.DefaultName);
 }

@@ -22,18 +22,30 @@ public sealed class ObsWebSocketMetrics : IDisposable
         ArgumentNullException.ThrowIfNull(meterFactory);
         _meter = meterFactory.Create(ObsWebSocketDiagnostics.MeterName);
         _ownsMeter = false;
-        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(
-            _meter
-        );
+        (
+            RequestsSent,
+            RequestsFailed,
+            RequestDuration,
+            EventsReceived,
+            Reconnects,
+            EventsDropped,
+            MessagesDropped
+        ) = Create(_meter);
     }
 
     private ObsWebSocketMetrics()
     {
         _meter = new Meter(ObsWebSocketDiagnostics.MeterName);
         _ownsMeter = true;
-        (RequestsSent, RequestsFailed, RequestDuration, EventsReceived, Reconnects) = Create(
-            _meter
-        );
+        (
+            RequestsSent,
+            RequestsFailed,
+            RequestDuration,
+            EventsReceived,
+            Reconnects,
+            EventsDropped,
+            MessagesDropped
+        ) = Create(_meter);
     }
 
     /// <summary>Instruments for a client built outside dependency injection.</summary>
@@ -54,6 +66,25 @@ public sealed class ObsWebSocketMetrics : IDisposable
     /// <summary>Reconnection attempts.</summary>
     public Counter<long> Reconnects { get; }
 
+    /// <summary>
+    /// Events dropped because a stream's consumer fell behind, tagged by event type.
+    /// </summary>
+    /// <remarks>
+    /// Streams drop the oldest event when full so a slow consumer cannot stall the receive loop.
+    /// Without this counter the only evidence is an event that never arrived.
+    /// </remarks>
+    public Counter<long> EventsDropped { get; }
+
+    /// <summary>
+    /// Inbound messages discarded without being dispatched, tagged by reason.
+    /// </summary>
+    /// <remarks>
+    /// The receive loop tolerates a message it cannot read, so a newer OBS cannot tear the
+    /// connection down. A malformed frame is indistinguishable from a forward-compatible one, so
+    /// this separates a quiet connection from one that is discarding traffic.
+    /// </remarks>
+    public Counter<long> MessagesDropped { get; }
+
     /// <inheritdoc/>
     public void Dispose()
     {
@@ -68,7 +99,9 @@ public sealed class ObsWebSocketMetrics : IDisposable
         Counter<long> Failed,
         Histogram<double> Duration,
         Counter<long> Events,
-        Counter<long> Reconnects
+        Counter<long> Reconnects,
+        Counter<long> EventsDropped,
+        Counter<long> MessagesDropped
     ) Create(Meter meter) =>
         (
             meter.CreateCounter<long>(
@@ -95,6 +128,16 @@ public sealed class ObsWebSocketMetrics : IDisposable
                 "obsws.reconnects",
                 unit: "{attempt}",
                 description: "Reconnection attempts."
+            ),
+            meter.CreateCounter<long>(
+                "obsws.events.dropped",
+                unit: "{event}",
+                description: "Events dropped because an event stream's consumer fell behind."
+            ),
+            meter.CreateCounter<long>(
+                "obsws.messages.dropped",
+                unit: "{message}",
+                description: "Inbound messages discarded without being dispatched."
             )
         );
 }

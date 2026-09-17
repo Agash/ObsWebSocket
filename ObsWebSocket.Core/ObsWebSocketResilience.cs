@@ -57,11 +57,32 @@ public static class ObsWebSocketResilience
     internal static RetryStrategyOptions CreateRetryOptions(ObsWebSocketClientOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+        return CreateRetryOptions(
+            options.ReconnectBackoffMultiplier,
+            options.InitialReconnectDelayMs,
+            options.MaxReconnectDelayMs
+        );
+    }
 
-        double multiplier =
-            options.ReconnectBackoffMultiplier > 1.0 ? options.ReconnectBackoffMultiplier : 1.0;
-        double initialMs = options.InitialReconnectDelayMs;
-        double maxMs = Math.Max(options.MaxReconnectDelayMs, initialMs);
+    /// <summary>
+    /// Builds the retry strategy from the three values that describe the backoff curve.
+    /// </summary>
+    /// <remarks>
+    /// Taken as values rather than as an options object so that a live connection can build its
+    /// strategy from the settings it was established with, which do not change underneath it.
+    /// </remarks>
+    /// <param name="backoffMultiplier">Growth applied per attempt.</param>
+    /// <param name="initialDelayMs">Delay before the first retry.</param>
+    /// <param name="maxDelayMs">Ceiling on the delay.</param>
+    internal static RetryStrategyOptions CreateRetryOptions(
+        double backoffMultiplier,
+        int initialDelayMs,
+        int maxDelayMs
+    )
+    {
+        double multiplier = backoffMultiplier > 1.0 ? backoffMultiplier : 1.0;
+        double initialMs = initialDelayMs;
+        double maxMs = Math.Max(maxDelayMs, initialMs);
 
         return new RetryStrategyOptions
         {

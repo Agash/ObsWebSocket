@@ -73,4 +73,25 @@ public sealed class ObsWebSocketClientOptions
     /// Defaults to 60000ms (1 minute).
     /// </summary>
     public int MaxReconnectDelayMs { get; set; } = 60000;
+
+    /// <summary>
+    /// Gets or sets the largest inbound message the client will assemble, in bytes.
+    /// Defaults to <see cref="ObsWebSocketClient.DefaultMaxIncomingMessageBytes"/> (64 MiB).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A WebSocket message arrives as any number of fragments and its size is only known once the
+    /// last one has been read, so without a ceiling the client will assemble whatever it is sent.
+    /// The receive loop stops before appending the fragment that would cross this limit, and the
+    /// connection fails with <see cref="ObsWebSocketMessageTooLargeException"/> instead of growing.
+    /// </para>
+    /// <para>
+    /// The default is generous because legitimate responses are large: a
+    /// <c>GetSourceScreenshot</c> of a 4K canvas is a base64 data URI of several megabytes, and a
+    /// big scene collection's item list is not small either. Size it to the largest response the
+    /// application actually asks OBS for, not to the receive buffer.
+    /// </para>
+    /// </remarks>
+    public int MaxIncomingMessageBytes { get; set; } =
+        ObsWebSocketClient.DefaultMaxIncomingMessageBytes;
 }

@@ -1,4 +1,4 @@
-﻿using ObsWebSocket.Core.Protocol;
+using ObsWebSocket.Core.Protocol;
 
 namespace ObsWebSocket.Core.Serialization;
 
@@ -38,6 +38,46 @@ public interface IWebSocketMessageSerializer
         Stream messageStream,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Deserializes an incoming message that has already been assembled in memory.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the shape the WebSocket transport actually produces: the receive loop reassembles
+    /// a message's fragments into one contiguous buffer before anything can be parsed, because
+    /// the envelope is not readable until the last fragment has arrived. Handing that buffer
+    /// straight to the serializer avoids wrapping it in a stream only for the serializer to copy
+    /// it back out again, which on the MessagePack path meant three full copies of every message
+    /// before a single byte was decoded.
+    /// </para>
+    /// <para>
+    /// The default implementation adapts to <see cref="DeserializeAsync(Stream, CancellationToken)"/>,
+    /// so an existing serializer outside this library keeps working; the two built in override it.
+    /// </para>
+    /// </remarks>
+    /// <param name="message">The complete message.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The deserialized message, or <see langword="null"/> if it could not be read.</returns>
+    ValueTask<object?> DeserializeAsync(
+        ReadOnlyMemory<byte> message,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return Adapt(this, message, cancellationToken);
+
+        static async ValueTask<object?> Adapt(
+            IWebSocketMessageSerializer serializer,
+            ReadOnlyMemory<byte> message,
+            CancellationToken cancellationToken
+        )
+        {
+            using MemoryStream stream = new(message.ToArray(), writable: false);
+            return await serializer
+                .DeserializeAsync(stream, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
 
     /// <summary>
     /// Deserializes the raw payload data (e.g., JsonElement, object from MessagePack) into a

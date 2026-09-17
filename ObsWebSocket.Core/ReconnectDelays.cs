@@ -32,6 +32,20 @@ internal sealed class ReconnectDelays
         _fixedDelay = TimeSpan.FromMilliseconds(options.InitialReconnectDelayMs);
     }
 
+    /// <summary>Initializes delays for a connection's captured settings.</summary>
+    /// <param name="settings">The settings the connection was established with.</param>
+    public ReconnectDelays(Networking.ObsConnectionSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        _strategy = ObsWebSocketResilience.CreateRetryOptions(
+            settings.ReconnectBackoffMultiplier,
+            settings.InitialReconnectDelayMs,
+            settings.MaxReconnectDelayMs
+        );
+        _fixedDelay = TimeSpan.FromMilliseconds(settings.InitialReconnectDelayMs);
+    }
+
     /// <summary>Delays for a client with no configured backoff.</summary>
     public static ReconnectDelays Disabled { get; } = new();
 

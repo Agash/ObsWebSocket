@@ -1,9 +1,11 @@
+using System.Threading.Channels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ObsWebSocket.Core.Networking;
 
 namespace ObsWebSocket.Core;
 
@@ -21,14 +23,31 @@ internal sealed class ObsWebSocketConnectionService(
     string? name = null
 ) : IHostedService, IDisposable
 {
+    private readonly CancellationTokenSource _stopping = new();
+
+    /// <summary>Pending configuration change; only the newest matters.</summary>
+    private readonly Channel<ObsConnectionSettings> _pending =
+        Channel.CreateBounded<ObsConnectionSettings>(
+            new BoundedChannelOptions(1)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+                SingleWriter = false,
+            }
+        );
+
     private IDisposable? _optionsWatch;
-    private (Uri? Uri, string? Password, SerializationFormat Format) _connectedWith;
+    private Task? _transitions;
+    private ObsConnectionSettings? _connectedWith;
 
     private string OptionsName => name ?? Options.DefaultName;
 
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Before the watch, so a change during startup is not dropped.
+        _transitions = Task.Run(ProcessTransitionsAsync, CancellationToken.None);
+
         _optionsWatch = options.OnChange(
             (updated, changedName) =>
             {
@@ -50,8 +69,7 @@ internal sealed class ObsWebSocketConnectionService(
 
     private async Task ConnectAsync(CancellationToken cancellationToken)
     {
-        ObsWebSocketClientOptions current = options.Get(OptionsName);
-        _connectedWith = (current.ServerUri, current.Password, current.Format);
+        _connectedWith = ObsConnectionSettings.Capture(options.Get(OptionsName));
 
         try
         {
@@ -68,17 +86,10 @@ internal sealed class ObsWebSocketConnectionService(
         }
     }
 
-    /// <summary>
-    /// Reconnects when the endpoint changes. Timeouts and reconnect settings are read per call,
-    /// so only the things fixed at connection time are worth cycling the connection for.
-    /// </summary>
+    /// <summary>Queues a reconnect when something the connection is built from changes.</summary>
     private void OnOptionsChanged(ObsWebSocketClientOptions updated)
     {
-        if (
-            updated.ServerUri == _connectedWith.Uri
-            && updated.Password == _connectedWith.Password
-            && updated.Format == _connectedWith.Format
-        )
+        if (updated.ServerUri is null || _connectedWith?.RequiresNewConnection(updated) is not true)
         {
             return;
         }
@@ -88,30 +99,64 @@ internal sealed class ObsWebSocketConnectionService(
             updated.ServerUri
         );
 
-        _ = Task.Run(async () =>
+        _ = _pending.Writer.TryWrite(ObsConnectionSettings.Capture(updated));
+    }
+
+    /// <summary>Applies queued configuration changes, one at a time, until the host stops.</summary>
+    /// <remarks>One reader, awaited by <see cref="StopAsync"/>, so transitions cannot overlap or
+    /// outlive shutdown.</remarks>
+    private async Task ProcessTransitionsAsync()
+    {
+        try
         {
-            try
+            await foreach (
+                ObsConnectionSettings _ in _pending
+                    .Reader.ReadAllAsync(_stopping.Token)
+                    .ConfigureAwait(false)
+            )
             {
-                if (client.IsConnected)
+                try
                 {
                     await client.DisconnectAsync().ConfigureAwait(false);
+                    await ConnectAsync(_stopping.Token).ConfigureAwait(false);
                 }
-
-                await ConnectAsync(CancellationToken.None).ConfigureAwait(false);
+                catch (Exception ex)
+                    when (ex is ObsWebSocketException or OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Reconnect after a settings change did not succeed.");
+                }
             }
-            catch (Exception ex) when (ex is ObsWebSocketException or OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Reconnect after a settings change did not succeed.");
-            }
-        });
+        }
+        catch (OperationCanceledException)
+        {
+            // The host is stopping.
+        }
     }
 
     /// <inheritdoc/>
-    public void Dispose() => _optionsWatch?.Dispose();
+    public void Dispose()
+    {
+        _optionsWatch?.Dispose();
+        _stopping.Dispose();
+    }
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        // Stop accepting changes before draining.
+        _optionsWatch?.Dispose();
+        _optionsWatch = null;
+        _ = _pending.Writer.TryComplete();
+
+        await _stopping.CancelAsync().ConfigureAwait(false);
+
+        if (_transitions is { } transitions)
+        {
+            // Awaited so an in-flight reconnect cannot outlive shutdown.
+            await transitions.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            _transitions = null;
+        }
+
         if (client.IsConnected)
         {
             await client
