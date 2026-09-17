@@ -1,0 +1,11 @@
+{
+  "$comment": [
+    "Pins the upstream revision protocol.json was taken from. The build verifies sha256 and never",
+    "reaches the network; only an explicit refresh does, and it rewrites this file:",
+    "  dotnet build ObsWebSocket.Core -t:RefreshObsProtocol -p:ObsProtocolCommit=<sha>"
+  ],
+  "repository": "https://github.com/obsproject/obs-websocket",
+  "path": "docs/generated/protocol.json",
+  "commit": "bc50ba19b7007c84647bf2afbfac9ac42503fc34",
+  "sha256": "042e8c42da2dfd6d78fa0f695b2b59495d8254d5fe718b0f20d0e2e6f58a6993"
+}

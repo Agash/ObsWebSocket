@@ -4,6 +4,17 @@
 * text=auto
 
 ###############################################################################
+# The protocol definition is hashed, not just read.
+#
+# protocol.lock.json records a SHA-256 of protocol.json's bytes and the build
+# verifies it. Under `* text=auto` a Windows checkout would rewrite the line
+# endings and every fresh clone would fail that check, so these two are kept
+# byte for byte as committed.
+###############################################################################
+protocol.json      -text
+protocol.lock.json -text
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by
