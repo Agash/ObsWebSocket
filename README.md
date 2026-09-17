@@ -7,7 +7,8 @@ integration.
 [![NuGet Version](https://img.shields.io/nuget/v/ObsWebSocket.Core.svg?style=flat-square&logo=nuget&logoColor=white)](https://www.nuget.org/packages/ObsWebSocket.Core/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-Targets `net11.0`, `net10.0` and `net9.0`.
+Targets `net11.0`, `net10.0` and `net9.0`. The `net11.0` target is built against a .NET 11 preview
+SDK until .NET 11 is released; `net10.0` and `net9.0` carry no preview dependency.
 
 ## Install
 
@@ -15,8 +16,21 @@ Targets `net11.0`, `net10.0` and `net9.0`.
 dotnet add package ObsWebSocket.Core
 ```
 
-Requires OBS Studio 28 or newer with obs-websocket v5. Enable the server under
-*Tools > WebSocket Server Settings*.
+The package is pre-1.0 and currently published as a prerelease, so `--prerelease` is needed to
+install it and the public surface can still change between versions.
+
+Enable the server under *Tools > WebSocket Server Settings*.
+
+Two different compatibility claims are worth separating:
+
+- **Base protocol**: OBS Studio 28 or newer, which is where obs-websocket v5 arrived. Connecting,
+  identifying, events and the long-standing requests work against any of those.
+- **Full generated surface**: the request and event types are generated from a pinned upstream
+  protocol definition, recorded in [`protocol.lock.json`](protocol.lock.json). It includes requests
+  added well after v5 shipped, such as `GetCanvasList`. Calling one against an older OBS returns a
+  protocol error from the server rather than failing at compile time.
+
+Validation runs against the current OBS release; see [Example app](#example-app).
 
 ## Quick start
 
@@ -532,8 +546,12 @@ The password can travel in the connection string or be set on the options; eithe
 OBS is often started after the application, and reconnect takes over.
 
 Options are read through `IOptionsMonitor`, so configuration changes take effect without a restart.
-Timeouts and reconnect settings apply to the next call that uses them. Changing the endpoint,
-password or transport reconnects.
+This holds for a named client as much as for the unnamed one.
+
+Options divide in two. Timeouts and reconnect settings are read per call and apply to the next call
+that uses them. The endpoint, password, wire format and event subscriptions are fixed for the life
+of a connection, because the sub-protocol is agreed during the handshake and the serializer has to
+match it; changing any of them reconnects, and the new connection is built for the new format.
 
 To configure in code instead:
 
@@ -596,6 +614,41 @@ catch (ObsWebSocketRequestException ex) when (ex.StatusCode is RequestStatusCode
 `ObsWebSocketSerializationException` covers payloads that cannot be written or read. All three
 derive from `ObsWebSocketException`.
 
+## Connection lifetime
+
+The socket, its serializer, the settings it was established with, its cancellation and its handshake
+state are one unit, replaced together. That gives three guarantees:
+
+- The serializer is chosen when the connection is established, so changing `Format` never leaves a
+  reconnected socket speaking the old wire format.
+- A reconnect replaces everything, and the previous receive loop finishes before the next starts.
+- Disposal or a reconnect cancels the connection's token, so pending requests fail rather than wait
+  for a reply that cannot arrive.
+
+`IsConnected`, `NegotiatedRpcVersion` and `CurrentEventSubscriptions` describe the live connection;
+the `Connecting`, `Connected`, `Disconnected`, `ConnectionFailed` and `AuthenticationFailure` events
+mark the transitions.
+
+### Without dependency injection
+
+The constructor takes a factory rather than a serializer, since the format is a per-connection
+decision:
+
+```csharp
+await using ObsWebSocketClient client = new(
+    loggerFactory.CreateLogger<ObsWebSocketClient>(),
+    format => format is SerializationFormat.MsgPack
+        ? new MsgPackMessageSerializer(loggerFactory.CreateLogger<MsgPackMessageSerializer>())
+        : new JsonMessageSerializer(loggerFactory.CreateLogger<JsonMessageSerializer>()),
+    Options.Create(new ObsWebSocketClientOptions { ServerUri = new Uri("ws://localhost:4455") }));
+
+await client.ConnectAsync();
+```
+
+To pin one format for the client's lifetime, ignore the argument: `_ => serializer`.
+
+`AddObsWebSocketClient` does this for you, so nothing changes if you register through DI.
+
 ## Reconnect
 
 Reconnect delays grow by `ReconnectBackoffMultiplier`, are capped at `MaxReconnectDelayMs`, and
@@ -625,17 +678,43 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(m => m.AddMeter(ObsWebSocketDiagnostics.MeterName));
 ```
 
-One activity per request, and one per batch rather than per item. Counters cover requests sent,
-requests failed, events received and reconnect attempts, plus a request duration histogram.
-Instruments are created from `IMeterFactory`.
+One activity per request, and one per batch rather than per item. Instruments are created from
+`IMeterFactory`:
+
+| Instrument | What it records |
+| --- | --- |
+| `obsws.requests.sent` | Requests sent, tagged by request type. |
+| `obsws.requests.failed` | Requests OBS rejected, or that timed out. |
+| `obsws.request.duration` | Time from sending a request to its response. |
+| `obsws.events.received` | Events received, tagged by event type. |
+| `obsws.reconnects` | Reconnection attempts. |
+| `obsws.events.dropped` | Events discarded because an event stream's consumer fell behind. |
+| `obsws.messages.dropped` | Inbound messages discarded without being dispatched. |
+
+The last two are worth wiring up if you rely on events: streams drop the oldest event when full, and
+the receive loop ignores a message it cannot read. Both are deliberate and otherwise invisible.
 
 Timeouts and reconnect delays run on an injectable `TimeProvider`, so tests can drive them with
 `FakeTimeProvider`.
 
+## Limits
+
+`MaxIncomingMessageBytes` caps how large a single inbound message may grow, and defaults to 64 MiB.
+A WebSocket message arrives as any number of fragments and its size is only known once the last one
+has been read, so without a ceiling the client assembles whatever it is sent. Crossing the limit
+fails the connection with `ObsWebSocketMessageTooLargeException` rather than continuing to allocate.
+
+Size it to the largest response you actually ask OBS for, not to the receive buffer: a
+`GetSourceScreenshot` of a 4K canvas is a base64 data URI several megabytes long.
+
 ## Serialization
 
-JSON and MessagePack are both supported, selected with `Format`. Everything in this document behaves
-the same on either.
+JSON and MessagePack are both supported, selected with `Format`. The serializer is chosen per
+connection, so changing `Format` at runtime negotiates the new sub-protocol on the next connection.
+
+Everything in this document behaves the same on either. That is a design goal rather than a
+guarantee the compiler can make, which is why both are exercised against a real OBS on every change
+rather than only under unit tests.
 
 ## Example app
 
@@ -649,11 +728,31 @@ The validation run covers the settings helpers, event streams, `WaitForEventAsyn
 builder, the raw path, typed enums, screenshots and handles. It also calls every read request and
 every safely sendable write request, and fails on any response it cannot deserialize.
 
+It is a single self-contained command, prints a verdict and exits non-zero if any check failed, so
+it can be run by hand or used as a gate. Point it at an OBS with configuration, environment
+variables or command-line arguments, in that order of precedence:
+
+```bash
+Obs__ServerUri=ws://localhost:4455 Obs__Password=secret \
+  dotnet run --project ObsWebSocket.Example -- run-transport-tests
+```
+
+The `Live OBS validation` workflow runs exactly this against an OBS it installs and starts itself.
+
 ## Native AOT
+
+The library is built for AOT: the protocol path is source-generated JSON with no reflection
+fallback, option validation is hand written rather than DataAnnotations-based, and
+`IsAotCompatible` is set for every compatible target.
 
 ```bash
 dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj -c Release -r win-x64 --self-contained true
 ```
+
+CI publishes this sample for `linux-x64` and `win-x64` and fails on any trimming or AOT warning
+raised outside MessagePack, which resolves formatters reflectively and accounts for all of them
+today. Those are the warnings you will see if you publish AOT with MessagePack; `ObsWebSocket.Core`
+contributes none.
 
 ## Contributing
 
