@@ -24,21 +24,21 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: recursive
 
       - name: Setup .NET SDK
         # Install both SDKs and let global.json pick: setup-dotnet resolving the pinned preview from
         # global.json alone left the runner on its preinstalled 10.0.x, which cannot target net11.0.
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: |
             10.0.x
             11.0.x
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
         with:
           languages: csharp
           build-mode: manual
@@ -49,6 +49,6 @@ jobs:
         run: dotnet build ObsWebSocket.sln --configuration Release
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
         with:
           category: "/language:csharp"

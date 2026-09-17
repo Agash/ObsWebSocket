@@ -15,6 +15,11 @@ protocol.json      -text
 protocol.lock.json -text
 
 ###############################################################################
+# Media the validation suite plays. Binary; normalising it would corrupt it.
+###############################################################################
+*.mp4 binary
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

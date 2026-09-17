@@ -817,11 +817,17 @@ internal sealed partial class Worker(
         }
     }
 
+    /// <summary>
+    /// Runs the live validation suite over both transports and reports a verdict, so the run can
+    /// be used as a gate rather than read.
+    /// </summary>
     private async Task RunTransportValidationSuiteAsync(CancellationToken cancellationToken)
     {
         int iterations = Math.Max(1, _validationOptions.ValidationIterations);
         Rule rule = new("[cyan]Transport Validation[/]") { Justification = Justify.Left };
         AnsiConsole.Write(rule);
+
+        List<string> failures = [];
         for (int i = 0; i < iterations; i++)
         {
             _logger.LogInformation(
@@ -830,24 +836,69 @@ internal sealed partial class Worker(
                 iterations
             );
             UiInfo($"Iteration {i + 1}/{iterations}: JSON then MsgPack");
-            await RunTransportValidationCycleAsync(SerializationFormat.Json, cancellationToken)
-                .ConfigureAwait(false);
-            await RunTransportValidationCycleAsync(SerializationFormat.MsgPack, cancellationToken)
-                .ConfigureAwait(false);
+
+            foreach (
+                SerializationFormat format in (SerializationFormat[])
+                    [SerializationFormat.Json, SerializationFormat.MsgPack]
+            )
+            {
+                try
+                {
+                    failures.AddRange(
+                        (
+                            await RunTransportValidationCycleAsync(format, cancellationToken)
+                                .ConfigureAwait(false)
+                        ).Select(failure => $"iteration {i + 1}, {format}: {failure}")
+                    );
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // A failed validation, not a crash; the other transport still runs.
+                    _logger.LogError(ex, "The {Format} validation cycle threw.", format);
+                    failures.Add(
+                        $"iteration {i + 1}, {format}: threw {ex.GetType().Name}: {ex.Message}"
+                    );
+                }
+            }
         }
+
+        if (failures.Count == 0)
+        {
+            UiSuccess($"Transport validation passed over {iterations} iteration(s).");
+            return;
+        }
+
+        UiError($"Transport validation failed with {failures.Count} check(s):");
+        foreach (string failure in failures)
+        {
+            UiError($"  {failure}");
+        }
+
+        _logger.LogError(
+            "Transport validation failed with {FailureCount} check(s).",
+            failures.Count
+        );
+
+        // The host shuts down gracefully, so the exit code carries the verdict.
+        Environment.ExitCode = 1;
     }
 
-    private async Task RunTransportValidationCycleAsync(
+    /// <summary>
+    /// Runs one transport's validation cycle.
+    /// </summary>
+    /// <param name="format">The wire format to validate.</param>
+    /// <param name="cancellationToken">A token to cancel the cycle.</param>
+    /// <returns>The checks that failed, empty when the cycle passed.</returns>
+    private async Task<List<string>> RunTransportValidationCycleAsync(
         SerializationFormat format,
         CancellationToken cancellationToken
     )
     {
         ObsWebSocketClientOptions cycleOptions = CloneOptionsForFormat(format);
-        IWebSocketMessageSerializer serializer = CreateSerializer(format);
 
         await using ObsWebSocketClient cycleClient = new(
             _loggerFactory.CreateLogger<ObsWebSocketClient>(),
-            serializer,
+            CreateSerializer,
             Options.Create(cycleOptions),
             _connectionFactory
         );
@@ -855,6 +906,17 @@ internal sealed partial class Worker(
         await cycleClient.ConnectAsync(cancellationToken).ConfigureAwait(false);
         // Each transport is judged on its own run.
         SerializationFailureSink.Reset();
+
+        ObsSourceKinds kinds = await ObsSourceKinds
+            .ResolveAsync(cycleClient, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Enumerated once, before anything in the cycle changes OBS, and shared from there on.
+        // Asking again later reads an encoder the state change already freed, and OBS dies
+        // rather than answering (#25).
+        GetOutputListResponseData outputs = await cycleClient
+            .Outputs.GetOutputListAsync(cancellationToken)
+            .ConfigureAwait(false);
         try
         {
             GetVersionResponseData? version = await cycleClient
@@ -1078,20 +1140,26 @@ internal sealed partial class Worker(
             );
 
             List<(string Label, bool Pass, string Detail)> settingsResults =
-                await ValidateSettingsModesAsync(cycleClient, inputs, cancellationToken)
+                await ValidateSettingsModesAsync(cycleClient, inputs, kinds, cancellationToken)
                     .ConfigureAwait(false);
 
             List<(string Label, bool Pass, string Detail)> modernResults =
-                await ValidateModernApisAsync(cycleClient, healthChecks, cancellationToken)
+                await ValidateModernApisAsync(
+                        cycleClient,
+                        healthChecks,
+                        kinds,
+                        outputs,
+                        cancellationToken
+                    )
                     .ConfigureAwait(false);
 
             modernResults.AddRange(
-                await SweepEveryReadRequestAsync(cycleClient, cancellationToken)
+                await SweepEveryReadRequestAsync(cycleClient, kinds, outputs, cancellationToken)
                     .ConfigureAwait(false)
             );
 
             modernResults.AddRange(
-                await SweepEveryWriteRequestAsync(cycleClient, cancellationToken)
+                await SweepEveryWriteRequestAsync(cycleClient, kinds, outputs, cancellationToken)
                     .ConfigureAwait(false)
             );
 
@@ -1148,6 +1216,14 @@ internal sealed partial class Worker(
                 );
             }
             AnsiConsole.Write(summary);
+
+            return
+            [
+                .. settingsResults
+                    .Concat(modernResults)
+                    .Where(result => !result.Pass)
+                    .Select(result => $"{result.Label} ({result.Detail})"),
+            ];
         }
         finally
         {
@@ -1174,6 +1250,7 @@ internal sealed partial class Worker(
     > ValidateSettingsModesAsync(
         ObsWebSocketClient client,
         GetInputListResponseData? inputs,
+        ObsSourceKinds kinds,
         CancellationToken cancellationToken
     )
     {
@@ -1181,6 +1258,14 @@ internal sealed partial class Worker(
         if (inputs is null)
         {
             results.Add(("Settings [all modes]", false, "GetInputList returned null"));
+            return results;
+        }
+
+        if (kinds.Browser is null || kinds.GainFilter is null)
+        {
+            results.Add(
+                ("Settings [all modes]", true, $"skipped: no {kinds.Describe()} kind on this OBS")
+            );
             return results;
         }
 
@@ -1200,7 +1285,7 @@ internal sealed partial class Worker(
 
             await client
                 .Inputs.CreateInputAsync(
-                    inputKind: "browser_source",
+                    inputKind: kinds.Browser,
                     inputName: FixtureInputName,
                     settings: new BrowserSourceSettings(
                         Url: "https://obsproject.com",
@@ -1217,7 +1302,7 @@ internal sealed partial class Worker(
             await client
                 .Filters.CreateSourceFilterAsync(
                     new CreateSourceFilterRequestData(
-                        filterKind: "gain_filter",
+                        filterKind: kinds.GainFilter,
                         filterName: FixtureFilter,
                         sourceName: FixtureInputName
                     ),
@@ -1510,6 +1595,8 @@ internal sealed partial class Worker(
     > ValidateModernApisAsync(
         ObsWebSocketClient client,
         HealthCheckService healthChecks,
+        ObsSourceKinds kinds,
+        GetOutputListResponseData outputs,
         CancellationToken cancellationToken
     )
     {
@@ -3013,7 +3100,7 @@ internal sealed partial class Worker(
                                     .Inputs.CreateInputAsync(
                                         new(
                                             inputName: seeded,
-                                            inputKind: "wasapi_output_capture",
+                                            inputKind: kinds.AudioCapture!,
                                             sceneName: live.CurrentProgramSceneName ?? sceneName
                                         ),
                                         cancellationToken
@@ -3375,10 +3462,6 @@ internal sealed partial class Worker(
                             GetSceneTransitionListResponseData transitions = await client
                                 .Transitions.GetSceneTransitionListAsync(cancellationToken)
                                 .ConfigureAwait(false);
-                            GetOutputListResponseData outputs = await client
-                                .Outputs.GetOutputListAsync(cancellationToken)
-                                .ConfigureAwait(false);
-
                             bool ok =
                                 monitors.Monitors.Count > 0
                                 && transitions.Transitions.Count > 0
@@ -4534,7 +4617,7 @@ internal sealed partial class Worker(
         _ = commandTable.AddRow(
             Markup.Escape("run-transport-tests"),
             Markup.Escape(
-                "Run validation cycle for the configured transport (version, scenes, inputs, filters, custom event, batch, settings modes 1/2/3)"
+                "Validate JSON and MsgPack against this OBS (version, scenes, inputs, filters, custom event, batch, settings modes 1/2/3). Prints a verdict and exits non-zero on failure."
             )
         );
         _ = commandTable.AddRow(
@@ -4569,11 +4652,68 @@ internal sealed partial class Worker(
     /// an input of the wrong kind) are reported as untested rather than as failures, so the count
     /// says how much of the surface was actually exercised.
     /// </remarks>
+    /// <summary>
+    /// Waits for OBS to apply a profile change, which it does after answering the request.
+    /// </summary>
+    private static async Task<bool> WaitForProfileAsync(
+        ObsWebSocketClient client,
+        Func<GetProfileListResponseData, bool> applied,
+        CancellationToken cancellationToken
+    )
+    {
+        for (int attempt = 0; attempt < 50; attempt++)
+        {
+            GetProfileListResponseData profiles = await client
+                .Config.GetProfileListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (applied(profiles))
+            {
+                return true;
+            }
+
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+        }
+
+        return false;
+    }
+
     private const string FixtureFilterName = "__obsws_rsweep_filter";
+
+    /// <summary>
+    /// Settings for the fixtures' media source, pointing at the clip shipped next to the binary.
+    /// </summary>
+    /// <remarks>
+    /// A media source with no file is never playing, and OBS answers the cursor requests with
+    /// <c>604</c>, so they are sent but never exercised.
+    /// </remarks>
+    private static JsonElement MediaFixtureSettings()
+    {
+        ArrayBufferWriter<byte> buffer = new();
+        using (Utf8JsonWriter writer = new(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteString(
+                "local_file",
+                Path.Combine(AppContext.BaseDirectory, "fixtures", "media-fixture.mp4")
+            );
+            writer.WriteBoolean("is_local_file", true);
+            writer.WriteBoolean("looping", true);
+            writer.WriteEndObject();
+            writer.Flush();
+        }
+
+        using JsonDocument document = JsonDocument.Parse(buffer.WrittenMemory);
+        return document.RootElement.Clone();
+    }
 
     private static async Task<
         List<(string Label, bool Pass, string Detail)>
-    > SweepEveryReadRequestAsync(ObsWebSocketClient client, CancellationToken cancellationToken)
+    > SweepEveryReadRequestAsync(
+        ObsWebSocketClient client,
+        ObsSourceKinds kinds,
+        GetOutputListResponseData outputs,
+        CancellationToken cancellationToken
+    )
     {
         List<string> unreadable = [];
         List<string> untested = [];
@@ -4609,12 +4749,6 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         string inputName = inputs.Inputs[0].InputName;
 
-        GetSceneItemListResponseData items = await client
-            .SceneItems.GetSceneItemListAsync(new(sceneName: sceneName), cancellationToken)
-            .ConfigureAwait(false);
-        long sceneItemId = items.SceneItems.Count > 0 ? items.SceneItems[0].SceneItemId : -1;
-        string? itemSourceName = items.SceneItems.Count > 0 ? items.SceneItems[0].SourceName : null;
-
         GetInputKindListResponseData inputKinds = await client
             .Inputs.GetInputKindListAsync(new(), cancellationToken)
             .ConfigureAwait(false);
@@ -4625,9 +4759,6 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         string filterKind = filterKinds.SourceFilterKinds[0];
 
-        GetOutputListResponseData outputs = await client
-            .Outputs.GetOutputListAsync(cancellationToken)
-            .ConfigureAwait(false);
         string outputName = outputs.Outputs[0].OutputName;
 
         GetGroupListResponseData groups = await client
@@ -4665,17 +4796,18 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         await client
             .Inputs.CreateInputAsync(
-                new(
-                    inputName: audioInput,
-                    inputKind: "wasapi_output_capture",
-                    sceneName: readScene
-                ),
+                new(inputName: audioInput, inputKind: kinds.AudioCapture!, sceneName: readScene),
                 cancellationToken
             )
             .ConfigureAwait(false);
         await client
             .Inputs.CreateInputAsync(
-                new(inputName: mediaInput, inputKind: "ffmpeg_source", sceneName: readScene),
+                new(
+                    inputName: mediaInput,
+                    inputKind: "ffmpeg_source",
+                    inputSettings: MediaFixtureSettings(),
+                    sceneName: readScene
+                ),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -4695,6 +4827,14 @@ internal sealed partial class Worker(
                 .Ui.SetStudioModeEnabledAsync(new(true), cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        // From the fixture, not from the program scene: a fresh OBS profile opens on an empty
+        // scene, and the seven scene item requests then go unexercised.
+        GetSceneItemListResponseData fixtureItems = await client
+            .SceneItems.GetSceneItemListAsync(new(sceneName: readScene), cancellationToken)
+            .ConfigureAwait(false);
+        long sceneItemId = fixtureItems.SceneItems[0].SceneItemId;
+        string itemSourceName = fixtureItems.SceneItems[0].SourceName;
 
         try
         {
@@ -4966,76 +5106,69 @@ internal sealed partial class Worker(
                 untested.Add("GetGroupSceneItemList (no group; the protocol cannot create one)");
             }
 
-            if (sceneItemId >= 0)
-            {
-                await Probe(
-                        "GetSceneItemId",
-                        () =>
-                            client.SceneItems.GetSceneItemIdAsync(
-                                new(sourceName: itemSourceName!, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemSource",
-                        () =>
-                            client.SceneItems.GetSceneItemSourceAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemTransform",
-                        () =>
-                            client.SceneItems.GetSceneItemTransformAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemEnabled",
-                        () =>
-                            client.SceneItems.GetSceneItemEnabledAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemLocked",
-                        () =>
-                            client.SceneItems.GetSceneItemLockedAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemIndex",
-                        () =>
-                            client.SceneItems.GetSceneItemIndexAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-                await Probe(
-                        "GetSceneItemBlendMode",
-                        () =>
-                            client.SceneItems.GetSceneItemBlendModeAsync(
-                                new(sceneItemId: sceneItemId, sceneName: sceneName),
-                                cancellationToken
-                            )
-                    )
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                untested.Add("7 scene item requests (the program scene has no items)");
-            }
+            await Probe(
+                    "GetSceneItemId",
+                    () =>
+                        client.SceneItems.GetSceneItemIdAsync(
+                            new(sourceName: itemSourceName, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemSource",
+                    () =>
+                        client.SceneItems.GetSceneItemSourceAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemTransform",
+                    () =>
+                        client.SceneItems.GetSceneItemTransformAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemEnabled",
+                    () =>
+                        client.SceneItems.GetSceneItemEnabledAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemLocked",
+                    () =>
+                        client.SceneItems.GetSceneItemLockedAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemIndex",
+                    () =>
+                        client.SceneItems.GetSceneItemIndexAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+            await Probe(
+                    "GetSceneItemBlendMode",
+                    () =>
+                        client.SceneItems.GetSceneItemBlendModeAsync(
+                            new(sceneItemId: sceneItemId, sceneName: readScene),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
 
             await Probe(
                     "GetCurrentProgramScene",
@@ -5170,7 +5303,12 @@ internal sealed partial class Worker(
     /// </remarks>
     private static async Task<
         List<(string Label, bool Pass, string Detail)>
-    > SweepEveryWriteRequestAsync(ObsWebSocketClient client, CancellationToken cancellationToken)
+    > SweepEveryWriteRequestAsync(
+        ObsWebSocketClient client,
+        ObsSourceKinds kinds,
+        GetOutputListResponseData outputs,
+        CancellationToken cancellationToken
+    )
     {
         List<string> unsendable = [];
         List<string> declined = [];
@@ -5206,6 +5344,8 @@ internal sealed partial class Worker(
             .ConfigureAwait(false);
         string originalProgramScene = scenesBefore.CurrentProgramSceneName!;
 
+        string outputName = outputs.Outputs[0].OutputName;
+
         // ── Fixture ──────────────────────────────────────────────────────────
         await Probe(
                 "CreateScene",
@@ -5236,7 +5376,7 @@ internal sealed partial class Worker(
                     client.Inputs.CreateInputAsync(
                         new(
                             inputName: audioInput,
-                            inputKind: "wasapi_output_capture",
+                            inputKind: kinds.AudioCapture!,
                             sceneName: sceneName
                         ),
                         cancellationToken
@@ -5250,6 +5390,7 @@ internal sealed partial class Worker(
                         new(
                             inputName: mediaInput,
                             inputKind: "ffmpeg_source",
+                            inputSettings: MediaFixtureSettings(),
                             sceneName: sceneName
                         ),
                         cancellationToken
@@ -5535,7 +5676,36 @@ internal sealed partial class Worker(
                 .ConfigureAwait(false);
             inputName = renamedInput;
 
-            // ── Media inputs, on an input that is not one ────────────────────
+            // ── Media inputs ─────────────────────────────────────────────────
+            // The cursor requests only reach their own answer while the clip is playing.
+            await Probe(
+                    "TriggerMediaInputAction (play)",
+                    () =>
+                        client.MediaInputs.TriggerMediaInputActionAsync(
+                            new(mediaAction: MediaInputAction.Play, inputName: mediaInput),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            // Playback starts a moment after OBS accepts the action, and the cursor requests are
+            // answered only once it has.
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                GetMediaInputStatusResponseData status = await client
+                    .MediaInputs.GetMediaInputStatusAsync(
+                        new(inputName: mediaInput),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                if (status.MediaState is "OBS_MEDIA_STATE_PLAYING" or "OBS_MEDIA_STATE_PAUSED")
+                {
+                    break;
+                }
+
+                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+            }
+
             await Probe(
                     "SetMediaInputCursor",
                     () =>
@@ -5683,6 +5853,81 @@ internal sealed partial class Worker(
                 )
                 .ConfigureAwait(false);
 
+            // CreateProfile activates the profile it creates, and removing the active one leaves
+            // OBS writing into a directory it has deleted (#42). Switch back first, and wait for
+            // each step: OBS answers these before it applies them.
+            string sweepProfile = $"__obsws_wsweep_profile_{suffix}";
+            GetProfileListResponseData profilesBefore = await client
+                .Config.GetProfileListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            string originalProfile = profilesBefore.CurrentProfileName!;
+
+            await Probe(
+                    "CreateProfile",
+                    () =>
+                        client.Config.CreateProfileAsync(
+                            new(profileName: sweepProfile),
+                            cancellationToken
+                        )
+                )
+                .ConfigureAwait(false);
+
+            if (
+                await WaitForProfileAsync(
+                        client,
+                        list => list.CurrentProfileName == sweepProfile,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false)
+            )
+            {
+                await Probe(
+                        "SetCurrentProfile",
+                        () =>
+                            client.Config.SetCurrentProfileAsync(
+                                new(profileName: originalProfile),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+
+                if (
+                    await WaitForProfileAsync(
+                            client,
+                            list => list.CurrentProfileName == originalProfile,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false)
+                )
+                {
+                    await Probe(
+                            "RemoveProfile",
+                            () =>
+                                client.Config.RemoveProfileAsync(
+                                    new(profileName: sweepProfile),
+                                    cancellationToken
+                                )
+                        )
+                        .ConfigureAwait(false);
+                    _ = await WaitForProfileAsync(
+                            client,
+                            list => !list.Profiles.Contains(sweepProfile),
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    declined.Add("RemoveProfile (not sent: OBS stayed on the sweep's profile)");
+                }
+            }
+            else
+            {
+                declined.Add(
+                    "SetCurrentProfile, RemoveProfile (not sent: the new profile never became active)"
+                );
+            }
+
             GetProfileParameterResponseData profileParameter = await client
                 .Config.GetProfileParameterAsync(
                     new(parameterCategory: "Output", parameterName: "Mode"),
@@ -5741,14 +5986,24 @@ internal sealed partial class Worker(
             GetStreamServiceSettingsResponseData streamService = await client
                 .Config.GetStreamServiceSettingsAsync(cancellationToken)
                 .ConfigureAwait(false);
+            // Written back unchanged where OBS has settings. A fresh install has none and OBS
+            // rejects an empty object, so the request would never be exercised; a placeholder for
+            // the service it already reports keeps the check real and overwrites nothing.
+            JsonElement serviceSettings =
+                streamService.StreamServiceSettings is JsonElement existing
+                && existing.ValueKind == JsonValueKind.Object
+                && existing.EnumerateObject().Any()
+                    ? existing
+                    : JsonDocument
+                        .Parse("""{"server":"auto","service":"Twitch"}""")
+                        .RootElement.Clone();
             await Probe(
                     "SetStreamServiceSettings",
                     () =>
                         client.Config.SetStreamServiceSettingsAsync(
                             new(
                                 streamServiceType: streamService.StreamServiceType,
-                                streamServiceSettings: streamService.StreamServiceSettings
-                                    ?? JsonDocument.Parse("{}").RootElement.Clone()
+                                streamServiceSettings: serviceSettings
                             ),
                             cancellationToken
                         )
@@ -5777,18 +6032,29 @@ internal sealed partial class Worker(
                         )
                 )
                 .ConfigureAwait(false);
-            await Probe(
-                    "SetCurrentSceneTransitionSettings",
-                    () =>
-                        client.Transitions.SetCurrentSceneTransitionSettingsAsync(
-                            new(
-                                transitionSettings: transition.TransitionSettings
-                                    ?? JsonDocument.Parse("{}").RootElement.Clone()
-                            ),
-                            cancellationToken
-                        )
-                )
-                .ConfigureAwait(false);
+            // Fade and Cut have nothing to configure and OBS answers 606. Select a configurable
+            // transition in OBS to exercise this one; the CI scene collection ships with one.
+            if (transition.TransitionConfigurable)
+            {
+                await Probe(
+                        "SetCurrentSceneTransitionSettings",
+                        () =>
+                            client.Transitions.SetCurrentSceneTransitionSettingsAsync(
+                                new(
+                                    transitionSettings: transition.TransitionSettings
+                                        ?? JsonDocument.Parse("{}").RootElement.Clone()
+                                ),
+                                cancellationToken
+                            )
+                    )
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                declined.Add(
+                    $"SetCurrentSceneTransitionSettings (not sent: '{transition.TransitionName}' has nothing to configure)"
+                );
+            }
 
             // ── UI and studio mode, restored below ───────────────────────────
             GetStudioModeEnabledResponseData studio = await client
@@ -5878,10 +6144,6 @@ internal sealed partial class Worker(
                 )
                 .ConfigureAwait(false);
 
-            GetOutputListResponseData outputs = await client
-                .Outputs.GetOutputListAsync(cancellationToken)
-                .ConfigureAwait(false);
-            string outputName = outputs.Outputs[0].OutputName;
             await Probe(
                     "StopOutput",
                     () =>
