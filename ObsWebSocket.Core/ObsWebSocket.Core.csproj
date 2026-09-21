@@ -51,12 +51,12 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageReference
       Include="MessagePack"
-      Version="3.1.8"
+      Version="3.1.9"
       ExcludeAssets="build;buildTransitive;analyzers"
     />
     <PackageReference
       Include="MessagePackAnalyzer"
-      Version="3.1.8"
+      Version="3.1.9"
       IncludeAssets="none"
       PrivateAssets="all"
     />
