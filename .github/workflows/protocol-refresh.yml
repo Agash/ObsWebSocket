@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Protocol refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Refresh the protocol definition
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            10.x
+            11.0.100-rc.1.26425.128
+
+      - name: Read the pinned revision
+        id: pinned
+        run: |
+          set -euo pipefail
+          {
+            echo "repository=$(jq -r .repository protocol.lock.json)"
+            echo "path=$(jq -r .path protocol.lock.json)"
+            echo "commit=$(jq -r .commit protocol.lock.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find the upstream revision
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ steps.pinned.outputs.repository }}
+          FILE_PATH: ${{ steps.pinned.outputs.path }}
+        run: |
+          set -euo pipefail
+          slug="${REPOSITORY#https://github.com/}"
+          # The newest commit touching the protocol file, not the newest commit on master:
+          # most upstream commits do not change it.
+          commit=$(gh api "repos/${slug}/commits?path=${FILE_PATH}&per_page=1" --jq '.[0].sha')
+          echo "commit=${commit}" >> "$GITHUB_OUTPUT"
+
+      - name: Refresh and regenerate
+        if: steps.upstream.outputs.commit != steps.pinned.outputs.commit
+        run: >
+          dotnet build ObsWebSocket.Core
+          -t:RefreshObsProtocol
+          -p:ObsProtocolCommit=${{ steps.upstream.outputs.commit }}
+          -p:ObsCodegenForceRegeneration=true
+
+      - name: Build and test
+        if: steps.upstream.outputs.commit != steps.pinned.outputs.commit
+        run: |
+          set -euo pipefail
+          dotnet build ObsWebSocket.sln --configuration Release
+          dotnet test --project "${{ github.workspace }}/ObsWebSocket.Tests/ObsWebSocket.Tests.csproj" \
+            --configuration Release --no-build -- --filter "TestCategory!=Integration"
+
+      - name: Open a pull request
+        if: steps.upstream.outputs.commit != steps.pinned.outputs.commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_COMMIT: ${{ steps.upstream.outputs.commit }}
+          OLD_COMMIT: ${{ steps.pinned.outputs.commit }}
+          REPOSITORY: ${{ steps.pinned.outputs.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "The refresh produced no diff."
+            exit 0
+          fi
+
+          branch="protocol-refresh/${NEW_COMMIT:0:12}"
+          if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+            echo "${branch} already exists."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${branch}"
+          git add -A
+          git commit -m "build: refresh the protocol definition"
+          git push origin "${branch}"
+
+          gh pr create \
+            --title "build: refresh the protocol definition" \
+            --body "Pinned revision moves from \`${OLD_COMMIT}\` to \`${NEW_COMMIT}\`.
+
+          ${REPOSITORY}/compare/${OLD_COMMIT}...${NEW_COMMIT}
+
+          Generated with \`ObsCodegenForceRegeneration=true\`, so a change to the definition alone still regenerates. Check the live OBS run before merging: it is the only thing that catches a payload mapped to the wrong field." \
+            --head "${branch}"
