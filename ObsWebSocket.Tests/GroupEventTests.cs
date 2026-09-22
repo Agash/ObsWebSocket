@@ -15,7 +15,7 @@ public sealed class GroupEventTests
         TestUtils.GetPrivateField<MulticastDelegate>(client, eventName)?.GetInvocationList() ?? [];
 
     [TestMethod]
-    public void AddAndRemoveThroughTheGroup_ReachTheClientsList()
+    public void GroupEvent_AddAndRemove_ReachClientSubscriptions()
     {
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
         static void Handler(object? sender, CurrentProgramSceneChangedEventArgs e) { }
@@ -38,7 +38,7 @@ public sealed class GroupEventTests
     }
 
     [TestMethod]
-    public void TheGroupAndTheClientShareOneSubscriptionList()
+    public void GroupEvent_SubscribedThroughEither_SharesOneList()
     {
         (ObsWebSocketClient client, _, _) = TestUtils.SetupConnectedClientForceState();
         static void Handler(object? sender, CurrentProgramSceneChangedEventArgs e) { }
@@ -61,7 +61,7 @@ public sealed class GroupEventTests
     }
 
     [TestMethod]
-    public void EveryCategoryGroupCarriesItsEvents()
+    public void CategoryGroups_Every_CarriesItsEvents()
     {
         // The point of the change: a caller never has to know that some events sit on the client
         // and some on a group.

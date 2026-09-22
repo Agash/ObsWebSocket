@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core;
 
-namespace ObsWebSocket.Example;
+namespace ObsWebSocket.Tests.Integration;
 
 /// <summary>
 /// Records every payload the client could not deserialize.

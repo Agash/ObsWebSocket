@@ -16,7 +16,7 @@ namespace ObsWebSocket.Tests;
 public sealed class WireEnumTests
 {
     [TestMethod]
-    public void Json_WritesTheProtocolStringNotTheMemberName()
+    public void JsonWrite_WireEnum_UsesProtocolString()
     {
         TriggerMediaInputActionRequestData request = new(
             mediaAction: MediaInputAction.Stop,
@@ -33,7 +33,7 @@ public sealed class WireEnumTests
     }
 
     [TestMethod]
-    public void MsgPack_WritesTheProtocolStringNotTheOrdinal()
+    public void MsgPackWrite_WireEnum_UsesProtocolString()
     {
         TriggerMediaInputActionRequestData request = new(
             mediaAction: MediaInputAction.Stop,
@@ -55,7 +55,7 @@ public sealed class WireEnumTests
     }
 
     [TestMethod]
-    public void MsgPack_ReadsTheProtocolStringBackIntoTheEnum()
+    public void MsgPackRead_ProtocolString_ReturnsEnum()
     {
         StreamStateChangedPayload payload = new(
             outputActive: true,
@@ -81,7 +81,7 @@ public sealed class WireEnumTests
     }
 
     [TestMethod]
-    public void UnrecognisedWireValue_FallsBackToTheZeroMemberRatherThanThrowing()
+    public void Read_UnrecognisedWireValue_FallsBackToZeroMember()
     {
         // A state added by a newer OBS must not fail the whole message.
         string json = """{"outputActive":true,"outputState":"OBS_WEBSOCKET_OUTPUT_FUTURE_STATE"}""";

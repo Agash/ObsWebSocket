@@ -21,7 +21,7 @@ public sealed class HandleOperationTests
     private static readonly Guid s_uuid = new("5d5db648-93a5-4985-bff8-45f4c9fe15f7");
 
     [TestMethod]
-    public async Task ANameHandleSendsTheNameAndNoUuid()
+    public async Task Operation_NameHandle_SendsNameOnly()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) => client.Scene("Intro").SetCurrentProgramAsync(ct)
@@ -36,7 +36,7 @@ public sealed class HandleOperationTests
     }
 
     [TestMethod]
-    public async Task AUuidHandleSendsTheUuidAndNoName()
+    public async Task Operation_UuidHandle_SendsUuidOnly()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) => client.Scene(s_uuid).SetCurrentProgramAsync(ct)
@@ -57,7 +57,7 @@ public sealed class HandleOperationTests
     /// The canvas travels with a name, because that is the only path OBS reads it on.
     /// </summary>
     [TestMethod]
-    public async Task ACanvasScopedNameSendsTheCanvas()
+    public async Task Operation_CanvasScopedName_SendsCanvas()
     {
         CanvasHandle vertical = CanvasHandle.FromUuid(s_uuid);
 
@@ -76,7 +76,7 @@ public sealed class HandleOperationTests
     /// A composite handle supplies both halves of the identity: the scene, and the id inside it.
     /// </summary>
     [TestMethod]
-    public async Task ASceneItemSendsItsSceneAndItsId()
+    public async Task Operation_SceneItem_SendsSceneAndId()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) =>
@@ -89,7 +89,7 @@ public sealed class HandleOperationTests
     }
 
     [TestMethod]
-    public async Task AFilterSendsItsSourceAndItsName()
+    public async Task Operation_Filter_SendsSourceAndName()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) =>
@@ -106,7 +106,7 @@ public sealed class HandleOperationTests
     /// subject. DuplicateSceneItem is the only request in the protocol shaped this way.
     /// </summary>
     [TestMethod]
-    public async Task ASecondReferenceIsAParameter()
+    public async Task Operation_SecondReference_IsParameter()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) =>
@@ -122,7 +122,7 @@ public sealed class HandleOperationTests
 
     /// <summary>A bare string is a name, which is the whole point of the implicit conversion.</summary>
     [TestMethod]
-    public async Task AStringReachesTheOperationsWithoutCeremony()
+    public async Task Operation_String_ConvertsImplicitly()
     {
         JsonElement sent = await CaptureAsync(
             (client, ct) => client.Input("Mic").ToggleMuteAsync(ct)

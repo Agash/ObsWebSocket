@@ -15,7 +15,7 @@ namespace ObsWebSocket.Tests;
 public sealed class ObsBatchBuilderTests
 {
     [TestMethod]
-    public void Builder_PairsRequestTypeWithItsOwnPayload()
+    public void Builder_TypedAdd_PairsRequestTypeWithPayload()
     {
         ObsBatchBuilder builder = new();
         _ = builder.General.GetVersion();
@@ -39,7 +39,7 @@ public sealed class ObsBatchBuilderTests
     }
 
     [TestMethod]
-    public void Builder_ReturnsReferencesInSubmissionOrder()
+    public void Builder_SeveralAdds_ReturnsReferencesInOrder()
     {
         ObsBatchBuilder builder = new();
         BatchRef<GetVersionResponseData> version = builder.General.GetVersion();
@@ -75,7 +75,7 @@ public sealed class ObsBatchBuilderTests
     }
 
     [TestMethod]
-    public void Add_AcceptsRawRequestTypesAndPayloads()
+    public void Add_RawRequest_IsAccepted()
     {
         using JsonDocument doc = JsonDocument.Parse("""{"inputName":"Mic"}""");
 
@@ -91,7 +91,7 @@ public sealed class ObsBatchBuilderTests
     }
 
     [TestMethod]
-    public void Build_ReturnsIndependentCopies()
+    public void Build_CalledTwice_ReturnsIndependentCopies()
     {
         ObsBatchBuilder builder = new();
         _ = builder.General.GetVersion();
@@ -118,7 +118,7 @@ public sealed class ObsBatchBuilderTests
 public sealed class ProtocolEnumTests
 {
     [TestMethod]
-    public void OutputState_RoundTripsThroughWireValues()
+    public void OutputState_WireValue_RoundTrips()
     {
         foreach (OutputState value in Enum.GetValues<OutputState>())
         {
@@ -132,7 +132,7 @@ public sealed class ProtocolEnumTests
     }
 
     [TestMethod]
-    public void MediaInputAction_RoundTripsThroughWireValues()
+    public void MediaInputAction_WireValue_RoundTrips()
     {
         foreach (MediaInputAction value in Enum.GetValues<MediaInputAction>())
         {
@@ -146,7 +146,7 @@ public sealed class ProtocolEnumTests
     }
 
     [TestMethod]
-    public void ToWireValue_MatchesTheProtocolConstants()
+    public void ToWireValue_EveryMember_MatchesProtocolConstant()
     {
         Assert.AreEqual(
             ObsOutputState.OBS_WEBSOCKET_OUTPUT_STARTED,
@@ -167,7 +167,7 @@ public sealed class ProtocolEnumTests
     }
 
     [TestMethod]
-    public void ProtocolConstants_UsableAsConstantPatterns()
+    public void ProtocolConstants_InSwitch_UsableAsPatterns()
     {
         // These are const rather than static readonly, which is what lets them appear as
         // constant patterns in a switch. This would not compile against static readonly.

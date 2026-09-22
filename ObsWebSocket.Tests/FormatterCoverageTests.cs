@@ -23,7 +23,7 @@ public sealed class FormatterCoverageTests
     ];
 
     [TestMethod]
-    public void EveryGeneratedProperty_HasAMessagePackFormatter()
+    public void GeneratedProperties_Every_HasMessagePackFormatter()
     {
         IFormatterResolver resolver = MsgPackMessageSerializer.s_msgPackOptions.Resolver;
         List<string> missing = [];
@@ -69,7 +69,7 @@ public sealed class FormatterCoverageTests
     /// the specific mistake that made <c>GetCanvasList</c> unreadable.
     /// </summary>
     [TestMethod]
-    public void EveryStub_ResolvesBothAloneAndInAList()
+    public void Stubs_AloneAndInList_Resolve()
     {
         IFormatterResolver resolver = MsgPackMessageSerializer.s_msgPackOptions.Resolver;
         List<string> missing = [];

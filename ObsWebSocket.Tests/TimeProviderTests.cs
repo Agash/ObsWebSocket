@@ -15,7 +15,7 @@ namespace ObsWebSocket.Tests;
 public sealed class TimeProviderTests
 {
     [TestMethod]
-    public async Task RequestTimeout_ElapsesOnlyWhenTheProviderAdvances()
+    public async Task RequestTimeout_FakeClock_ElapsesOnlyWhenAdvanced()
     {
         FakeTimeProvider time = new();
         (

@@ -371,7 +371,7 @@ public sealed class ClientContractTests
     /// </summary>
     [TestMethod]
     [Timeout(TimeoutMs)]
-    public async Task ChangingFormat_ChangesTheSerializerTheNextConnectionUses()
+    public async Task ConnectAsync_FormatChanged_NextConnectionUsesNewSerializer()
     {
         List<SerializationFormat> requested = [];
 
@@ -692,7 +692,7 @@ public sealed class ClientContractTests
     #endregion
 
     [TestMethod]
-    public async Task ACallRefusedAsNotReadyIsRetriedWhenEnabled()
+    public async Task CallAsync_NotReadyWithRetryOn_Retries()
     {
         int sends = 0;
         (
@@ -755,7 +755,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public async Task ACallRefusedAsNotReadyThrowsWhenRetryIsOff()
+    public async Task CallAsync_NotReadyWithRetryOff_Throws()
     {
         int sends = 0;
         (
@@ -809,7 +809,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public async Task AnotherFailureCodeIsNotRetried()
+    public async Task CallAsync_OtherFailureCode_NotRetried()
     {
         int sends = 0;
         (
@@ -872,7 +872,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public async Task AValueCallRefusedAsNotReadyIsRetried()
+    public async Task CallAsyncValue_NotReady_Retries()
     {
         int sends = 0;
         (
@@ -910,7 +910,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public async Task ABatchRefusedAsNotReadyIsRetried()
+    public async Task CallBatchAsync_NotReady_Retries()
     {
         int sends = 0;
         (
@@ -994,7 +994,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public void ARegisteredPipelineIsResolvable()
+    public void NotReadyPipeline_Registered_IsResolvable()
     {
         ServiceCollection services = new();
         _ = services.AddLogging();
@@ -1012,7 +1012,7 @@ public sealed class ClientContractTests
     }
 
     [TestMethod]
-    public async Task ARegisteredReconnectDelaySourceIsUsed()
+    public async Task ReconnectDelays_Registered_AreUsed()
     {
         StubReconnectDelays delays = new();
         ServiceCollection services = new();

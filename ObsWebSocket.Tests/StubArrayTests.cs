@@ -140,7 +140,7 @@ public sealed class StubArrayTests
     }
 
     [TestMethod]
-    public void InputVolumeMeters_RoundTripsOverMsgPack()
+    public void InputVolumeMeters_MsgPack_RoundTrips()
     {
         InputVolumeMetersPayload original = new()
         {
@@ -203,7 +203,7 @@ public sealed class StubArrayTests
     }
 
     [TestMethod]
-    public void SceneItemListReindexed_RoundTripsOverMsgPack()
+    public void SceneItemListReindexed_MsgPack_RoundTrips()
     {
         SceneItemListReindexedPayload original = new()
         {
@@ -432,7 +432,7 @@ public sealed class StubArrayTests
     /// transport that cannot read the message.
     /// </summary>
     [TestMethod]
-    public void JsonElementList_HasAMsgPackFormatter()
+    public void JsonElementList_MsgPack_HasFormatter()
     {
         using JsonDocument doc = JsonDocument.Parse("""{"a":1}""");
         List<JsonElement> original = [doc.RootElement.Clone()];

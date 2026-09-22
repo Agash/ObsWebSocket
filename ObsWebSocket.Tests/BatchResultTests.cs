@@ -106,7 +106,7 @@ public sealed class BatchResultTests
     }
 
     [TestMethod]
-    public void AllSucceededAndGetFailures_ReflectStatuses()
+    public void AllSucceededAndGetFailures_MixedStatuses_ReflectThem()
     {
         List<RequestResponsePayload<object>> results =
         [

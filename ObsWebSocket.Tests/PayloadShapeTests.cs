@@ -48,7 +48,7 @@ public sealed class PayloadShapeTests
     }
 
     [TestMethod]
-    public void ReadingAPayloadAsItsOwnRecord_StillWorks()
+    public void GetData_OwnRecordType_Reads()
     {
         GetVersionResponseData version = TestUtils.SampleVersion();
         byte[] packed = MessagePackSerializer.Serialize(
@@ -63,7 +63,7 @@ public sealed class PayloadShapeTests
     }
 
     [TestMethod]
-    public void RecordsWithAnIdenticalShape_AreStillInterchangeable()
+    public void GetData_IdenticallyShapedRecord_Reads()
     {
         // GetInputMute and ToggleInputMute are both a single inputMuted field, so reading one as
         // the other gives the right value. The check must not reject that.

@@ -732,26 +732,14 @@ rather than only under unit tests.
 
 ## Example app
 
-`ObsWebSocket.Example` is a host-based sample with configuration and DI.
+`ObsWebSocket.Example` is a host-based sample with configuration and DI: an interactive command
+loop, listed by `help`.
 
-- Interactive mode: a command loop, listed by `help`.
-- Validation mode: `ObsWebSocket.Example run-transport-tests` runs the same checks over JSON and
-  MessagePack against a scene, input and filter it creates and removes itself.
-
-The validation run covers the settings helpers, event streams, `WaitForEventAsync`, the batch
-builder, the raw path, typed enums, screenshots and handles. It also calls every read request and
-every safely sendable write request, and fails on any response it cannot deserialize.
-
-It is a single self-contained command, prints a verdict and exits non-zero if any check failed, so
-it can be run by hand or used as a gate. Point it at an OBS with configuration, environment
-variables or command-line arguments, in that order of precedence:
-
-```bash
-Obs__ServerUri=ws://localhost:4455 Obs__Password=secret \
-  dotnet run --project ObsWebSocket.Example -- run-transport-tests
-```
-
-The `Live OBS validation` workflow runs exactly this against an OBS it installs and starts itself.
+The checks that prove the client against a real OBS live in the test project instead. The
+integration tests call every read request and every safely sendable write request over JSON and
+MessagePack, and exercise the settings helpers, event streams, `WaitForEventAsync`, the batch
+builder, typed enums, screenshots and handles. See `CONTRIBUTING.md` for how to run them; the
+`Full suite against live OBS` workflow runs them against an OBS it installs and starts itself.
 
 ## Native AOT
 
