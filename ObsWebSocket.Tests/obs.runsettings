@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Points the live tests at an OBS. Override a value per run with the test-parameter option
+  rather than editing this file. Resolution falls back to Obs__ServerUri and Obs__Password in
+  the environment, then to testsettings.local.json.
+
+  Obs.Required turns a missing endpoint or fixture from inconclusive into a failure. The live CI
+  job sets it, so it cannot pass by skipping.
+-->
+<RunSettings>
+  <TestRunParameters>
+    <Parameter name="Obs.ServerUri" value="ws://127.0.0.1:4455" />
+    <Parameter name="Obs.Password" value="" />
+    <Parameter name="Obs.Required" value="false" />
+  </TestRunParameters>
+</RunSettings>

@@ -2,7 +2,7 @@ using ObsWebSocket.Core;
 using ObsWebSocket.Core.Protocol.Requests;
 using ObsWebSocket.Core.Protocol.Responses;
 
-namespace ObsWebSocket.Example;
+namespace ObsWebSocket.Tests.Integration;
 
 /// <summary>
 /// The input and filter kinds the connected OBS offers.

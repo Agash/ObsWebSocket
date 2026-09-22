@@ -64,15 +64,16 @@ To contribute code, you'll need to set up a local development environment:
     ```bash
     dotnet test --project ObsWebSocket.Tests -- --filter "TestCategory!=Integration"
     ```
-5.  **(Optional) Run Integration Tests:**
-    *   These need a running OBS with obs-websocket enabled; point `Obs__ServerUri` and
-        `Obs__Password` at it.
-    *   `dotnet test --project ObsWebSocket.Tests -- --filter "TestCategory=Integration"`
-6.  **(Optional) Validate both wire formats against that OBS:**
+5.  **(Optional) Run the Integration Tests:**
+    These need a running OBS with obs-websocket enabled. They call every request over both wire
+    formats and report inconclusive when no OBS is configured.
     ```bash
-    dotnet run --project ObsWebSocket.Example -- run-transport-tests
+    dotnet test --project ObsWebSocket.Tests --framework net11.0 --       --test-parameter Obs.ServerUri=ws://localhost:4455 --test-parameter Obs.Password=secret
     ```
-    Exits non-zero on the first failed check.
+    `Obs__ServerUri` and `Obs__Password` environment variables, or a `testsettings.local.json`
+    with an `Obs` section, work too. Run one framework per OBS start: the write sweep resets
+    video, and on Linux enumerating outputs afterwards takes OBS down (#25). CI starts a fresh OBS
+    for each framework.
 
 ## Checking the stub types
 
@@ -157,8 +158,8 @@ dotnet build ObsWebSocket.Core -t:RefreshObsProtocol -p:ObsProtocolCommit=<upstr
 ```
 
 That fetches exactly that commit, re-pins the lock and regenerates. Commit the generated diff along
-with `protocol.json` and `protocol.lock.json`, and run the live validation
-(`ObsWebSocket.Example run-transport-tests`) before opening the pull request: a refresh is the change
+with `protocol.json` and `protocol.lock.json`, and run the integration tests
+against a live OBS before opening the pull request: a refresh is the change
 most likely to alter a field's order, width or nullability, and that is not visible to the compiler.
 
 ## Tests

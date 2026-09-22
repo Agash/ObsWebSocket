@@ -33,7 +33,7 @@ public class ObsWebSocketDiTests
     /// with the correct lifetimes (Singleton).
     /// </summary>
     [TestMethod]
-    public void AddObsWebSocketClient_RegistersServicesCorrectly()
+    public void AddObsWebSocketClient_Default_RegistersServices()
     {
         // Arrange
         ServiceCollection services = CreateServiceCollectionWithLogging();

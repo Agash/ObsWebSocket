@@ -16,7 +16,7 @@ public sealed class HandleTests
     private static readonly Guid s_uuid = new("5d5db648-93a5-4985-bff8-45f4c9fe15f7");
 
     [TestMethod]
-    public void AStringIsAName_AndAGuidIsAUuid()
+    public void Handle_StringOrGuid_BecomesNameOrUuid()
     {
         SceneHandle byName = "Intro";
         SceneHandle byUuid = s_uuid;
@@ -35,7 +35,7 @@ public sealed class HandleTests
     /// through uuid_unparse_lower, which is what Guid's "D" format produces.
     /// </summary>
     [TestMethod]
-    public void AGuidIsFormattedTheWayObsWritesOne()
+    public void Handle_FromGuid_FormatsLikeObs()
     {
         Assert.AreEqual("5d5db648-93a5-4985-bff8-45f4c9fe15f7", SceneHandle.FromUuid(s_uuid).Uuid);
         Assert.AreEqual(
@@ -49,7 +49,7 @@ public sealed class HandleTests
     /// break a response.
     /// </summary>
     [TestMethod]
-    public void AUuidFromTheWireIsCarriedVerbatim()
+    public void Handle_FromUuidString_KeepsItVerbatim()
     {
         Assert.AreEqual("not-a-guid", SceneHandle.FromUuid("not-a-guid").Uuid);
     }
@@ -59,7 +59,7 @@ public sealed class HandleTests
     /// carrying a field the server ignores.
     /// </summary>
     [TestMethod]
-    public void ACanvasScopesANameAndIsDroppedByAUuid()
+    public void Handle_WithCanvas_ScopesNameButNotUuid()
     {
         CanvasHandle vertical = CanvasHandle.FromUuid(s_uuid);
 
@@ -69,7 +69,7 @@ public sealed class HandleTests
     }
 
     [TestMethod]
-    public void TheMainCanvasCarriesNoUuid_WhichIsWhatOmittingTheFieldMeans()
+    public void CanvasHandle_Main_HasNoUuid()
     {
         Assert.IsNull(CanvasHandle.Main.Uuid);
         Assert.IsFalse(CanvasHandle.Main.IsResolved);
@@ -80,7 +80,7 @@ public sealed class HandleTests
     /// A scene is a source in OBS, and the requests that take a bare source accept either.
     /// </summary>
     [TestMethod]
-    public void ASceneAndAnInputBothNarrowToASource()
+    public void SourceHandle_FromSceneOrInput_Narrows()
     {
         Assert.AreEqual("Intro", SceneHandle.FromName("Intro").AsSource().Name);
         Assert.AreEqual(
@@ -99,7 +99,7 @@ public sealed class HandleTests
     /// the missing lookup is a compile error rather than a runtime one.
     /// </summary>
     [TestMethod]
-    public void ASceneItemByIdIsAHandle_ButBySourceNameItIsNotYet()
+    public void SceneHandle_Item_IdIsHandleNameIsUnresolved()
     {
         SceneHandle intro = "Intro";
 
@@ -114,7 +114,7 @@ public sealed class HandleTests
 
     /// <summary>Filters have no uuid in the protocol, so the name is the identity.</summary>
     [TestMethod]
-    public void AFilterIsNamedOnItsSource()
+    public void FilterHandle_Created_NamedOnSource()
     {
         FilterHandle eq = InputHandle.FromName("Mic").Filter("EQ");
 
@@ -123,7 +123,7 @@ public sealed class HandleTests
     }
 
     [TestMethod]
-    public void AnEmptyNameIsRefusedRatherThanSentAsOne()
+    public void Handle_EmptyName_Throws()
     {
         _ = Assert.ThrowsExactly<ArgumentException>(() => SceneHandle.FromName(string.Empty));
         _ = Assert.ThrowsExactly<ArgumentException>(() => InputHandle.FromName(string.Empty));
@@ -134,7 +134,7 @@ public sealed class HandleTests
     }
 
     [TestMethod]
-    public void ANegativeSceneItemIdIsRefused()
+    public void SceneItemHandle_NegativeId_Throws()
     {
         _ = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
             SceneHandle.FromName("Intro").Item(-1)
@@ -146,7 +146,7 @@ public sealed class HandleTests
     /// by hand.
     /// </summary>
     [TestMethod]
-    public void TwoHandlesForTheSameThingAreEqual()
+    public void Handle_SameTarget_AreEqual()
     {
         Assert.AreEqual(SceneHandle.FromName("Intro"), (SceneHandle)"Intro");
         Assert.AreEqual(SceneHandle.FromUuid(s_uuid), (SceneHandle)s_uuid);
@@ -158,7 +158,7 @@ public sealed class HandleTests
     }
 
     [TestMethod]
-    public void AHandleSaysWhatItAddressesWhenPrinted()
+    public void Handle_ToString_DescribesTarget()
     {
         Assert.AreEqual("scene 'Intro'", SceneHandle.FromName("Intro").ToString());
         Assert.AreEqual("the main canvas", CanvasHandle.Main.ToString());
@@ -177,7 +177,7 @@ public sealed class HandleTests
     /// name again is the round trip and the race the uuid was there to avoid.
     /// </summary>
     [TestMethod]
-    public void AnEventCarriesAResolvedHandle()
+    public void EventPayload_WithUuid_ExposesResolvedHandle()
     {
         CurrentProgramSceneChangedPayload changed = new(
             sceneName: "Intro",
@@ -193,7 +193,7 @@ public sealed class HandleTests
     /// A scene item needs both halves, and an event that reports one carries both.
     /// </summary>
     [TestMethod]
-    public void AnEventCarriesAResolvedSceneItem()
+    public void EventPayload_WithSceneItem_ExposesResolvedItem()
     {
         SceneItemEnableStateChangedPayload changed = new(
             sceneName: "Intro",
@@ -210,7 +210,7 @@ public sealed class HandleTests
     /// Creating something answers with its uuid, so the handle for it costs no second request.
     /// </summary>
     [TestMethod]
-    public void CreatingSomethingAnswersWithAHandle()
+    public void CreateResponse_WithUuid_ExposesHandle()
     {
         CreateSceneResponseData created = new(sceneUuid: "5d5db648-93a5-4985-bff8-45f4c9fe15f7");
 
@@ -223,7 +223,7 @@ public sealed class HandleTests
     /// than by marking the field optional. The accessor has to be nullable to match.
     /// </summary>
     [TestMethod]
-    public void AUuidTheProtocolSaysCanBeNullYieldsANullHandle()
+    public void Payload_NullableUuidMissing_ReturnsNullHandle()
     {
         GetSceneListResponseData outsideStudioMode = new(
             scenes: [],

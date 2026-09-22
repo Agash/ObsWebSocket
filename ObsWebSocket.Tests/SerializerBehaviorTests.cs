@@ -545,7 +545,7 @@ public class SerializerBehaviorTests
     }
 
     [TestMethod]
-    public void MsgPackResolver_CoversGeneratedAndCoreProtocolTypes()
+    public void MsgPackResolver_ProtocolTypes_AllCovered()
     {
         Type[] allTypes = typeof(ObsWebSocketClient).Assembly.GetTypes();
         List<Type> requiredTypes = [];
