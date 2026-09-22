@@ -9,6 +9,8 @@ namespace ObsWebSocket.Core;
 /// <summary>
 /// Handles for the things an event or a response already identifies by uuid.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class ObsWebSocketPayloadHandles
 {
     extension(ObsWebSocket.Core.Protocol.Events.CanvasCreatedPayload payload)

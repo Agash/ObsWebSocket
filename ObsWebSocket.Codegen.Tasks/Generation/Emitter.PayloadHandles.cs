@@ -35,6 +35,7 @@ internal static partial class Emitter
             "/// Handles for the things an event or a response already identifies by uuid."
         );
         builder.AppendLine("/// </summary>");
+        AppendGeneratedAttributes(builder);
         builder.AppendLine("public static class ObsWebSocketPayloadHandles");
         builder.AppendLine("{");
 

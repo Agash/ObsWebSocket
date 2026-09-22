@@ -447,6 +447,7 @@ internal static partial class Emitter
 
         // --- Record Definition Start ---
         mainBuilder.AppendLine("[MessagePackObject]");
+        AppendGeneratedAttributes(mainBuilder);
         mainBuilder.AppendLine($"public sealed partial record {recordName}");
         mainBuilder.AppendLine("{");
         List<PropertyGenInfo> propertyInfos = [];

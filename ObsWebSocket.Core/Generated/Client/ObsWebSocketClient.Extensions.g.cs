@@ -3048,6 +3048,8 @@ public readonly partial struct UiGroup(ObsWebSocketClient client)
 /// <summary>
 /// Exposes the request categories defined by the OBS WebSocket protocol.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class ObsWebSocketClientExtensions
 {
     extension(ObsWebSocketClient client)

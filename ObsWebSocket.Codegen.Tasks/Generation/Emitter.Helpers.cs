@@ -192,6 +192,44 @@ internal static partial class Emitter
     /// <summary>
     /// Builds the standard C# file header for generated files.
     /// </summary>
+    /// <summary>Name recorded in the generated code attribute.</summary>
+    private const string GeneratorName = "ObsWebSocket.Codegen";
+
+    /// <summary>Version recorded in the generated code attribute.</summary>
+    private static readonly string GeneratorVersion =
+        typeof(Emitter).Assembly.GetName().Version?.ToString() ?? "1.0.0.0";
+
+    /// <summary>
+    /// Marks a generated declaration, so analyzers and coverage collectors can tell it apart from
+    /// code someone maintains.
+    /// </summary>
+    /// <remarks>
+    /// Only for declarations that are generated in full. A partial whose other half is hand
+    /// written must not carry these: both attributes apply to the whole type.
+    /// </remarks>
+    /// <param name="builder">The builder to append to.</param>
+    /// <param name="indent">Indentation to prefix each attribute with.</param>
+    /// <param name="excludeFromCoverage">
+    /// <see langword="false"/> for a declaration the coverage attribute is not valid on, such as
+    /// an enum.
+    /// </param>
+    internal static void AppendGeneratedAttributes(
+        StringBuilder builder,
+        string indent = "",
+        bool excludeFromCoverage = true
+    )
+    {
+        builder.AppendLine(
+            $"{indent}[global::System.CodeDom.Compiler.GeneratedCode(\"{GeneratorName}\", \"{GeneratorVersion}\")]"
+        );
+        if (excludeFromCoverage)
+        {
+            builder.AppendLine(
+                $"{indent}[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]"
+            );
+        }
+    }
+
     private static StringBuilder BuildSourceHeader(string? fileTypeComment = null)
     {
         StringBuilder builder = new();

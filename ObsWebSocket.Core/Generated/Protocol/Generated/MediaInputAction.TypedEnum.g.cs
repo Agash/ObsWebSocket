@@ -11,6 +11,7 @@ namespace ObsWebSocket.Core.Protocol.Generated;
 /// Typed form of the ObsMediaInputAction protocol enum. Use &lt;see cref=&quot;MediaInputActionExtensions.ToWireValue&quot;/&gt; to obtain the string OBS expects.
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
 public enum MediaInputAction
 {
     /// <summary>Maps to <c>OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NONE</c>.</summary>
@@ -46,6 +47,8 @@ public enum MediaInputAction
 /// <summary>
 /// Wire-value conversions for &lt;see cref=&quot;MediaInputAction&quot;/&gt;.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class MediaInputActionExtensions
 {
     /// <summary>Returns the protocol string OBS expects for this value.</summary>
