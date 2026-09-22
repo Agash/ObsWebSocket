@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Serialization;
+using Polly.Registry;
 
 namespace ObsWebSocket.Core;
 
@@ -149,7 +150,9 @@ public static class ObsWebSocketServiceCollectionExtensions
             options,
             services.GetRequiredService<IWebSocketConnectionFactory>(),
             services.GetRequiredService<TimeProvider>(),
-            services.GetRequiredService<ObsWebSocketMetrics>()
+            services.GetRequiredService<ObsWebSocketMetrics>(),
+            services.GetService<ResiliencePipelineProvider<string>>(),
+            services.GetService<IObsReconnectDelays>()
         );
     }
 }

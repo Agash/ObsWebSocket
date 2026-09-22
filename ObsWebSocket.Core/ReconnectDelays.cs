@@ -8,11 +8,9 @@ namespace ObsWebSocket.Core;
 /// </summary>
 /// <remarks>
 /// The connection loop owns attempt counting and decides which failures are fatal, because a
-/// clean disconnect is not an exception and so cannot drive a retry strategy. This type asks the
-/// strategy only for the delay, which keeps the backoff curve, its cap, and its jitter in one
-/// place that an application can replace.
+/// clean disconnect is not an exception and so cannot drive a retry strategy.
 /// </remarks>
-internal sealed class ReconnectDelays
+internal sealed class ReconnectDelays : IObsReconnectDelays
 {
     private readonly RetryStrategyOptions? _strategy;
     private readonly TimeSpan _fixedDelay;
@@ -28,7 +26,11 @@ internal sealed class ReconnectDelays
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        _strategy = ObsWebSocketResilience.CreateRetryOptions(options);
+        _strategy = ObsWebSocketResilience.CreateReconnectRetryOptions(
+            options.ReconnectBackoffMultiplier,
+            options.InitialReconnectDelayMs,
+            options.MaxReconnectDelayMs
+        );
         _fixedDelay = TimeSpan.FromMilliseconds(options.InitialReconnectDelayMs);
     }
 
@@ -38,7 +40,7 @@ internal sealed class ReconnectDelays
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        _strategy = ObsWebSocketResilience.CreateRetryOptions(
+        _strategy = ObsWebSocketResilience.CreateReconnectRetryOptions(
             settings.ReconnectBackoffMultiplier,
             settings.InitialReconnectDelayMs,
             settings.MaxReconnectDelayMs
