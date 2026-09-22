@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using ObsWebSocket.Core.Protocol;
 
 namespace ObsWebSocket.Core.Serialization;
@@ -94,7 +95,15 @@ public interface IWebSocketMessageSerializer
     /// <exception cref="ObsWebSocketSerializationException">
     /// Thrown when a payload is present but cannot be deserialized into <typeparamref name="TPayload"/>.
     /// </exception>
-    TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
+    /// <param name="typeInfo">
+    /// Metadata for <typeparamref name="TPayload"/>, for a type this library does not know.
+    /// <see langword="null"/> resolves it from this library's own context. A format that does not
+    /// read JSON metadata ignores it.
+    /// </param>
+    TPayload? DeserializePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
         where TPayload : class;
 
     /// <summary>
@@ -107,7 +116,15 @@ public interface IWebSocketMessageSerializer
     /// <exception cref="ObsWebSocketSerializationException">
     /// Thrown when a payload is present but cannot be deserialized into <typeparamref name="TPayload"/>.
     /// </exception>
-    TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
+    /// <param name="typeInfo">
+    /// Metadata for <typeparamref name="TPayload"/>, for a type this library does not know.
+    /// <see langword="null"/> resolves it from this library's own context. A format that does not
+    /// read JSON metadata ignores it.
+    /// </param>
+    TPayload? DeserializeValuePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
         where TPayload : struct;
 
     /// <summary>

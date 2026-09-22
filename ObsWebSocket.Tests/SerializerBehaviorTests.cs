@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MessagePack;
 using Microsoft.Extensions.Logging.Abstractions;
 using ObsWebSocket.Core;
@@ -21,6 +22,33 @@ public class SerializerBehaviorTests
 
     private static MsgPackMessageSerializer CreateMsgPackSerializer() =>
         new(NullLogger<MsgPackMessageSerializer>.Instance);
+
+    [TestMethod]
+    public void JsonSerializer_ConsumerType_WithMetadata_Deserializes()
+    {
+        JsonElement payload = JsonDocument
+            .Parse("""{"answer":42,"label":"forty two"}""")
+            .RootElement.Clone();
+
+        ConsumerResponse? result = CreateJsonSerializer()
+            .DeserializePayload(payload, ConsumerContext.Default.ConsumerResponse);
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(42, result.Answer);
+        Assert.AreEqual("forty two", result.Label);
+    }
+
+    [TestMethod]
+    public void JsonSerializer_ConsumerType_WithoutMetadata_Throws()
+    {
+        JsonElement payload = JsonDocument
+            .Parse("""{"answer":42,"label":"forty two"}""")
+            .RootElement.Clone();
+
+        _ = Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+            CreateJsonSerializer().DeserializePayload<ConsumerResponse>(payload)
+        );
+    }
 
     [TestMethod]
     public void JsonSerializer_DeserializePayload_SceneStubExtensionData_IsAvailable()
@@ -827,3 +855,11 @@ public class SerializerBehaviorTests
         return formatter is not null;
     }
 }
+
+/// <summary>A response type this library does not generate, standing in for a consumer's own.</summary>
+internal sealed record ConsumerResponse(int Answer, string Label);
+
+// The consumer's own context carries its own naming policy, which is what governs the read.
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(ConsumerResponse))]
+internal sealed partial class ConsumerContext : JsonSerializerContext;

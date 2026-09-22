@@ -174,8 +174,11 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
     }
 
     /// <inheritdoc/>
-    public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
-        where TPayload : class => DeserializePayloadCore<TPayload>(rawPayloadData);
+    public TPayload? DeserializePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
+        where TPayload : class => DeserializePayloadCore(rawPayloadData, typeInfo);
 
     /// <inheritdoc/>
     public bool TryDeserializePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
@@ -198,7 +201,10 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         }
     }
 
-    private TPayload? DeserializePayloadCore<TPayload>(object? rawPayloadData)
+    private TPayload? DeserializePayloadCore<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? callerTypeInfo = null
+    )
         where TPayload : class
     {
         if (
@@ -314,8 +320,10 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
                     (object)new RequestBatchResponsePayload<object>(batchRequestId, mappedResults);
             }
 
+            // Metadata from the caller's own context is the only way a type this library has
+            // never heard of can be read, since s_options resolves from the generated context.
             JsonTypeInfo<TPayload> typeInfo =
-                (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
+                callerTypeInfo ?? (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
             return jsonElement.Deserialize(typeInfo);
         }
         catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
@@ -325,8 +333,11 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
     }
 
     /// <inheritdoc/>
-    public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
-        where TPayload : struct => DeserializeValuePayloadCore<TPayload>(rawPayloadData);
+    public TPayload? DeserializeValuePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
+        where TPayload : struct => DeserializeValuePayloadCore(rawPayloadData, typeInfo);
 
     /// <inheritdoc/>
     public bool TryDeserializeValuePayload<TPayload>(object? rawPayloadData, out TPayload? payload)
@@ -349,7 +360,10 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
         }
     }
 
-    private TPayload? DeserializeValuePayloadCore<TPayload>(object? rawPayloadData)
+    private TPayload? DeserializeValuePayloadCore<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? callerTypeInfo = null
+    )
         where TPayload : struct
     {
         if (
@@ -377,7 +391,7 @@ public class JsonMessageSerializer(ILogger<JsonMessageSerializer> logger)
             // Deserialize will return default(TPayload) if JSON is null, which is valid for nullable structs,
             // but might be undesirable for non-nullable ones (though caught earlier if JSON is explicitly null).
             JsonTypeInfo<TPayload> typeInfo =
-                (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
+                callerTypeInfo ?? (JsonTypeInfo<TPayload>)s_options.GetTypeInfo(typeof(TPayload));
             return jsonElement.Deserialize(typeInfo);
         }
         catch (Exception ex) when (ex is not ObsWebSocketSerializationException)
