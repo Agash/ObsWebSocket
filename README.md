@@ -21,7 +21,7 @@ install it and the public surface can still change between versions.
 
 Enable the server under *Tools > WebSocket Server Settings*.
 
-Two different compatibility claims are worth separating:
+Two compatibility claims, which are not the same thing:
 
 - **Base protocol**: OBS Studio 28 or newer, which is where obs-websocket v5 arrived. Connecting,
   identifying, events and the long-standing requests work against any of those.
@@ -150,7 +150,7 @@ ObsWebSocketResourceNotFoundException: No scene named 'Intor'. Available: 'Intro
 
 ### Handles from events and responses
 
-Events and responses that carry a uuid expose a handle for it, so acting on one needs no lookup:
+Events and responses that carry a uuid expose a handle for it, so acting on one costs no extra request:
 
 ```csharp
 client.Scenes.CurrentProgramSceneChanged += async (_, e) =>
@@ -170,7 +170,7 @@ SceneItemOperations logo = await client.Scene("Intro").ItemAsync("Logo", cancell
 await logo.SetEnabledAsync(false, ct);
 await logo.Scene.GetItemListAsync(ct);
 
-await client.Scene("Intro").Item(3).SetIndexAsync(0, ct);   // an id needs no lookup
+await client.Scene("Intro").Item(3).SetIndexAsync(0, ct);   // an id resolves directly
 ```
 
 `Item(long)` and `Filter(string)` send nothing, since an id and a filter name are the whole
@@ -705,8 +705,8 @@ One activity per request, and one per batch rather than per item. Instruments ar
 | `obsws.events.dropped` | Events discarded because an event stream's consumer fell behind. |
 | `obsws.messages.dropped` | Inbound messages discarded without being dispatched. |
 
-The last two are worth wiring up if you rely on events: streams drop the oldest event when full, and
-the receive loop ignores a message it cannot read. Both are deliberate and otherwise invisible.
+Watch the last two if you rely on events. Streams drop the oldest event when full and the receive
+loop ignores a message it cannot read, and neither is visible any other way.
 
 Timeouts and reconnect delays run on an injectable `TimeProvider`, so tests can drive them with
 `FakeTimeProvider`.

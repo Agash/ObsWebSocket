@@ -699,15 +699,13 @@ public sealed class ClientContractTests
             ObsWebSocketClient client,
             Mock<IWebSocketMessageSerializer> mockSerializer,
             Mock<IWebSocketConnection> mockConnection
-        ) = TestUtils.SetupConnectedClientForceState(
-            configureOptions: o =>
-            {
-                o.NotReadyRetry.Enabled = true;
-                o.NotReadyRetry.MaxRetryAttempts = 3;
-                o.NotReadyRetry.InitialDelayMs = 0;
-                o.NotReadyRetry.MaxDelayMs = 0;
-            }
-        );
+        ) = TestUtils.SetupConnectedClientForceState(configureOptions: o =>
+        {
+            o.NotReadyRetry.Enabled = true;
+            o.NotReadyRetry.MaxRetryAttempts = 3;
+            o.NotReadyRetry.InitialDelayMs = 0;
+            o.NotReadyRetry.MaxDelayMs = 0;
+        });
 
         await using ObsWebSocketClient owned = client;
 
@@ -721,7 +719,12 @@ public sealed class ClientContractTests
                 )
             )
             .Callback(
-                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType _,
+                    bool _,
+                    CancellationToken _
+                ) =>
                 {
                     sends++;
                     string requestId = ReadRequestId(buffer);
@@ -734,7 +737,9 @@ public sealed class ClientContractTests
                             requestId,
                             new RequestStatus(
                                 ready,
-                                (int)(ready ? RequestStatusCode.Success : RequestStatusCode.NotReady),
+                                (int)(
+                                    ready ? RequestStatusCode.Success : RequestStatusCode.NotReady
+                                ),
                                 null
                             ),
                             null
@@ -771,7 +776,12 @@ public sealed class ClientContractTests
                 )
             )
             .Callback(
-                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType _,
+                    bool _,
+                    CancellationToken _
+                ) =>
                 {
                     sends++;
                     string requestId = ReadRequestId(buffer);
@@ -790,8 +800,8 @@ public sealed class ClientContractTests
             .Returns(ValueTask.CompletedTask);
 
         ObsWebSocketRequestException error =
-            await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(
-                () => client.CallAsync<object>("GetVersion")
+            await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(() =>
+                client.CallAsync<object>("GetVersion")
             );
 
         Assert.AreEqual(RequestStatusCode.NotReady, error.StatusCode);
@@ -806,14 +816,12 @@ public sealed class ClientContractTests
             ObsWebSocketClient client,
             Mock<IWebSocketMessageSerializer> mockSerializer,
             Mock<IWebSocketConnection> mockConnection
-        ) = TestUtils.SetupConnectedClientForceState(
-            configureOptions: o =>
-            {
-                o.NotReadyRetry.Enabled = true;
-                o.NotReadyRetry.InitialDelayMs = 0;
-                o.NotReadyRetry.MaxDelayMs = 0;
-            }
-        );
+        ) = TestUtils.SetupConnectedClientForceState(configureOptions: o =>
+        {
+            o.NotReadyRetry.Enabled = true;
+            o.NotReadyRetry.InitialDelayMs = 0;
+            o.NotReadyRetry.MaxDelayMs = 0;
+        });
 
         await using ObsWebSocketClient owned = client;
 
@@ -827,7 +835,12 @@ public sealed class ClientContractTests
                 )
             )
             .Callback(
-                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType _,
+                    bool _,
+                    CancellationToken _
+                ) =>
                 {
                     sends++;
                     string requestId = ReadRequestId(buffer);
@@ -837,11 +850,7 @@ public sealed class ClientContractTests
                         new RequestResponsePayload<object>(
                             "GetVersion",
                             requestId,
-                            new RequestStatus(
-                                false,
-                                (int)RequestStatusCode.ResourceNotFound,
-                                null
-                            ),
+                            new RequestStatus(false, (int)RequestStatusCode.ResourceNotFound, null),
                             null
                         )
                     );
@@ -849,8 +858,8 @@ public sealed class ClientContractTests
             )
             .Returns(ValueTask.CompletedTask);
 
-        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(
-            () => client.CallAsync<object>("GetVersion")
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(() =>
+            client.CallAsync<object>("GetVersion")
         );
 
         Assert.AreEqual(1, sends);

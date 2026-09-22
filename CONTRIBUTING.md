@@ -74,6 +74,21 @@ To contribute code, you'll need to set up a local development environment:
     ```
     Exits non-zero on the first failed check.
 
+## Checking the stub types
+
+The stub types have no schema behind them: `protocol.json` types 14 array fields as
+`Array<Object>`, so their shapes live only as C++ in obs-websocket. `ObsWebSocket.StubAudit`
+diffs ours against those sources and reports fields OBS emits that no stub declares, stub fields
+nothing emits, and numerics narrower than the C type behind them.
+
+It needs local clones and is run by hand, so the package builds without an obs-studio checkout:
+
+```bash
+dotnet run --project ObsWebSocket.StubAudit -- /path/to/obs-websocket /path/to/obs-studio
+```
+
+Exits non-zero when it finds a missing or narrow field.
+
 ## Pull Request Process 🚀
 
 1.  **Fork the repository** and create your branch from `master`.

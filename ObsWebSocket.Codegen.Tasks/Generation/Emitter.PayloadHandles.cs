@@ -11,7 +11,7 @@ internal static partial class Emitter
     /// </summary>
     /// <remarks>
     /// These are the handles that cost nothing. An event announcing a scene change already says
-    /// which scene, by uuid, so acting on it needs no lookup and the result is immune to a rename
+    /// which scene, by uuid, so acting on it costs no extra request and survives a rename
     /// that happens between the event arriving and the next request going out. Without them the
     /// caller reads <c>e.EventData.SceneName</c> and addresses the scene by name again, which is
     /// the round trip and the race the uuid was there to avoid.
