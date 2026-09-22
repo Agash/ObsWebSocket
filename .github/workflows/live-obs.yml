@@ -3,7 +3,7 @@
 #
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: Live OBS validation
+name: Full suite against live OBS
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ env:
 
 jobs:
   validate:
-    name: Validate JSON and MessagePack against OBS
+    name: Unit and live tests against OBS
     runs-on: ubuntu-24.04
     timeout-minutes: 25
 
@@ -97,44 +97,118 @@ jobs:
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=ci_sink
 
-      - name: Start OBS
+      - name: Build the tests
+        run: dotnet build ${{ github.workspace }}/ObsWebSocket.Tests/ObsWebSocket.Tests.csproj --configuration Release
+
+      - name: Run the full suite against OBS
+        # No filter: the unit tests and the live sweep in one run, so the coverage report covers
+        # everything at once. Each framework gets an OBS of its own: the write sweep resets video,
+        # and enumerating outputs after that reads a freed encoder and takes OBS down (#25), so a
+        # second framework sharing the first one's OBS would start against a poisoned instance.
         env:
           DISPLAY: ":99"
         run: |
-          set -euo pipefail
-          obs --minimize-to-tray --disable-updater --disable-shutdown-check \
-            > obs-stdout.log 2>&1 &
-          echo $! > obs.pid
+          set -uo pipefail
 
-          # Waited for rather than slept: pipeline init time varies with the runner.
-          for _ in $(seq 1 90); do
-            if nc -z localhost "${OBS_WEBSOCKET_PORT}"; then
-              echo "obs-websocket is listening."
-              exit 0
+          start_obs() {
+            obs --minimize-to-tray --disable-updater --disable-shutdown-check \
+              > "obs-stdout-$1.log" 2>&1 &
+            echo $! > obs.pid
+            # Waited for rather than slept: pipeline init time varies with the runner.
+            for _ in $(seq 1 90); do
+              if nc -z localhost "${OBS_WEBSOCKET_PORT}"; then
+                return 0
+              fi
+              sleep 2
+            done
+            echo "::error::obs-websocket never started listening for $1."
+            cat "obs-stdout-$1.log"
+            return 1
+          }
+
+          stop_obs() {
+            # Terminated, not killed, so OBS clears its unclean-shutdown marker.
+            pid="$(cat obs.pid)"
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 30); do
+              kill -0 "$pid" 2>/dev/null || return 0
+              sleep 1
+            done
+            kill -9 "$pid" 2>/dev/null || true
+          }
+
+          status=0
+          for framework in net9.0 net10.0 net11.0; do
+            echo "::group::$framework"
+            if start_obs "$framework"; then
+              dotnet test --project ${{ github.workspace }}/ObsWebSocket.Tests/ObsWebSocket.Tests.csproj \
+                --configuration Release --no-build --framework "$framework" \
+                --results-directory-layout per-module \
+                -- --test-parameter Obs.ServerUri=ws://localhost:${{ env.OBS_WEBSOCKET_PORT }} \
+                --test-parameter Obs.Password=${{ env.OBS_WEBSOCKET_PASSWORD }} \
+                --test-parameter Obs.Required=true \
+                --coverage --coverage-settings coverage.settings.xml \
+                --coverage-output-format cobertura --coverage-output full.cobertura.xml \
+                || status=1
+            else
+              status=1
             fi
-            sleep 2
+            stop_obs
+            echo "::endgroup::"
           done
+          exit "$status"
 
-          echo "::error::obs-websocket never started listening on ${OBS_WEBSOCKET_PORT}."
-          cat obs-stdout.log
-          exit 1
+      - name: Enforce the coverage floor
+        # Every framework is gated, since each compiles its own conditional code paths.
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, os, sys, xml.etree.ElementTree as ET
 
-      - name: Validate both transports
-        # One process, both wire formats, one OBS. Exits non-zero on failure.
-        env:
-          DISPLAY: ":99"
-          Obs__ServerUri: ws://localhost:4455
-          Obs__Password: ${{ env.OBS_WEBSOCKET_PASSWORD }}
-        run: >
-          dotnet run --project ObsWebSocket.Example --configuration Release
-          -- run-transport-tests
+          floors = {"Lines": 90.0, "Branches": 80.0}
+          reports = sorted(glob.glob("**/full.cobertura.xml", recursive=True))
+          summary = open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8")
+          if not reports:
+              summary.write("### Coverage\n\nNo coverage report was produced.\n")
+              sys.exit("No coverage report was produced.")
+
+          summary.write("### Coverage, unit and live combined\n\n")
+          summary.write("| Framework | Lines | Branches |\n| --- | ---: | ---: |\n")
+          failures = []
+          for report in reports:
+              framework = os.path.basename(os.path.dirname(report))
+              root = ET.parse(report).getroot()
+              rates = {
+                  "Lines": float(root.get("line-rate") or 0) * 100,
+                  "Branches": float(root.get("branch-rate") or 0) * 100,
+              }
+              summary.write(f"| {framework} | {rates['Lines']:.1f}% | {rates['Branches']:.1f}% |\n")
+              for metric, floor in floors.items():
+                  if rates[metric] + 1e-9 < floor:
+                      failures.append(f"{framework}: {metric.lower()} {rates[metric]:.1f}% is below {floor:.0f}%")
+
+          summary.write(f"\nFloors: {floors['Lines']:.0f}% lines, {floors['Branches']:.0f}% branches.\n")
+          if failures:
+              sys.exit("\n".join(failures))
+          print("coverage floors met for", len(reports), "framework(s)")
+          PY
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-full
+          if-no-files-found: warn
+          path: '**/full.cobertura.xml'
 
       - name: Collect OBS logs
         if: always()
         run: |
           set -euo pipefail
           mkdir -p obs-logs
-          cp obs-stdout.log obs-logs/ 2>/dev/null || true
+          cp obs-stdout-*.log obs-logs/ 2>/dev/null || true
           cp -r ~/.config/obs-studio/logs obs-logs/obs-studio-logs 2>/dev/null || true
 
       - name: Upload OBS logs
