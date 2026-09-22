@@ -539,7 +539,7 @@ internal sealed partial class Worker(
                 // of the loop, no handler bookkeeping, and cancellation ends it cleanly. The
                 // classic events on the client are untouched and still work alongside this.
                 //
-                // The event already says which scene, by uuid, so acting on it needs no lookup.
+                // The event carries the scene uuid, so acting on it costs no extra request.
                 // Reading SceneName back off it and addressing the scene by name would add a round
                 // trip and reintroduce the rename race the uuid exists to close.
                 int seconds =
@@ -4087,7 +4087,7 @@ internal sealed partial class Worker(
             );
         }
 
-        // A miss is worth showing: the lookup already fetched the list, so the client can name what
+        // The lookup already fetched the list, so a miss can name what
         // does exist. OBS itself can only answer ResourceNotFound and the name you gave it.
         try
         {
