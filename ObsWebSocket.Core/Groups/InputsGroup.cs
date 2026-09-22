@@ -80,7 +80,7 @@ public readonly partial struct InputsGroup
 
         if (names.Count == 0)
         {
-            client._logger.LogDebug("SetInputMutesAsync called with an empty list, nothing to do.");
+            client._logger.LogNoInputMutesToSet();
             return new BatchResults([]);
         }
 
@@ -99,8 +99,7 @@ public readonly partial struct InputsGroup
             RequestResponsePayload<object> result = results[i];
             if (!result.RequestStatus.Result)
             {
-                client._logger.LogWarning(
-                    "Failed to set mute state for input '{InputName}': code {Code}, {Comment}",
+                client._logger.LogInputMuteRejected(
                     names[i],
                     result.RequestStatus.Code,
                     result.RequestStatus.Comment ?? "no comment"
@@ -160,12 +159,7 @@ public readonly partial struct InputsGroup
         }
         catch (JsonException jsonEx)
         {
-            client._logger.LogError(
-                jsonEx,
-                "Failed to deserialize input settings for '{InputName}' to type {TypeName}.",
-                inputName,
-                typeof(T).Name
-            );
+            client._logger.LogInputSettingsUnreadable(jsonEx, inputName, typeof(T).Name);
             return null;
         }
     }

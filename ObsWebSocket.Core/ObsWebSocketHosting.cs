@@ -79,10 +79,7 @@ internal sealed class ObsWebSocketConnectionService(
         {
             // A streaming tool should still start when OBS is not running yet; the client's own
             // reconnect handles it from here.
-            logger.LogWarning(
-                ex,
-                "Could not reach OBS during startup. The client will keep trying."
-            );
+            logger.LogObsUnreachableAtStartup(ex);
         }
     }
 
@@ -94,10 +91,7 @@ internal sealed class ObsWebSocketConnectionService(
             return;
         }
 
-        logger.LogInformation(
-            "OBS connection settings changed, reconnecting to {ServerUri}.",
-            updated.ServerUri
-        );
+        logger.LogConnectionSettingsChanged(updated.ServerUri);
 
         _ = _pending.Writer.TryWrite(ObsConnectionSettings.Capture(updated));
     }
@@ -123,7 +117,7 @@ internal sealed class ObsWebSocketConnectionService(
                 catch (Exception ex)
                     when (ex is ObsWebSocketException or OperationCanceledException)
                 {
-                    logger.LogWarning(ex, "Reconnect after a settings change did not succeed.");
+                    logger.LogReconnectAfterSettingsChangeFailed(ex);
                 }
             }
         }

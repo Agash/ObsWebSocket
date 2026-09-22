@@ -172,10 +172,7 @@ public readonly partial struct ConfigGroup
                         or RequestStatusCode.InvalidRequestField
             )
         {
-            client._logger.LogWarning(
-                "Failed to set scene collection to '{TargetName}': Not found or invalid.",
-                targetSceneCollectionName
-            );
+            client._logger.LogSceneCollectionNotFound(targetSceneCollectionName);
             return false; // Switch failed because target doesn't exist
         }
         // Let other exceptions propagate
@@ -230,10 +227,7 @@ public readonly partial struct ConfigGroup
                         or RequestStatusCode.InvalidRequestField
             )
         {
-            client._logger.LogWarning(
-                "Failed to set profile to '{TargetName}': Not found or invalid.",
-                targetProfileName
-            );
+            client._logger.LogProfileNotFound(targetProfileName);
             return false; // Switch failed because target doesn't exist
         }
         // Let other exceptions propagate

@@ -25,7 +25,10 @@ public readonly partial struct SourcesGroup
     /// <param name="sourceName">The name of the input or scene to check.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>True if a source (input or scene) with the specified name exists, false otherwise.</returns>
-    /// <exception cref="ObsWebSocketException">Thrown if an unexpected error occurs during API calls.</exception>
+    /// <exception cref="ObsWebSocketException">
+    /// Thrown if the lookup could not be completed, for example because the connection dropped.
+    /// A request OBS refuses is reported as the source not existing.
+    /// </exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     public async Task<bool> SourceExistsAsync(
         string sourceName,
@@ -64,14 +67,11 @@ public readonly partial struct SourcesGroup
                 )
                 ?? false;
         }
-        catch (ObsWebSocketException ex)
+        catch (ObsWebSocketRequestException ex)
         {
-            // Log the specific OBS error but return false as the source effectively doesn't exist or couldn't be verified
-            client._logger.LogWarning(
-                ex,
-                "OBS error while checking if source '{SourceName}' exists. Assuming it doesn't.",
-                sourceName
-            );
+            // Only OBS refusing the lookup means "not there". A lost connection or a timeout
+            // propagates, because reporting it as absent invites the caller to create a duplicate.
+            client._logger.LogSourceLookupRefused(ex, sourceName);
             return false;
         }
         // Let other exceptions (like InvalidOperationException for disconnect) propagate
@@ -121,20 +121,14 @@ public readonly partial struct SourcesGroup
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
-            client._logger.LogWarning(
-                "Source '{SourceName}' not found for screenshot.",
-                sourceName
-            );
+            client._logger.LogScreenshotSourceNotFound(sourceName);
             return null;
         }
         // Let other exceptions propagate
 
         if (string.IsNullOrEmpty(response?.ImageData))
         {
-            client._logger.LogWarning(
-                "Received null or empty image data for screenshot of '{SourceName}'.",
-                sourceName
-            );
+            client._logger.LogScreenshotEmpty(sourceName);
             return null;
         }
 
@@ -144,11 +138,7 @@ public readonly partial struct SourcesGroup
         }
         catch (FormatException formatEx)
         {
-            client._logger.LogError(
-                formatEx,
-                "Failed to decode Base64 image data for screenshot of '{SourceName}'.",
-                sourceName
-            );
+            client._logger.LogScreenshotUndecodable(formatEx, sourceName);
             return null;
         }
     }

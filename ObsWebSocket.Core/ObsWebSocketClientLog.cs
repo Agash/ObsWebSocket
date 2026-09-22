@@ -921,4 +921,173 @@ internal static partial class ObsWebSocketClientLog
         this ILogger logger,
         Exception exception
     );
+
+    [LoggerMessage(
+        EventId = 101,
+        Level = LogLevel.Warning,
+        Message = "Could not switch to scene collection '{TargetName}': OBS does not know it."
+    )]
+    public static partial void LogSceneCollectionNotFound(this ILogger logger, string targetName);
+
+    [LoggerMessage(
+        EventId = 102,
+        Level = LogLevel.Warning,
+        Message = "Could not switch to profile '{TargetName}': OBS does not know it."
+    )]
+    public static partial void LogProfileNotFound(this ILogger logger, string targetName);
+
+    [LoggerMessage(
+        EventId = 103,
+        Level = LogLevel.Error,
+        Message = "Could not read the settings of filter '{FilterName}' on '{SourceName}' as {TypeName}."
+    )]
+    public static partial void LogFilterSettingsUnreadable(
+        this ILogger logger,
+        Exception exception,
+        string filterName,
+        string sourceName,
+        string typeName
+    );
+
+    [LoggerMessage(
+        EventId = 104,
+        Level = LogLevel.Debug,
+        Message = "SetInputMutesAsync was given no inputs, so nothing was sent."
+    )]
+    public static partial void LogNoInputMutesToSet(this ILogger logger);
+
+    [LoggerMessage(
+        EventId = 105,
+        Level = LogLevel.Warning,
+        Message = "OBS rejected the mute state for input '{InputName}': code {Code}, {Comment}"
+    )]
+    public static partial void LogInputMuteRejected(
+        this ILogger logger,
+        string inputName,
+        int code,
+        string comment
+    );
+
+    [LoggerMessage(
+        EventId = 106,
+        Level = LogLevel.Error,
+        Message = "Could not read the settings of input '{InputName}' as {TypeName}."
+    )]
+    public static partial void LogInputSettingsUnreadable(
+        this ILogger logger,
+        Exception exception,
+        string inputName,
+        string typeName
+    );
+
+    [LoggerMessage(
+        EventId = 107,
+        Level = LogLevel.Debug,
+        Message = "Switch to '{SceneName}' sent, waiting for {EventDescription}."
+    )]
+    public static partial void LogSceneSwitchSent(
+        this ILogger logger,
+        string sceneName,
+        string eventDescription
+    );
+
+    [LoggerMessage(
+        EventId = 108,
+        Level = LogLevel.Information,
+        Message = "Switch confirmed by {EventDescription}."
+    )]
+    public static partial void LogSceneSwitchConfirmed(
+        this ILogger logger,
+        string eventDescription
+    );
+
+    [LoggerMessage(
+        EventId = 109,
+        Level = LogLevel.Information,
+        Message = "Waiting for the switch to '{SceneName}' was cancelled."
+    )]
+    public static partial void LogSceneSwitchCancelled(this ILogger logger, string sceneName);
+
+    [LoggerMessage(
+        EventId = 110,
+        Level = LogLevel.Error,
+        Message = "Switching to '{SceneName}' and waiting for confirmation failed."
+    )]
+    public static partial void LogSceneSwitchFailed(
+        this ILogger logger,
+        Exception exception,
+        string sceneName
+    );
+
+    [LoggerMessage(
+        EventId = 111,
+        Level = LogLevel.Warning,
+        Message = "OBS refused the lookup for source '{SourceName}', so it is reported as absent."
+    )]
+    public static partial void LogSourceLookupRefused(
+        this ILogger logger,
+        Exception exception,
+        string sourceName
+    );
+
+    [LoggerMessage(
+        EventId = 112,
+        Level = LogLevel.Warning,
+        Message = "No source named '{SourceName}' to take a screenshot of."
+    )]
+    public static partial void LogScreenshotSourceNotFound(this ILogger logger, string sourceName);
+
+    [LoggerMessage(
+        EventId = 113,
+        Level = LogLevel.Warning,
+        Message = "OBS returned no image data for the screenshot of '{SourceName}'."
+    )]
+    public static partial void LogScreenshotEmpty(this ILogger logger, string sourceName);
+
+    [LoggerMessage(
+        EventId = 114,
+        Level = LogLevel.Error,
+        Message = "The screenshot of '{SourceName}' was not valid Base64."
+    )]
+    public static partial void LogScreenshotUndecodable(
+        this ILogger logger,
+        Exception exception,
+        string sourceName
+    );
+
+    [LoggerMessage(
+        EventId = 115,
+        Level = LogLevel.Warning,
+        Message = "Could not reach OBS during startup. The client will keep trying."
+    )]
+    public static partial void LogObsUnreachableAtStartup(this ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 116,
+        Level = LogLevel.Information,
+        Message = "OBS connection settings changed, reconnecting to {ServerUri}."
+    )]
+    public static partial void LogConnectionSettingsChanged(this ILogger logger, Uri serverUri);
+
+    [LoggerMessage(
+        EventId = 117,
+        Level = LogLevel.Warning,
+        Message = "Reconnect after a settings change did not succeed."
+    )]
+    public static partial void LogReconnectAfterSettingsChangeFailed(
+        this ILogger logger,
+        Exception exception
+    );
+
+    [LoggerMessage(
+        EventId = 118,
+        Level = LogLevel.Warning,
+        Message = "Could not read {Description}. Type: {DataType}, Raw: {RawData}"
+    )]
+    public static partial void LogPayloadUnreadable(
+        this ILogger logger,
+        string description,
+        string dataType,
+        string rawData
+    );
 }
