@@ -71,9 +71,8 @@ public readonly partial struct FiltersGroup
         }
         catch (JsonException jsonEx)
         {
-            client._logger.LogError(
+            client._logger.LogFilterSettingsUnreadable(
                 jsonEx,
-                "Failed to deserialize filter settings for '{FilterName}' on '{SourceName}' to type {TypeName}.",
                 filterName,
                 sourceName,
                 typeof(T).Name

@@ -60,7 +60,7 @@ public readonly partial struct StreamGroup
             StreamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
             return ev.EventData.OutputState;
         }
-        catch (TimeoutException)
+        catch (ObsWebSocketTimeoutException)
         {
             return null;
         }

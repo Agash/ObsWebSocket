@@ -1027,10 +1027,23 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
             );
         CancellationToken loopToken = linkedLoopCts.Token;
 
+        bool connectionWasLost = false;
+
         try
         {
             while (!loopToken.IsCancellationRequested)
             {
+                // A live connection resets the attempt count, so the retry gate below never sees
+                // the first attempt after a drop. Without this, a client told not to reconnect
+                // would reconnect once after every lost connection.
+                if (connectionWasLost && !settings.AutoReconnectEnabled)
+                {
+                    _logger.LogMaxReconnectAttemptsReachedOrAutoReconnect(
+                        settings.MaxReconnectAttempts
+                    );
+                    break;
+                }
+
                 attempt++;
                 bool isConnectedThisAttempt = false;
                 Exception? attemptException = null;
@@ -1186,6 +1199,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                         _completionException = attemptException;
                     }
 
+                    connectionWasLost = isConnectedThisAttempt;
                     bool cleanupNeeded =
                         !isConnectedThisAttempt
                         || (isConnectedThisAttempt && attemptException != null);
@@ -1426,14 +1440,6 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                 throw;
             }
 
-            if (
-                ex is ObsWebSocketException obsEx
-                && obsEx.Message.Contains("Authentication", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                throw new AuthenticationFailureException(ex.Message, ex);
-            }
-
             throw new ConnectionAttemptFailedException(
                 $"Connection attempt {attempt} failed during handshake: {ex.Message}",
                 ex
@@ -1579,9 +1585,15 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
             _logger.LogServerInitiatedUnexpectedCloseStatusDesc(status, desc);
         }
 
-        ObsWebSocketException closeEx = new(
-            $"Connection closed by server. Status: {status}, Description: {desc}"
-        );
+        string closeMessage = $"Connection closed by server. Status: {status}, Description: {desc}";
+
+        // OBS closes with 4009 when the identify payload does not authenticate. That is fatal:
+        // retrying the same credentials only repeats it, so it has to be distinguishable from a
+        // connection that merely dropped.
+        ObsWebSocketException closeEx =
+            (int?)status == (int)WebSocketCloseCode.AuthenticationFailed
+                ? new AuthenticationFailureException(closeMessage)
+                : new ObsWebSocketException(closeMessage);
         CleanupConnectionOnly(closeEx);
 
         if (ws.State == WebSocketState.CloseReceived)
@@ -1993,459 +2005,20 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// The generated dispatch table, with the one event whose payload the protocol does not
+    /// describe replaced by its own handler.
+    /// </summary>
     private static Dictionary<
         string,
         Action<ObsWebSocketClient, IWebSocketMessageSerializer, object?>
-    > InitializeEventHandlers() =>
-        new(StringComparer.Ordinal)
-        {
-            // Config
-            ["CurrentSceneCollectionChanging"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentSceneCollectionChangingPayload,
-                    CurrentSceneCollectionChangingEventArgs
-                >(
-                    s,
-                    "CurrentSceneCollectionChanging",
-                    d,
-                    p => new(p),
-                    c.OnCurrentSceneCollectionChanging
-                ),
-            ["CurrentSceneCollectionChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentSceneCollectionChangedPayload,
-                    CurrentSceneCollectionChangedEventArgs
-                >(
-                    s,
-                    "CurrentSceneCollectionChanged",
-                    d,
-                    p => new(p),
-                    c.OnCurrentSceneCollectionChanged
-                ),
-            ["SceneCollectionListChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SceneCollectionListChangedPayload,
-                    SceneCollectionListChangedEventArgs
-                >(s, "SceneCollectionListChanged", d, p => new(p), c.OnSceneCollectionListChanged),
-            ["CurrentProfileChanging"] = (c, s, d) =>
-                c.TryHandleEvent<CurrentProfileChangingPayload, CurrentProfileChangingEventArgs>(
-                    s,
-                    "CurrentProfileChanging",
-                    d,
-                    p => new(p),
-                    c.OnCurrentProfileChanging
-                ),
-            ["CurrentProfileChanged"] = (c, s, d) =>
-                c.TryHandleEvent<CurrentProfileChangedPayload, CurrentProfileChangedEventArgs>(
-                    s,
-                    "CurrentProfileChanged",
-                    d,
-                    p => new(p),
-                    c.OnCurrentProfileChanged
-                ),
-            ["ProfileListChanged"] = (c, s, d) =>
-                c.TryHandleEvent<ProfileListChangedPayload, ProfileListChangedEventArgs>(
-                    s,
-                    "ProfileListChanged",
-                    d,
-                    p => new(p),
-                    c.OnProfileListChanged
-                ),
-            // Filters
-            ["SourceFilterListReindexed"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SourceFilterListReindexedPayload,
-                    SourceFilterListReindexedEventArgs
-                >(s, "SourceFilterListReindexed", d, p => new(p), c.OnSourceFilterListReindexed),
-            ["SourceFilterCreated"] = (c, s, d) =>
-                c.TryHandleEvent<SourceFilterCreatedPayload, SourceFilterCreatedEventArgs>(
-                    s,
-                    "SourceFilterCreated",
-                    d,
-                    p => new(p),
-                    c.OnSourceFilterCreated
-                ),
-            ["SourceFilterRemoved"] = (c, s, d) =>
-                c.TryHandleEvent<SourceFilterRemovedPayload, SourceFilterRemovedEventArgs>(
-                    s,
-                    "SourceFilterRemoved",
-                    d,
-                    p => new(p),
-                    c.OnSourceFilterRemoved
-                ),
-            ["SourceFilterNameChanged"] = (c, s, d) =>
-                c.TryHandleEvent<SourceFilterNameChangedPayload, SourceFilterNameChangedEventArgs>(
-                    s,
-                    "SourceFilterNameChanged",
-                    d,
-                    p => new(p),
-                    c.OnSourceFilterNameChanged
-                ),
-            ["SourceFilterSettingsChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SourceFilterSettingsChangedPayload,
-                    SourceFilterSettingsChangedEventArgs
-                >(
-                    s,
-                    "SourceFilterSettingsChanged",
-                    d,
-                    p => new(p),
-                    c.OnSourceFilterSettingsChanged
-                ),
-            ["SourceFilterEnableStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SourceFilterEnableStateChangedPayload,
-                    SourceFilterEnableStateChangedEventArgs
-                >(
-                    s,
-                    "SourceFilterEnableStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnSourceFilterEnableStateChanged
-                ),
-            // General
-            ["ExitStarted"] = (c, _, d) => c.OnExitStarted(new ExitStartedEventArgs()),
-            ["VendorEvent"] = (c, s, d) =>
-                c.TryHandleEvent<VendorEventPayload, VendorEventEventArgs>(
-                    s,
-                    "VendorEvent",
-                    d,
-                    p => new(p),
-                    c.OnVendorEvent
-                ),
-            ["CustomEvent"] = (c, s, d) => c.HandleCustomEvent(s, d),
-            // Inputs
-            ["InputCreated"] = (c, s, d) =>
-                c.TryHandleEvent<InputCreatedPayload, InputCreatedEventArgs>(
-                    s,
-                    "InputCreated",
-                    d,
-                    p => new(p),
-                    c.OnInputCreated
-                ),
-            ["InputRemoved"] = (c, s, d) =>
-                c.TryHandleEvent<InputRemovedPayload, InputRemovedEventArgs>(
-                    s,
-                    "InputRemoved",
-                    d,
-                    p => new(p),
-                    c.OnInputRemoved
-                ),
-            ["InputNameChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputNameChangedPayload, InputNameChangedEventArgs>(
-                    s,
-                    "InputNameChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputNameChanged
-                ),
-            ["InputSettingsChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputSettingsChangedPayload, InputSettingsChangedEventArgs>(
-                    s,
-                    "InputSettingsChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputSettingsChanged
-                ),
-            ["InputActiveStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputActiveStateChangedPayload, InputActiveStateChangedEventArgs>(
-                    s,
-                    "InputActiveStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputActiveStateChanged
-                ),
-            ["InputShowStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputShowStateChangedPayload, InputShowStateChangedEventArgs>(
-                    s,
-                    "InputShowStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputShowStateChanged
-                ),
-            ["InputMuteStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputMuteStateChangedPayload, InputMuteStateChangedEventArgs>(
-                    s,
-                    "InputMuteStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputMuteStateChanged
-                ),
-            ["InputVolumeChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputVolumeChangedPayload, InputVolumeChangedEventArgs>(
-                    s,
-                    "InputVolumeChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputVolumeChanged
-                ),
-            ["InputAudioBalanceChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    InputAudioBalanceChangedPayload,
-                    InputAudioBalanceChangedEventArgs
-                >(s, "InputAudioBalanceChanged", d, p => new(p), c.OnInputAudioBalanceChanged),
-            ["InputAudioSyncOffsetChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    InputAudioSyncOffsetChangedPayload,
-                    InputAudioSyncOffsetChangedEventArgs
-                >(
-                    s,
-                    "InputAudioSyncOffsetChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputAudioSyncOffsetChanged
-                ),
-            ["InputAudioTracksChanged"] = (c, s, d) =>
-                c.TryHandleEvent<InputAudioTracksChangedPayload, InputAudioTracksChangedEventArgs>(
-                    s,
-                    "InputAudioTracksChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputAudioTracksChanged
-                ),
-            ["InputAudioMonitorTypeChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    InputAudioMonitorTypeChangedPayload,
-                    InputAudioMonitorTypeChangedEventArgs
-                >(
-                    s,
-                    "InputAudioMonitorTypeChanged",
-                    d,
-                    p => new(p),
-                    c.OnInputAudioMonitorTypeChanged
-                ),
-            ["InputVolumeMeters"] = (c, s, d) =>
-                c.TryHandleEvent<InputVolumeMetersPayload, InputVolumeMetersEventArgs>(
-                    s,
-                    "InputVolumeMeters",
-                    d,
-                    p => new(p),
-                    c.OnInputVolumeMeters
-                ),
-            // Media Inputs
-            ["MediaInputPlaybackStarted"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    MediaInputPlaybackStartedPayload,
-                    MediaInputPlaybackStartedEventArgs
-                >(s, "MediaInputPlaybackStarted", d, p => new(p), c.OnMediaInputPlaybackStarted),
-            ["MediaInputPlaybackEnded"] = (c, s, d) =>
-                c.TryHandleEvent<MediaInputPlaybackEndedPayload, MediaInputPlaybackEndedEventArgs>(
-                    s,
-                    "MediaInputPlaybackEnded",
-                    d,
-                    p => new(p),
-                    c.OnMediaInputPlaybackEnded
-                ),
-            ["MediaInputActionTriggered"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    MediaInputActionTriggeredPayload,
-                    MediaInputActionTriggeredEventArgs
-                >(s, "MediaInputActionTriggered", d, p => new(p), c.OnMediaInputActionTriggered),
-            // Outputs
-            ["StreamStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<StreamStateChangedPayload, StreamStateChangedEventArgs>(
-                    s,
-                    "StreamStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnStreamStateChanged
-                ),
-            ["RecordStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<RecordStateChangedPayload, RecordStateChangedEventArgs>(
-                    s,
-                    "RecordStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnRecordStateChanged
-                ),
-            ["RecordFileChanged"] = (c, s, d) =>
-                c.TryHandleEvent<RecordFileChangedPayload, RecordFileChangedEventArgs>(
-                    s,
-                    "RecordFileChanged",
-                    d,
-                    p => new(p),
-                    c.OnRecordFileChanged
-                ),
-            ["ReplayBufferStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    ReplayBufferStateChangedPayload,
-                    ReplayBufferStateChangedEventArgs
-                >(s, "ReplayBufferStateChanged", d, p => new(p), c.OnReplayBufferStateChanged),
-            ["VirtualcamStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<VirtualcamStateChangedPayload, VirtualcamStateChangedEventArgs>(
-                    s,
-                    "VirtualcamStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnVirtualcamStateChanged
-                ),
-            ["ReplayBufferSaved"] = (c, s, d) =>
-                c.TryHandleEvent<ReplayBufferSavedPayload, ReplayBufferSavedEventArgs>(
-                    s,
-                    "ReplayBufferSaved",
-                    d,
-                    p => new(p),
-                    c.OnReplayBufferSaved
-                ),
-            // Scene Items
-            ["SceneItemCreated"] = (c, s, d) =>
-                c.TryHandleEvent<SceneItemCreatedPayload, SceneItemCreatedEventArgs>(
-                    s,
-                    "SceneItemCreated",
-                    d,
-                    p => new(p),
-                    c.OnSceneItemCreated
-                ),
-            ["SceneItemRemoved"] = (c, s, d) =>
-                c.TryHandleEvent<SceneItemRemovedPayload, SceneItemRemovedEventArgs>(
-                    s,
-                    "SceneItemRemoved",
-                    d,
-                    p => new(p),
-                    c.OnSceneItemRemoved
-                ),
-            ["SceneItemListReindexed"] = (c, s, d) =>
-                c.TryHandleEvent<SceneItemListReindexedPayload, SceneItemListReindexedEventArgs>(
-                    s,
-                    "SceneItemListReindexed",
-                    d,
-                    p => new(p),
-                    c.OnSceneItemListReindexed
-                ),
-            ["SceneItemEnableStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SceneItemEnableStateChangedPayload,
-                    SceneItemEnableStateChangedEventArgs
-                >(
-                    s,
-                    "SceneItemEnableStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnSceneItemEnableStateChanged
-                ),
-            ["SceneItemLockStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SceneItemLockStateChangedPayload,
-                    SceneItemLockStateChangedEventArgs
-                >(s, "SceneItemLockStateChanged", d, p => new(p), c.OnSceneItemLockStateChanged),
-            ["SceneItemSelected"] = (c, s, d) =>
-                c.TryHandleEvent<SceneItemSelectedPayload, SceneItemSelectedEventArgs>(
-                    s,
-                    "SceneItemSelected",
-                    d,
-                    p => new(p),
-                    c.OnSceneItemSelected
-                ),
-            ["SceneItemTransformChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SceneItemTransformChangedPayload,
-                    SceneItemTransformChangedEventArgs
-                >(s, "SceneItemTransformChanged", d, p => new(p), c.OnSceneItemTransformChanged),
-            // Scenes
-            ["SceneCreated"] = (c, s, d) =>
-                c.TryHandleEvent<SceneCreatedPayload, SceneCreatedEventArgs>(
-                    s,
-                    "SceneCreated",
-                    d,
-                    p => new(p),
-                    c.OnSceneCreated
-                ),
-            ["SceneRemoved"] = (c, s, d) =>
-                c.TryHandleEvent<SceneRemovedPayload, SceneRemovedEventArgs>(
-                    s,
-                    "SceneRemoved",
-                    d,
-                    p => new(p),
-                    c.OnSceneRemoved
-                ),
-            ["SceneNameChanged"] = (c, s, d) =>
-                c.TryHandleEvent<SceneNameChangedPayload, SceneNameChangedEventArgs>(
-                    s,
-                    "SceneNameChanged",
-                    d,
-                    p => new(p),
-                    c.OnSceneNameChanged
-                ),
-            ["CurrentProgramSceneChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentProgramSceneChangedPayload,
-                    CurrentProgramSceneChangedEventArgs
-                >(s, "CurrentProgramSceneChanged", d, p => new(p), c.OnCurrentProgramSceneChanged),
-            ["CurrentPreviewSceneChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentPreviewSceneChangedPayload,
-                    CurrentPreviewSceneChangedEventArgs
-                >(s, "CurrentPreviewSceneChanged", d, p => new(p), c.OnCurrentPreviewSceneChanged),
-            ["SceneListChanged"] = (c, s, d) =>
-                c.TryHandleEvent<SceneListChangedPayload, SceneListChangedEventArgs>(
-                    s,
-                    "SceneListChanged",
-                    d,
-                    p => new(p),
-                    c.OnSceneListChanged
-                ),
-            // Transitions
-            ["CurrentSceneTransitionChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentSceneTransitionChangedPayload,
-                    CurrentSceneTransitionChangedEventArgs
-                >(
-                    s,
-                    "CurrentSceneTransitionChanged",
-                    d,
-                    p => new(p),
-                    c.OnCurrentSceneTransitionChanged
-                ),
-            ["CurrentSceneTransitionDurationChanged"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    CurrentSceneTransitionDurationChangedPayload,
-                    CurrentSceneTransitionDurationChangedEventArgs
-                >(
-                    s,
-                    "CurrentSceneTransitionDurationChanged",
-                    d,
-                    p => new(p),
-                    c.OnCurrentSceneTransitionDurationChanged
-                ),
-            ["SceneTransitionStarted"] = (c, s, d) =>
-                c.TryHandleEvent<SceneTransitionStartedPayload, SceneTransitionStartedEventArgs>(
-                    s,
-                    "SceneTransitionStarted",
-                    d,
-                    p => new(p),
-                    c.OnSceneTransitionStarted
-                ),
-            ["SceneTransitionEnded"] = (c, s, d) =>
-                c.TryHandleEvent<SceneTransitionEndedPayload, SceneTransitionEndedEventArgs>(
-                    s,
-                    "SceneTransitionEnded",
-                    d,
-                    p => new(p),
-                    c.OnSceneTransitionEnded
-                ),
-            ["SceneTransitionVideoEnded"] = (c, s, d) =>
-                c.TryHandleEvent<
-                    SceneTransitionVideoEndedPayload,
-                    SceneTransitionVideoEndedEventArgs
-                >(s, "SceneTransitionVideoEnded", d, p => new(p), c.OnSceneTransitionVideoEnded),
-            // UI
-            ["StudioModeStateChanged"] = (c, s, d) =>
-                c.TryHandleEvent<StudioModeStateChangedPayload, StudioModeStateChangedEventArgs>(
-                    s,
-                    "StudioModeStateChanged",
-                    d,
-                    p => new(p),
-                    c.OnStudioModeStateChanged
-                ),
-            ["ScreenshotSaved"] = (c, s, d) =>
-                c.TryHandleEvent<ScreenshotSavedPayload, ScreenshotSavedEventArgs>(
-                    s,
-                    "ScreenshotSaved",
-                    d,
-                    p => new(p),
-                    c.OnScreenshotSaved
-                ),
-        };
+    > InitializeEventHandlers()
+    {
+        Dictionary<string, Action<ObsWebSocketClient, IWebSocketMessageSerializer, object?>> table =
+            CreateEventDispatchTable();
+        table["CustomEvent"] = static (c, s, d) => c.HandleCustomEvent(s, d);
+        return table;
+    }
     #endregion
 
     #region Helper Methods (Static & Instance)
@@ -2574,40 +2147,23 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         }
     }
 
-    private void LogEventDataDeserializationError(
-        string description,
-        object? data,
-        Exception? ex = null
-    )
+    /// <summary>Logs a payload that could not be read, keeping only the start of large ones.</summary>
+    private void LogEventDataDeserializationError(string description, object? data)
     {
-        string rawDataStr = data is JsonElement je
-            ? (
-                je.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-                    ? "[Null/Undefined]"
-                    : je.GetRawText()
-            )
-            : (data?.GetType().Name ?? "[Null]");
-        const string logMessage =
-            "Failed to deserialize {Description}. Type: {DataType}, Raw: {RawData}";
-        if (ex != null)
+        string raw = data switch
         {
-            _logger.LogError(
-                ex,
-                logMessage,
-                description,
-                data?.GetType().Name ?? "null",
-                rawDataStr.Length > 512 ? rawDataStr[..512] + "..." : rawDataStr
-            );
-        }
-        else
-        {
-            _logger.LogWarning(
-                logMessage,
-                description,
-                data?.GetType().Name ?? "null",
-                rawDataStr.Length > 512 ? rawDataStr[..512] + "..." : rawDataStr
-            );
-        }
+            JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined } =>
+                "[Null/Undefined]",
+            JsonElement element => element.GetRawText(),
+            null => "[Null]",
+            _ => data.GetType().Name,
+        };
+
+        _logger.LogPayloadUnreadable(
+            description,
+            data?.GetType().Name ?? "null",
+            raw.Length > 512 ? string.Concat(raw.AsSpan(0, 512), "...") : raw
+        );
     }
 
     private static async Task<object> WaitForHandshakeMessageAsync(
@@ -2632,12 +2188,32 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         {
             return await tcs.Task.WaitAsync(linkedWaitCts.Token).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (tcs.Task.IsFaulted)
+        {
+            // Same race as a request: the handshake fault, such as a rejected password, arrives
+            // after the cancellation of the attempt it ended.
+            Exception cause = tcs.Task.Exception!.InnerException!;
+            if (cause is AuthenticationFailureException)
+            {
+                throw cause;
+            }
+
+            throw new ConnectionAttemptFailedException(
+                $"Failed waiting for {messageName}, possibly due to prior error set on TCS.",
+                cause
+            );
+        }
         catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
         {
             throw new ConnectionAttemptFailedException(
                 $"Did not receive {messageName} message within {timeoutMs}ms.",
                 ex
             );
+        }
+        catch (AuthenticationFailureException)
+        {
+            // Fatal, so it travels as itself rather than as one more failed attempt.
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -2726,6 +2302,16 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         try
         {
             return await tcs.Task.WaitAsync(linkedWaitCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (tcs.Task.IsFaulted)
+        {
+            // A lost connection faults the request and then cancels the client lifetime. The
+            // fault reaches this wait a thread-pool turn later than the cancellation does, and it
+            // is the one that says what happened.
+            throw new ObsWebSocketException(
+                $"{requestDescription} failed while waiting for response.",
+                tcs.Task.Exception!.InnerException
+            );
         }
         catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
         {

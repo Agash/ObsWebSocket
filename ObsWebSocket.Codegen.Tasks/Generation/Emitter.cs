@@ -780,11 +780,67 @@ internal static partial class Emitter
                 );
             }
         }
+        AppendEventDispatchTable(builder, protocol.Events);
         builder.AppendLine("}");
         context.AddSource(
             "ObsWebSocketClient.Events.g.cs",
             SourceText.From(builder.ToString(), Encoding.UTF8)
         );
+    }
+
+    /// <summary>
+    /// Emits the table that routes each protocol event type to its typed handler, generated from
+    /// the same definition as the events themselves so no event can be declared yet never raised.
+    /// </summary>
+    private static void AppendEventDispatchTable(StringBuilder builder, List<OBSEvent> events)
+    {
+        bool anyDeprecated = events.Exists(e => e.Deprecated);
+
+        builder.AppendLine();
+        builder.AppendLine(
+            "    /// <summary>Routes each protocol event type to the handler that raises its event.</summary>"
+        );
+        builder.AppendLine(
+            "    private static global::System.Collections.Generic.Dictionary<string, global::System.Action<ObsWebSocketClient, global::ObsWebSocket.Core.Serialization.IWebSocketMessageSerializer, object?>> CreateEventDispatchTable()"
+        );
+        builder.AppendLine("    {");
+        if (anyDeprecated)
+        {
+            builder.AppendLine(
+                "#pragma warning disable CS0618 // Deprecated events still dispatch."
+            );
+        }
+
+        builder.AppendLine(
+            "        return new global::System.Collections.Generic.Dictionary<string, global::System.Action<ObsWebSocketClient, global::ObsWebSocket.Core.Serialization.IWebSocketMessageSerializer, object?>>(global::System.StringComparer.Ordinal)"
+        );
+        builder.AppendLine("        {");
+        foreach (OBSEvent eventDef in events)
+        {
+            string eventName = SanitizeIdentifier(eventDef.EventType);
+            string argsType = $"{GeneratedEventArgsNamespace}.{eventName}EventArgs";
+            if (eventDef.DataFields?.Count > 0)
+            {
+                string payloadType = $"{GeneratedEventsNamespace}.{eventName}Payload";
+                builder.AppendLine(
+                    $"            [\"{eventDef.EventType}\"] = static (c, s, d) => c.TryHandleEvent<{payloadType}, {argsType}>(s, \"{eventDef.EventType}\", d, static p => new(p), c.On{eventName}),"
+                );
+            }
+            else
+            {
+                builder.AppendLine(
+                    $"            [\"{eventDef.EventType}\"] = static (c, _, _) => c.On{eventName}(new {argsType}()),"
+                );
+            }
+        }
+
+        builder.AppendLine("        };");
+        if (anyDeprecated)
+        {
+            builder.AppendLine("#pragma warning restore CS0618");
+        }
+
+        builder.AppendLine("    }");
     }
 
     #endregion

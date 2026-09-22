@@ -193,7 +193,7 @@ public readonly partial struct OutputsGroup
             VirtualcamStateChangedEventArgs ev = await waitTask.ConfigureAwait(false);
             return ev.EventData.OutputActive;
         }
-        catch (TimeoutException)
+        catch (ObsWebSocketTimeoutException)
         {
             return null;
         }

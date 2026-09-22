@@ -631,7 +631,7 @@ public sealed class SceneItemStub
     /// <summary>Transform data for the scene item.</summary>
     [JsonPropertyName("sceneItemTransform")]
     [Key("sceneItemTransform")]
-    public required SceneItemTransformStub SceneItemTransform { get; init; } // Made nullable for safety
+    public required SceneItemTransformStub SceneItemTransform { get; init; }
 
     /// <summary>Captures any extra fields not explicitly defined in the stub.</summary>
     [IgnoreMember]

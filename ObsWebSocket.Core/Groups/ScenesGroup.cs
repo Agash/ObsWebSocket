@@ -104,7 +104,7 @@ public readonly partial struct ScenesGroup
     /// <param name="timeout">Optional: Maximum time to wait for the completion event after triggering the switch. Defaults based on client configuration.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <exception cref="ObsWebSocketException">Thrown if OBS fails to perform the switch or if the underlying wait fails unexpectedly.</exception>
-    /// <exception cref="TimeoutException">Thrown if the expected event confirming the switch completion is not received within the timeout period.</exception>
+    /// <exception cref="ObsWebSocketTimeoutException">Thrown if the expected event confirming the switch completion is not received within the timeout period.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected, or if trying to switch Preview scene when Studio Mode is disabled.</exception>
     /// <exception cref="OperationCanceledException">Thrown if the operation is canceled via the cancellationToken.</exception>
     private async Task SwitchSceneAndWaitCoreAsync(
@@ -119,6 +119,19 @@ public readonly partial struct ScenesGroup
         ArgumentException.ThrowIfNullOrEmpty(sceneName);
         client.EnsureConnected(); // Ensure client is connected
 
+        // OBS raises nothing when the scene is already the one asked for, so waiting for the
+        // event would sit here until it timed out on a switch that had nothing to do.
+        GetSceneListResponseData current = await client
+            .Scenes.GetSceneListAsync(new GetSceneListRequestData(), cancellationToken)
+            .ConfigureAwait(false);
+        string? active = switchToProgram
+            ? current.CurrentProgramSceneName
+            : current.CurrentPreviewSceneName;
+        if (string.Equals(active, sceneName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         // Determine default timeout if not provided
         int baseWaitMs =
             transitionDurationMs.HasValue && transitionDurationMs > 0 && switchToProgram
@@ -126,33 +139,21 @@ public readonly partial struct ScenesGroup
                 : client._options.Value.RequestTimeoutMs + 2000; // Or default request timeout + buffer
         TimeSpan effectiveTimeout = timeout ?? TimeSpan.FromMilliseconds(baseWaitMs);
 
-        // --- Corrected Event Waiting Setup ---
-        // We need separate task variables because Task<T> is not covariant.
-        Task<CurrentProgramSceneChangedEventArgs>? programWaitTask = null;
-        Task<CurrentPreviewSceneChangedEventArgs>? previewWaitTask = null;
-        string eventDescription;
-
-        if (switchToProgram)
-        {
-            eventDescription = $"CurrentProgramSceneChanged to '{sceneName}'";
-            // Start the wait BEFORE triggering the action.
-            programWaitTask = client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+        // Started before the switch is sent, so a fast confirmation cannot be missed.
+        string eventDescription = switchToProgram
+            ? $"CurrentProgramSceneChanged to '{sceneName}'"
+            : $"CurrentPreviewSceneChanged to '{sceneName}'";
+        Task confirmation = switchToProgram
+            ? client.WaitForEventAsync<CurrentProgramSceneChangedEventArgs>(
+                predicate: args => args.EventData.SceneName == sceneName,
+                timeout: effectiveTimeout,
+                cancellationToken: cancellationToken
+            )
+            : client.WaitForEventAsync<CurrentPreviewSceneChangedEventArgs>(
                 predicate: args => args.EventData.SceneName == sceneName,
                 timeout: effectiveTimeout,
                 cancellationToken: cancellationToken
             );
-        }
-        else
-        {
-            eventDescription = $"CurrentPreviewSceneChanged to '{sceneName}'";
-            // Start the wait BEFORE triggering the action.
-            previewWaitTask = client.WaitForEventAsync<CurrentPreviewSceneChangedEventArgs>(
-                predicate: args => args.EventData.SceneName == sceneName,
-                timeout: effectiveTimeout,
-                cancellationToken: cancellationToken
-            );
-        }
-        // ---------------------------------------
 
         try
         {
@@ -167,45 +168,20 @@ public readonly partial struct ScenesGroup
                 )
                 .ConfigureAwait(false);
 
-            client._logger.LogDebug(
-                "Switch triggered for '{SceneName}', waiting for {EventDescription}...",
-                sceneName,
-                eventDescription
-            );
+            client._logger.LogSceneSwitchSent(sceneName, eventDescription);
 
-            if (programWaitTask is not null)
-            {
-                _ = await programWaitTask.ConfigureAwait(false);
-            }
-            else if (previewWaitTask is not null)
-            {
-                _ = await previewWaitTask.ConfigureAwait(false);
-            }
-            else
-            {
-                throw new InvalidOperationException("Internal error: No wait task was assigned.");
-            }
+            await confirmation.ConfigureAwait(false);
 
-            client._logger.LogInformation(
-                "Successfully switched and confirmed {EventDescription}.",
-                eventDescription
-            );
+            client._logger.LogSceneSwitchConfirmed(eventDescription);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            client._logger.LogInformation(
-                "SwitchSceneAndWaitAsync operation was canceled externally for scene '{SceneName}'.",
-                sceneName
-            );
+            client._logger.LogSceneSwitchCancelled(sceneName);
             throw; // Re-throw cancellation
         }
         catch (Exception ex)
         {
-            client._logger.LogError(
-                ex,
-                "Error during SwitchSceneAndWaitAsync for scene '{SceneName}'.",
-                sceneName
-            );
+            client._logger.LogSceneSwitchFailed(ex, sceneName);
             throw;
         }
         // The finally block within WaitForEventAsync handles unsubscribing the temporary event handler.
@@ -271,7 +247,7 @@ public readonly partial struct ScenesGroup
     /// <param name="sceneName">The scene to switch to.</param>
     /// <param name="timeout">How long to wait for confirmation.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="TimeoutException">Thrown if the confirmation does not arrive in time.</exception>
+    /// <exception cref="ObsWebSocketTimeoutException">Thrown if the confirmation does not arrive in time.</exception>
     public Task SwitchProgramSceneAndWaitAsync(
         string sceneName,
         TimeSpan? timeout = null,
