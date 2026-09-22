@@ -22,6 +22,8 @@ namespace ObsWebSocket.Core.Protocol.Requests;
 /// Generated from obs-websocket protocol definition.</remarks>
 #pragma warning disable CS8618
 [MessagePackObject]
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed partial record RemoveSceneRequestData
 {
     /// <summary>

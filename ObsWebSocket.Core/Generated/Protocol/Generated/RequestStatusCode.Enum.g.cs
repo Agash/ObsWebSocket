@@ -8,6 +8,7 @@ namespace ObsWebSocket.Core.Protocol.Generated;
 /// Represents the RequestStatusCode options defined in the OBS WebSocket protocol.
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
 public enum RequestStatusCode : int
 {
     /// <summary>

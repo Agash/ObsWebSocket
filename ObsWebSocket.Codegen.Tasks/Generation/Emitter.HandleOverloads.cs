@@ -126,6 +126,7 @@ internal static partial class Emitter
             "/// Addresses one thing in OBS, so the requests about it need not restate which."
         );
         builder.AppendLine("/// </summary>");
+        AppendGeneratedAttributes(builder);
         builder.AppendLine("public static class ObsWebSocketHandleExtensions");
         builder.AppendLine("{");
         foreach (string kind in byKind.Keys.OrderBy(k => k, StringComparer.Ordinal))

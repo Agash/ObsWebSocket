@@ -8,6 +8,8 @@ namespace ObsWebSocket.Core.Protocol.Generated;
 /// Contains string constants representing the ObsOutputState options defined in the OBS WebSocket protocol.
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class ObsOutputState
 {
     /// <summary>

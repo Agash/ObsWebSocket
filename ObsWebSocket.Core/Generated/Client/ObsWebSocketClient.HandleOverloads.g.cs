@@ -1661,6 +1661,8 @@ public readonly partial struct SourceOperations(ObsWebSocketClient client, Sourc
 /// <summary>
 /// Addresses one thing in OBS, so the requests about it need not restate which.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class ObsWebSocketHandleExtensions
 {
     extension(ObsWebSocketClient client)

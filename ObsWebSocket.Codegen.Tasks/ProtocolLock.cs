@@ -64,7 +64,18 @@ internal sealed record ProtocolLock(string Repository, string Path, string Commi
         using JsonDocument existing = JsonDocument.Parse(File.ReadAllBytes(lockPath));
 
         using MemoryStream buffer = new();
-        using (Utf8JsonWriter writer = new(buffer, new JsonWriterOptions { Indented = true }))
+        // Relaxed escaping keeps the refresh command in $comment readable, and the file is
+        // committed with LF because .gitattributes stores it byte for byte.
+        using (
+            Utf8JsonWriter writer = new(
+                buffer,
+                new JsonWriterOptions
+                {
+                    Indented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                }
+            )
+        )
         {
             writer.WriteStartObject();
             foreach (JsonProperty property in existing.RootElement.EnumerateObject())
@@ -88,7 +99,7 @@ internal sealed record ProtocolLock(string Repository, string Path, string Commi
 
         File.WriteAllText(
             lockPath,
-            Encoding.UTF8.GetString(buffer.ToArray()) + Environment.NewLine,
+            Encoding.UTF8.GetString(buffer.ToArray()).Replace("\r\n", "\n") + "\n",
             new UTF8Encoding(false)
         );
     }

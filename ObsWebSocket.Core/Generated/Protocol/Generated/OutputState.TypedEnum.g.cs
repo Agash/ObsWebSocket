@@ -11,6 +11,7 @@ namespace ObsWebSocket.Core.Protocol.Generated;
 /// Typed form of the ObsOutputState protocol enum. Use &lt;see cref=&quot;OutputStateExtensions.ToWireValue&quot;/&gt; to obtain the string OBS expects.
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
 public enum OutputState
 {
     /// <summary>Maps to <c>OBS_WEBSOCKET_OUTPUT_UNKNOWN</c>.</summary>
@@ -54,6 +55,8 @@ public enum OutputState
 /// <summary>
 /// Wire-value conversions for &lt;see cref=&quot;OutputState&quot;/&gt;.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class OutputStateExtensions
 {
     /// <summary>Returns the protocol string OBS expects for this value.</summary>

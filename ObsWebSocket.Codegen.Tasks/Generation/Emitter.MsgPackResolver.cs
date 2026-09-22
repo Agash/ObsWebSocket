@@ -161,6 +161,7 @@ internal static partial class Emitter
         builder.AppendLine("/// <summary>");
         builder.AppendLine("/// MessagePack resolver for OBS WebSocket protocol DTOs.");
         builder.AppendLine("/// </summary>");
+        AppendGeneratedAttributes(builder);
         builder.AppendLine("public sealed class ObsWebSocketMsgPackResolver : IFormatterResolver");
         builder.AppendLine("{");
         builder.AppendLine("    /// <summary>");

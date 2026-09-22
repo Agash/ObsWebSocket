@@ -109,6 +109,7 @@ internal static partial class Emitter
             builder.AppendLine("[System.Flags]");
         }
 
+        AppendGeneratedAttributes(builder, excludeFromCoverage: false);
         builder.AppendLine($"public enum {enumName} : {underlyingType}");
         builder.AppendLine("{");
         if (enumDef.EnumIdentifiers != null)
@@ -169,6 +170,7 @@ internal static partial class Emitter
         builder.AppendLine(
             "/// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>"
         );
+        AppendGeneratedAttributes(builder);
         builder.AppendLine($"public static class {className}");
         builder.AppendLine("{");
         if (enumDef.EnumIdentifiers != null)
@@ -364,6 +366,7 @@ internal static partial class Emitter
         builder.AppendLine(
             "/// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>"
         );
+        AppendGeneratedAttributes(builder, excludeFromCoverage: false);
         builder.AppendLine($"public enum {enumName}");
         builder.AppendLine("{");
         foreach ((string memberIdentifier, string wire) in members)
@@ -387,6 +390,7 @@ internal static partial class Emitter
         builder.AppendLine();
 
         AppendXmlDocSummary(builder, $"Wire-value conversions for <see cref=\"{enumName}\"/>.", 0);
+        AppendGeneratedAttributes(builder);
         builder.AppendLine($"public static class {enumName}Extensions");
         builder.AppendLine("{");
         builder.AppendLine(
@@ -866,6 +870,7 @@ internal static partial class Emitter
             "/// Exposes the request categories defined by the OBS WebSocket protocol."
         );
         builder.AppendLine("/// </summary>");
+        AppendGeneratedAttributes(builder);
         builder.AppendLine("public static class ObsWebSocketClientExtensions");
         builder.AppendLine("{");
         foreach ((string category, string groupName) in groups)

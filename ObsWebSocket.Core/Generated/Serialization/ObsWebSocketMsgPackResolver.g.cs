@@ -12,6 +12,8 @@ namespace ObsWebSocket.Core.Serialization;
 /// <summary>
 /// MessagePack resolver for OBS WebSocket protocol DTOs.
 /// </summary>
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
+[global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class ObsWebSocketMsgPackResolver : IFormatterResolver
 {
     /// <summary>

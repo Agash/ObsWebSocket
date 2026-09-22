@@ -9,6 +9,7 @@ namespace ObsWebSocket.Core.Protocol.Generated;
 /// </summary>
 /// <remarks>Generated from OBS WebSocket Protocol definition.</remarks>
 [System.Flags]
+[global::System.CodeDom.Compiler.GeneratedCode("ObsWebSocket.Codegen", "1.0.0.0")]
 public enum EventSubscription : int
 {
     /// <summary>
