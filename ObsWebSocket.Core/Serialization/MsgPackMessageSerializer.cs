@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Text.Json.Serialization.Metadata;
 using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
@@ -107,7 +108,11 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     }
 
     /// <inheritdoc/>
-    public TPayload? DeserializePayload<TPayload>(object? rawPayloadData)
+    /// <remarks>MessagePack resolves its own contracts, so <paramref name="typeInfo"/> is unused.</remarks>
+    public TPayload? DeserializePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
         where TPayload : class => DeserializePayloadCore<TPayload>(rawPayloadData);
 
     /// <inheritdoc/>
@@ -163,7 +168,11 @@ public class MsgPackMessageSerializer(ILogger<MsgPackMessageSerializer> logger)
     }
 
     /// <inheritdoc/>
-    public TPayload? DeserializeValuePayload<TPayload>(object? rawPayloadData)
+    /// <remarks>MessagePack resolves its own contracts, so <paramref name="typeInfo"/> is unused.</remarks>
+    public TPayload? DeserializeValuePayload<TPayload>(
+        object? rawPayloadData,
+        JsonTypeInfo<TPayload>? typeInfo = null
+    )
         where TPayload : struct => DeserializeValuePayloadCore<TPayload>(rawPayloadData);
 
     /// <inheritdoc/>

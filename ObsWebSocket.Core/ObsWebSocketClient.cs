@@ -377,6 +377,11 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
     /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
     /// </param>
+    /// <param name="responseTypeInfo">
+    /// Metadata for <typeparamref name="TResponse"/>, for a type this library does not know.
+    /// Without it the response is resolved from this library's context, which has no entry for a
+    /// type it did not generate.
+    /// </param>
     /// <param name="timeoutMs">Optional override for the request timeout.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The response data.</returns>
@@ -388,14 +393,16 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         string requestType,
         object? requestData = null,
         JsonTypeInfo? requestTypeInfo = null,
+        JsonTypeInfo<TResponse>? responseTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
         where TResponse : class =>
-        await CallAsync<TResponse>(
+        await CallAsync(
                 requestType,
                 requestData,
                 requestTypeInfo,
+                responseTypeInfo,
                 timeoutMs,
                 cancellationToken
             )
@@ -416,6 +423,11 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
     /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
     /// </param>
+    /// <param name="responseTypeInfo">
+    /// Metadata for <typeparamref name="TResponse"/>, for a type this library does not know.
+    /// Without it the response is resolved from this library's context, which has no entry for a
+    /// type it did not generate.
+    /// </param>
     /// <param name="timeoutMs">Optional timeout in milliseconds to wait for the response. Defaults to <see cref="ObsWebSocketClientOptions.RequestTimeoutMs"/>.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
@@ -430,6 +442,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         string requestType,
         object? requestData = null,
         JsonTypeInfo? requestTypeInfo = null,
+        JsonTypeInfo<TResponse>? responseTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
@@ -509,7 +522,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
             return typeof(TResponse) == typeof(object)
                 ? null
                 : RequireConnection()
-                    .Serializer.DeserializePayload<TResponse>(response.ResponseData);
+                    .Serializer.DeserializePayload(response.ResponseData, responseTypeInfo);
         }
         catch (Exception ex)
             when (ex is not OperationCanceledException || cancellationToken.IsCancellationRequested)
@@ -549,6 +562,11 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// Supplying it from your own <c>JsonSerializerContext</c> keeps the call AOT safe and
     /// avoids hand building a <see cref="System.Text.Json.JsonElement"/>.
     /// </param>
+    /// <param name="responseTypeInfo">
+    /// Metadata for <typeparamref name="TResponse"/>, for a type this library does not know.
+    /// Without it the response is resolved from this library's context, which has no entry for a
+    /// type it did not generate.
+    /// </param>
     /// <param name="timeoutMs">Optional timeout in milliseconds to wait for the response. Defaults to <see cref="ObsWebSocketClientOptions.RequestTimeoutMs"/>.</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>
@@ -563,6 +581,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         string requestType,
         object? requestData = null,
         JsonTypeInfo? requestTypeInfo = null,
+        JsonTypeInfo<TResponse>? responseTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
     )
@@ -614,7 +633,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
             ProcessResponseStatus(response.RequestStatus, requestType, requestId);
 
             TResponse? result = RequireConnection()
-                .Serializer.DeserializeValuePayload<TResponse>(response.ResponseData);
+                .Serializer.DeserializeValuePayload(response.ResponseData, responseTypeInfo);
             return (!result.HasValue && Nullable.GetUnderlyingType(typeof(TResponse)) == null)
                 ? throw new ObsWebSocketException(
                     $"Null deserialization for non-nullable value type '{typeof(TResponse).Name}'."

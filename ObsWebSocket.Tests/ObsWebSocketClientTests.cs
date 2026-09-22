@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Moq;
 using ObsWebSocket.Core;
 using ObsWebSocket.Core.Networking;
@@ -226,14 +227,14 @@ public partial class ObsWebSocketClientTests
         // Mock DeserializePayload for the batch response structure
         _ = mockSerializer
             .Setup(s =>
-                s.DeserializePayload<RequestBatchResponsePayload<object>>(It.IsAny<object>())
+                s.DeserializePayload(
+                    It.IsAny<object>(),
+                    It.IsAny<JsonTypeInfo<RequestBatchResponsePayload<object>>?>()
+                )
             )
             .Returns(
-                (object? data) =>
-                {
-                    // Simulate the deserialization accurately
-                    return data is RequestBatchResponsePayload<object> typedData ? typedData : null;
-                }
+                (object? data, JsonTypeInfo<RequestBatchResponsePayload<object>>? _) =>
+                    data is RequestBatchResponsePayload<object> typedData ? typedData : null
             );
 
         // Act
