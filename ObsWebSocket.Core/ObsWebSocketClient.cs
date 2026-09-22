@@ -17,6 +17,8 @@ using ObsWebSocket.Core.Protocol;
 using ObsWebSocket.Core.Protocol.Events;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Serialization;
+using Polly;
+using Polly.Registry;
 
 namespace ObsWebSocket.Core;
 
@@ -65,13 +67,17 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// <param name="connectionFactory">Creates the underlying sockets.</param>
     /// <param name="timeProvider">Source of time for timeouts and backoff.</param>
     /// <param name="metrics">The instruments to record to.</param>
+    /// <param name="pipelines">Resolves a pipeline registered under <see cref="ObsWebSocketResilience.NotReadyPipelineKey"/>.</param>
+    /// <param name="reconnectDelays">Supplies the reconnect backoff curve.</param>
     public ObsWebSocketClient(
         ILogger<ObsWebSocketClient> logger,
         ObsSerializerFactory serializerFactory,
         IOptions<ObsWebSocketClientOptions> options,
         IWebSocketConnectionFactory? connectionFactory = null,
         TimeProvider? timeProvider = null,
-        ObsWebSocketMetrics? metrics = null
+        ObsWebSocketMetrics? metrics = null,
+        ResiliencePipelineProvider<string>? pipelines = null,
+        IObsReconnectDelays? reconnectDelays = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -81,12 +87,56 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         _connectionFactory = connectionFactory ?? new WebSocketConnectionFactory();
         _timeProvider = timeProvider ?? TimeProvider.System;
         _metrics = metrics ?? ObsWebSocketMetrics.Shared;
+        _pipelines = pipelines;
+        _reconnectDelays = reconnectDelays;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> through the NotReady pipeline, which retries only the
+    /// status OBS documents as retryable. Each attempt sends a fresh request, because OBS pairs a
+    /// response to the id it was sent with.
+    /// </summary>
+    private async Task<T> ThroughNotReadyPipelineAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken
+    )
+    {
+        // Only a pipeline the application registered wins. The fallback is built from this
+        // client's own options, which for a named client are its own.
+        ResiliencePipeline pipeline =
+            _pipelines?.TryGetPipeline(
+                ObsWebSocketResilience.NotReadyPipelineKey,
+                out ResiliencePipeline? registered
+            ) == true
+                ? registered!
+                : _notReadyFallback ?? BuildNotReadyFallback();
+
+        return await pipeline
+            .ExecuteAsync(async ct => await operation(ct).ConfigureAwait(false), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private ResiliencePipeline? _notReadyFallback;
+
+    private ResiliencePipeline BuildNotReadyFallback()
+    {
+        NotReadyRetryOptions retry = _options.Value.NotReadyRetry;
+        if (!retry.Enabled)
+        {
+            return _notReadyFallback = ResiliencePipeline.Empty;
+        }
+
+        ResiliencePipelineBuilder builder = new() { TimeProvider = _timeProvider };
+        _ = builder.AddRetry(ObsWebSocketResilience.CreateNotReadyRetryOptions(retry));
+        return _notReadyFallback = builder.Build();
     }
 
     #endregion
 
     #region Fields
     internal readonly ILogger _logger;
+    private readonly ResiliencePipelineProvider<string>? _pipelines;
+    private readonly IObsReconnectDelays? _reconnectDelays;
     private readonly ObsSerializerFactory _serializerFactory;
     internal readonly IOptions<ObsWebSocketClientOptions> _options;
     private readonly IWebSocketConnectionFactory _connectionFactory;
@@ -438,13 +488,35 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if the operation is cancelled via the <paramref name="cancellationToken"/> or the request times out.</exception>
     /// <exception cref="ArgumentException">Thrown if <paramref name="requestType"/> is null or empty.</exception>
-    public async Task<TResponse?> CallAsync<TResponse>(
+    public Task<TResponse?> CallAsync<TResponse>(
         string requestType,
         object? requestData = null,
         JsonTypeInfo? requestTypeInfo = null,
         JsonTypeInfo<TResponse>? responseTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
+    )
+        where TResponse : class =>
+        ThroughNotReadyPipelineAsync(
+            ct =>
+                CallOnceAsync(
+                    requestType,
+                    requestData,
+                    requestTypeInfo,
+                    responseTypeInfo,
+                    timeoutMs,
+                    ct
+                ),
+            cancellationToken
+        );
+
+    private async Task<TResponse?> CallOnceAsync<TResponse>(
+        string requestType,
+        object? requestData,
+        JsonTypeInfo? requestTypeInfo,
+        JsonTypeInfo<TResponse>? responseTypeInfo,
+        int? timeoutMs,
+        CancellationToken cancellationToken
     )
         where TResponse : class
     {
@@ -577,13 +649,35 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
     /// <exception cref="OperationCanceledException">Thrown if the operation is cancelled via the <paramref name="cancellationToken"/> or the request times out.</exception>
     /// <exception cref="ArgumentException">Thrown if <paramref name="requestType"/> is null or empty.</exception>
-    public async Task<TResponse?> CallAsyncValue<TResponse>(
+    public Task<TResponse?> CallAsyncValue<TResponse>(
         string requestType,
         object? requestData = null,
         JsonTypeInfo? requestTypeInfo = null,
         JsonTypeInfo<TResponse>? responseTypeInfo = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
+    )
+        where TResponse : struct =>
+        ThroughNotReadyPipelineAsync(
+            ct =>
+                CallValueOnceAsync(
+                    requestType,
+                    requestData,
+                    requestTypeInfo,
+                    responseTypeInfo,
+                    timeoutMs,
+                    ct
+                ),
+            cancellationToken
+        );
+
+    private async Task<TResponse?> CallValueOnceAsync<TResponse>(
+        string requestType,
+        object? requestData,
+        JsonTypeInfo? requestTypeInfo,
+        JsonTypeInfo<TResponse>? responseTypeInfo,
+        int? timeoutMs,
+        CancellationToken cancellationToken
     )
         where TResponse : struct
     {
@@ -662,12 +756,55 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<List<RequestResponsePayload<object>>> CallBatchAsync(
+    public Task<List<RequestResponsePayload<object>>> CallBatchAsync(
         IEnumerable<BatchRequestItem> requests,
         RequestBatchExecutionType? executionType = null,
         bool? haltOnFailure = null,
         int? timeoutMs = null,
         CancellationToken cancellationToken = default
+    ) =>
+        ThroughNotReadyPipelineAsync(
+            async ct =>
+            {
+                List<RequestResponsePayload<object>> results = await CallBatchOnceAsync(
+                        requests,
+                        executionType,
+                        haltOnFailure,
+                        timeoutMs,
+                        ct
+                    )
+                    .ConfigureAwait(false);
+
+                // A batch OBS was not ready for comes back as results, not as a failed call: every
+                // entry carries NotReady. Raising it is what lets the pipeline see it.
+                if (
+                    _options.Value.NotReadyRetry.Enabled
+                    && results.Count > 0
+                    && results.TrueForAll(result =>
+                        result.RequestStatus.Code == (int)RequestStatusCode.NotReady
+                    )
+                )
+                {
+                    throw new ObsWebSocketRequestException(
+                        "OBS is not ready to perform the request.",
+                        "RequestBatch",
+                        string.Empty,
+                        new RequestStatus(false, (int)RequestStatusCode.NotReady, null),
+                        null
+                    );
+                }
+
+                return results;
+            },
+            cancellationToken
+        );
+
+    private async Task<List<RequestResponsePayload<object>>> CallBatchOnceAsync(
+        IEnumerable<BatchRequestItem> requests,
+        RequestBatchExecutionType? executionType,
+        bool? haltOnFailure,
+        int? timeoutMs,
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(requests);
@@ -876,7 +1013,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
     )
     {
         int attempt = 0;
-        ReconnectDelays reconnectDelays = new(settings);
+        IObsReconnectDelays reconnectDelays = _reconnectDelays ?? new ReconnectDelays(settings);
         Debug.Assert(_clientLifetimeCts != null);
         CancellationToken clientLifetimeToken = _clientLifetimeCts.Token;
 

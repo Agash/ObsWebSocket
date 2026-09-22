@@ -75,6 +75,12 @@ public sealed class ObsWebSocketClientOptions
     public int MaxReconnectDelayMs { get; set; } = 60000;
 
     /// <summary>
+    /// Retries requests OBS refuses with <c>NotReady</c> (207), which it does while changing
+    /// scene collection or shutting down. Off by default.
+    /// </summary>
+    public NotReadyRetryOptions NotReadyRetry { get; set; } = new();
+
+    /// <summary>
     /// Gets or sets the largest inbound message the client will assemble, in bytes.
     /// Defaults to <see cref="ObsWebSocketClient.DefaultMaxIncomingMessageBytes"/> (64 MiB).
     /// </summary>
@@ -94,4 +100,26 @@ public sealed class ObsWebSocketClientOptions
     /// </remarks>
     public int MaxIncomingMessageBytes { get; set; } =
         ObsWebSocketClient.DefaultMaxIncomingMessageBytes;
+}
+
+/// <summary>
+/// Retry behaviour for requests OBS refuses with <c>NotReady</c>.
+/// </summary>
+/// <remarks>
+/// OBS rejects the request before the handler runs, so nothing is partially applied and a
+/// mutation is as safe to resend as a read.
+/// </remarks>
+public sealed class NotReadyRetryOptions
+{
+    /// <summary>Whether to retry. Defaults to <see langword="false"/>.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Retries after the first refusal. Defaults to 3.</summary>
+    public int MaxRetryAttempts { get; set; } = 3;
+
+    /// <summary>Delay before the first retry, in milliseconds. Defaults to 250.</summary>
+    public int InitialDelayMs { get; set; } = 250;
+
+    /// <summary>Ceiling on the delay, in milliseconds. Defaults to 2000.</summary>
+    public int MaxDelayMs { get; set; } = 2000;
 }

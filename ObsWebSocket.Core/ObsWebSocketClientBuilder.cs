@@ -112,16 +112,16 @@ public static class ObsWebSocketClientBuilderExtensions
     }
 
     /// <summary>
-    /// Registers the reconnect pipeline for this client.
+    /// Registers the NotReady retry pipeline for this client.
     /// </summary>
     /// <param name="builder">The client to configure.</param>
     /// <returns>The same builder, for chaining.</returns>
-    public static IObsWebSocketClientBuilder WithReconnectPipeline(
+    public static IObsWebSocketClientBuilder WithNotReadyPipeline(
         this IObsWebSocketClientBuilder builder
     )
     {
         ArgumentNullException.ThrowIfNull(builder);
-        _ = builder.Services.AddObsWebSocketReconnectPipeline();
+        _ = builder.Services.AddObsWebSocketNotReadyPipeline();
         return builder;
     }
 

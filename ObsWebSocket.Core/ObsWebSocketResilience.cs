@@ -1,39 +1,39 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using ObsWebSocket.Core.Protocol.Generated;
 using Polly;
 using Polly.Retry;
 
 namespace ObsWebSocket.Core;
 
 /// <summary>
-/// The resilience pipeline governing connection attempts.
+/// Resilience pipelines the client executes through.
 /// </summary>
 /// <remarks>
-/// The pipeline is registered by name, so an application can replace the reconnect policy
-/// wholesale by registering its own pipeline under <see cref="ReconnectPipelineKey"/> after
-/// calling <c>AddObsWebSocketClient</c>, instead of being limited to the reconnect options.
+/// Register a pipeline under the same key after <c>AddObsWebSocketClient</c> to replace the
+/// default. Reconnect is not a pipeline: a clean disconnect is not an exception, so the
+/// connection loop owns that control flow and takes only its delay curve from
+/// <see cref="IObsReconnectDelays"/>.
 /// </remarks>
 public static class ObsWebSocketResilience
 {
-    /// <summary>Key the reconnect pipeline is registered under.</summary>
-    public const string ReconnectPipelineKey = "obs-websocket-reconnect";
+    /// <summary>Key the NotReady retry pipeline is registered under.</summary>
+    public const string NotReadyPipelineKey = "obs-websocket-not-ready";
 
     /// <summary>
-    /// Registers the default reconnect pipeline. Delays grow by
-    /// <see cref="ObsWebSocketClientOptions.ReconnectBackoffMultiplier"/>, are capped at
-    /// <see cref="ObsWebSocketClientOptions.MaxReconnectDelayMs"/>, and carry jitter so several
-    /// clients recovering from one outage do not retry in lockstep.
+    /// Registers the default NotReady retry pipeline, described by
+    /// <see cref="ObsWebSocketClientOptions.NotReadyRetry"/>.
     /// </summary>
     /// <param name="services">The service collection to register into.</param>
     /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddObsWebSocketReconnectPipeline(
+    public static IServiceCollection AddObsWebSocketNotReadyPipeline(
         this IServiceCollection services
     )
     {
         ArgumentNullException.ThrowIfNull(services);
 
         _ = services.AddResiliencePipeline(
-            ReconnectPipelineKey,
+            NotReadyPipelineKey,
             static (builder, context) =>
             {
                 ObsWebSocketClientOptions options = context
@@ -43,7 +43,10 @@ public static class ObsWebSocketResilience
                 builder.TimeProvider =
                     context.ServiceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
 
-                _ = builder.AddRetry(CreateRetryOptions(options));
+                if (options.NotReadyRetry.Enabled)
+                {
+                    _ = builder.AddRetry(CreateNotReadyRetryOptions(options.NotReadyRetry));
+                }
             }
         );
 
@@ -51,30 +54,37 @@ public static class ObsWebSocketResilience
     }
 
     /// <summary>
-    /// Builds the retry strategy described by the reconnect options.
+    /// Builds the retry strategy for requests OBS refuses as not ready.
     /// </summary>
     /// <param name="options">Options describing the retry behaviour.</param>
-    internal static RetryStrategyOptions CreateRetryOptions(ObsWebSocketClientOptions options)
+    internal static RetryStrategyOptions CreateNotReadyRetryOptions(NotReadyRetryOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return CreateRetryOptions(
-            options.ReconnectBackoffMultiplier,
-            options.InitialReconnectDelayMs,
-            options.MaxReconnectDelayMs
-        );
+
+        return new RetryStrategyOptions
+        {
+            MaxRetryAttempts = Math.Max(options.MaxRetryAttempts, 1),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            Delay = TimeSpan.FromMilliseconds(Math.Max(options.InitialDelayMs, 0)),
+            MaxDelay = TimeSpan.FromMilliseconds(
+                Math.Max(options.MaxDelayMs, options.InitialDelayMs)
+            ),
+            ShouldHandle = static args =>
+                ValueTask.FromResult(
+                    args.Outcome.Exception is ObsWebSocketRequestException request
+                        && request.StatusCode == RequestStatusCode.NotReady
+                ),
+        };
     }
 
     /// <summary>
-    /// Builds the retry strategy from the three values that describe the backoff curve.
+    /// Builds the retry strategy describing the reconnect backoff curve.
     /// </summary>
-    /// <remarks>
-    /// Taken as values rather than as an options object so that a live connection can build its
-    /// strategy from the settings it was established with, which do not change underneath it.
-    /// </remarks>
     /// <param name="backoffMultiplier">Growth applied per attempt.</param>
     /// <param name="initialDelayMs">Delay before the first retry.</param>
     /// <param name="maxDelayMs">Ceiling on the delay.</param>
-    internal static RetryStrategyOptions CreateRetryOptions(
+    internal static RetryStrategyOptions CreateReconnectRetryOptions(
         double backoffMultiplier,
         int initialDelayMs,
         int maxDelayMs
@@ -86,8 +96,6 @@ public static class ObsWebSocketResilience
 
         return new RetryStrategyOptions
         {
-            // The connection loop decides how many attempts to make, because it also decides
-            // which failures are fatal. This strategy supplies the delay between them.
             MaxRetryAttempts = int.MaxValue,
             UseJitter = true,
             Delay = TimeSpan.FromMilliseconds(initialMs),

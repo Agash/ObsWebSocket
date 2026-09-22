@@ -209,14 +209,20 @@ internal static class TestUtils
         ObsWebSocketClient client,
         Mock<IWebSocketMessageSerializer> mockSerializer,
         Mock<IWebSocketConnection> mockConnection
-    ) SetupConnectedClientForceState(TimeProvider? timeProvider = null)
+    ) SetupConnectedClientForceState(
+        TimeProvider? timeProvider = null,
+        Action<ObsWebSocketClientOptions>? configureOptions = null
+    )
     {
         (
             ObsWebSocketClient? client,
             Mock<IWebSocketConnection>? mockConnection,
             Mock<IWebSocketMessageSerializer>? mockSerializer,
             _
-        ) = BuildMockedClientInfrastructure(timeProvider: timeProvider);
+        ) = BuildMockedClientInfrastructure(
+            configureOptions: configureOptions,
+            timeProvider: timeProvider
+        );
 
         CancellationTokenSource lifetime = new();
         SetPrivateField(client, "_clientLifetimeCts", lifetime);

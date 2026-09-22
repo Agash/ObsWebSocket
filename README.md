@@ -655,17 +655,31 @@ Reconnect delays grow by `ReconnectBackoffMultiplier`, are capped at `MaxReconne
 carry jitter so several clients recovering from one outage do not retry in lockstep. Authentication
 failures are not retried.
 
-`WithReconnectPipeline()` registers the default pipeline explicitly, which is useful when a host has
-its own resilience configuration:
+Reconnect is not a Polly pipeline. A clean disconnect is not an exception, so the connection loop
+owns attempt counting and takes only the delay from `IObsReconnectDelays`. Register your own
+implementation after `AddObsWebSocketClient` to replace the curve.
+
+## Retrying NotReady
+
+OBS answers `NotReady` (207) while changing scene collection or shutting down, and documents it as
+retryable. It rejects the request before the handler runs, so a mutation is as safe to resend as a
+read. Off by default:
 
 ```csharp
-builder.AddObsWebSocketClient("obs")
-       .WithAutoConnect()
-       .WithReconnectPipeline();
+builder.AddObsWebSocketClient("obs", o =>
+{
+    o.NotReadyRetry.Enabled = true;
+    o.NotReadyRetry.MaxRetryAttempts = 5;
+});
 ```
 
-To replace the policy, register your own pipeline under
-`ObsWebSocketResilience.ReconnectPipelineKey` after adding the client.
+Each attempt sends a fresh request id, because OBS pairs a response to the id it was sent with.
+Only 207 is retried. To replace the policy, register a pipeline under
+`ObsWebSocketResilience.NotReadyPipelineKey` after adding the client:
+
+```csharp
+builder.AddObsWebSocketClient("obs").WithNotReadyPipeline();
+```
 
 ## Telemetry
 

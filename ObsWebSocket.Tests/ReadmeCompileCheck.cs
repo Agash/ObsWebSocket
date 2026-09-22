@@ -539,7 +539,7 @@ internal static class ReadmeCompileCheck
             .AddObsWebSocketClient("obs")
             .WithAutoConnect()
             .WithHealthCheck()
-            .WithReconnectPipeline();
+            .WithNotReadyPipeline();
     }
 
     internal static void TelemetryAndKeyedRegistration(IServiceCollection services)
@@ -551,7 +551,7 @@ internal static class ReadmeCompileCheck
         _ = services.AddObsWebSocketClient("booth", o => o.ServerUri = new Uri("ws://booth:4455"));
         _ = ObsWebSocketDiagnostics.ActivitySourceName;
         _ = ObsWebSocketDiagnostics.MeterName;
-        _ = ObsWebSocketResilience.ReconnectPipelineKey;
+        _ = ObsWebSocketResilience.NotReadyPipelineKey;
     }
 
     internal static async Task ScreenshotsAsync(ObsWebSocketClient client, CancellationToken ct)

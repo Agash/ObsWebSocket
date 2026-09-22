@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,7 @@ using ObsWebSocket.Core.Protocol.Common;
 using ObsWebSocket.Core.Protocol.Events;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Serialization;
+using Polly.Registry;
 
 namespace ObsWebSocket.Tests;
 
@@ -688,4 +690,389 @@ public sealed class ClientContractTests
     }
 
     #endregion
+
+    [TestMethod]
+    public async Task ACallRefusedAsNotReadyIsRetriedWhenEnabled()
+    {
+        int sends = 0;
+        (
+            ObsWebSocketClient client,
+            Mock<IWebSocketMessageSerializer> mockSerializer,
+            Mock<IWebSocketConnection> mockConnection
+        ) = TestUtils.SetupConnectedClientForceState(
+            configureOptions: o =>
+            {
+                o.NotReadyRetry.Enabled = true;
+                o.NotReadyRetry.MaxRetryAttempts = 3;
+                o.NotReadyRetry.InitialDelayMs = 0;
+                o.NotReadyRetry.MaxDelayMs = 0;
+            }
+        );
+
+        await using ObsWebSocketClient owned = client;
+
+        _ = mockConnection
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                {
+                    sends++;
+                    string requestId = ReadRequestId(buffer);
+                    bool ready = sends > 2;
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestId,
+                        new RequestResponsePayload<object>(
+                            "GetVersion",
+                            requestId,
+                            new RequestStatus(
+                                ready,
+                                (int)(ready ? RequestStatusCode.Success : RequestStatusCode.NotReady),
+                                null
+                            ),
+                            null
+                        )
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        _ = await client.CallAsync<object>("GetVersion");
+
+        Assert.AreEqual(3, sends);
+    }
+
+    [TestMethod]
+    public async Task ACallRefusedAsNotReadyThrowsWhenRetryIsOff()
+    {
+        int sends = 0;
+        (
+            ObsWebSocketClient client,
+            Mock<IWebSocketMessageSerializer> mockSerializer,
+            Mock<IWebSocketConnection> mockConnection
+        ) = TestUtils.SetupConnectedClientForceState();
+
+        await using ObsWebSocketClient owned = client;
+
+        _ = mockConnection
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                {
+                    sends++;
+                    string requestId = ReadRequestId(buffer);
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestId,
+                        new RequestResponsePayload<object>(
+                            "GetVersion",
+                            requestId,
+                            new RequestStatus(false, (int)RequestStatusCode.NotReady, null),
+                            null
+                        )
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        ObsWebSocketRequestException error =
+            await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(
+                () => client.CallAsync<object>("GetVersion")
+            );
+
+        Assert.AreEqual(RequestStatusCode.NotReady, error.StatusCode);
+        Assert.AreEqual(1, sends);
+    }
+
+    [TestMethod]
+    public async Task AnotherFailureCodeIsNotRetried()
+    {
+        int sends = 0;
+        (
+            ObsWebSocketClient client,
+            Mock<IWebSocketMessageSerializer> mockSerializer,
+            Mock<IWebSocketConnection> mockConnection
+        ) = TestUtils.SetupConnectedClientForceState(
+            configureOptions: o =>
+            {
+                o.NotReadyRetry.Enabled = true;
+                o.NotReadyRetry.InitialDelayMs = 0;
+                o.NotReadyRetry.MaxDelayMs = 0;
+            }
+        );
+
+        await using ObsWebSocketClient owned = client;
+
+        _ = mockConnection
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (ReadOnlyMemory<byte> buffer, WebSocketMessageType _, bool _, CancellationToken _) =>
+                {
+                    sends++;
+                    string requestId = ReadRequestId(buffer);
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestId,
+                        new RequestResponsePayload<object>(
+                            "GetVersion",
+                            requestId,
+                            new RequestStatus(
+                                false,
+                                (int)RequestStatusCode.ResourceNotFound,
+                                null
+                            ),
+                            null
+                        )
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketRequestException>(
+            () => client.CallAsync<object>("GetVersion")
+        );
+
+        Assert.AreEqual(1, sends);
+    }
+
+    private static string ReadRequestId(ReadOnlyMemory<byte> buffer)
+    {
+        using JsonDocument document = JsonDocument.Parse(buffer);
+        return document.RootElement.GetProperty("d").GetProperty("requestId").GetString()!;
+    }
+
+    [TestMethod]
+    public async Task AValueCallRefusedAsNotReadyIsRetried()
+    {
+        int sends = 0;
+        (
+            ObsWebSocketClient client,
+            Mock<IWebSocketMessageSerializer> mockSerializer,
+            Mock<IWebSocketConnection> mockConnection
+        ) = TestUtils.SetupConnectedClientForceState(configureOptions: o =>
+        {
+            o.NotReadyRetry.Enabled = true;
+            o.NotReadyRetry.InitialDelayMs = 0;
+            o.NotReadyRetry.MaxDelayMs = 0;
+        });
+
+        await using ObsWebSocketClient owned = client;
+
+        _ = mockSerializer
+            .Setup(x =>
+                x.DeserializeValuePayload(
+                    It.IsAny<object?>(),
+                    It.IsAny<JsonTypeInfo<JsonElement>?>()
+                )
+            )
+            .Returns(JsonDocument.Parse("{\"ok\":true}").RootElement.Clone());
+
+        RespondWith(
+            client,
+            mockConnection,
+            () => ++sends > 1 ? RequestStatusCode.Success : RequestStatusCode.NotReady
+        );
+
+        JsonElement? answer = await client.CallAsyncValue<JsonElement>("GetStats");
+
+        Assert.IsNotNull(answer);
+        Assert.AreEqual(2, sends);
+    }
+
+    [TestMethod]
+    public async Task ABatchRefusedAsNotReadyIsRetried()
+    {
+        int sends = 0;
+        (
+            ObsWebSocketClient client,
+            Mock<IWebSocketMessageSerializer> mockSerializer,
+            Mock<IWebSocketConnection> mockConnection
+        ) = TestUtils.SetupConnectedClientForceState(configureOptions: o =>
+        {
+            o.NotReadyRetry.Enabled = true;
+            o.NotReadyRetry.InitialDelayMs = 0;
+            o.NotReadyRetry.MaxDelayMs = 0;
+        });
+
+        await using ObsWebSocketClient owned = client;
+
+        _ = mockSerializer
+            .Setup(x =>
+                x.DeserializePayload(
+                    It.IsAny<object>(),
+                    It.IsAny<JsonTypeInfo<RequestBatchResponsePayload<object>>?>()
+                )
+            )
+            .Returns(
+                (object? data, JsonTypeInfo<RequestBatchResponsePayload<object>>? _) =>
+                    data as RequestBatchResponsePayload<object>
+            );
+
+        _ = mockConnection
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType _,
+                    bool _,
+                    CancellationToken _
+                ) =>
+                {
+                    sends++;
+                    string batchId = ReadRequestId(buffer);
+                    bool ready = sends > 1;
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        batchId,
+                        new RequestBatchResponsePayload<object>(
+                            batchId,
+                            [
+                                new RequestResponsePayload<object>(
+                                    "GetVersion",
+                                    batchId + "_0",
+                                    new RequestStatus(
+                                        ready,
+                                        (int)(
+                                            ready
+                                                ? RequestStatusCode.Success
+                                                : RequestStatusCode.NotReady
+                                        ),
+                                        null
+                                    ),
+                                    null
+                                ),
+                            ]
+                        )
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
+
+        List<RequestResponsePayload<object>> results = await client.CallBatchAsync([
+            new BatchRequestItem("GetVersion", null),
+        ]);
+
+        Assert.AreEqual(1, results.Count);
+        Assert.AreEqual(2, sends);
+    }
+
+    [TestMethod]
+    public void ARegisteredPipelineIsResolvable()
+    {
+        ServiceCollection services = new();
+        _ = services.AddLogging();
+        _ = services
+            .AddObsWebSocketClient(o => o.ServerUri = new Uri("ws://localhost:4455"))
+            .WithNotReadyPipeline();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        ResiliencePipelineProvider<string> pipelines = provider.GetRequiredService<
+            ResiliencePipelineProvider<string>
+        >();
+
+        Assert.IsNotNull(pipelines.GetPipeline(ObsWebSocketResilience.NotReadyPipelineKey));
+    }
+
+    [TestMethod]
+    public async Task ARegisteredReconnectDelaySourceIsUsed()
+    {
+        StubReconnectDelays delays = new();
+        ServiceCollection services = new();
+        _ = services.AddLogging();
+        _ = services.AddSingleton<IObsReconnectDelays>(delays);
+        _ = services.AddObsWebSocketClient(o =>
+        {
+            o.ServerUri = new Uri("ws://127.0.0.1:1");
+            o.InitialReconnectDelayMs = 0;
+            o.MaxReconnectAttempts = 2;
+        });
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        ObsWebSocketClient client = provider.GetRequiredService<ObsWebSocketClient>();
+
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() => client.ConnectAsync());
+
+        Assert.IsGreaterThan(0, delays.Calls);
+    }
+
+    private sealed class StubReconnectDelays : IObsReconnectDelays
+    {
+        public int Calls { get; private set; }
+
+        public ValueTask<TimeSpan> GetDelayAsync(
+            int retryIndex,
+            CancellationToken cancellationToken = default
+        )
+        {
+            Calls++;
+            return ValueTask.FromResult(TimeSpan.Zero);
+        }
+    }
+
+    private static void RespondWith(
+        ObsWebSocketClient client,
+        Mock<IWebSocketConnection> mockConnection,
+        Func<RequestStatusCode> next
+    ) =>
+        mockConnection
+            .Setup(ws =>
+                ws.SendAsync(
+                    It.IsAny<ReadOnlyMemory<byte>>(),
+                    It.IsAny<WebSocketMessageType>(),
+                    true,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback(
+                (
+                    ReadOnlyMemory<byte> buffer,
+                    WebSocketMessageType _,
+                    bool _,
+                    CancellationToken _
+                ) =>
+                {
+                    string requestId = ReadRequestId(buffer);
+                    RequestStatusCode code = next();
+                    _ = TestUtils.SimulateIncomingResponse(
+                        client,
+                        requestId,
+                        new RequestResponsePayload<object>(
+                            "GetStats",
+                            requestId,
+                            new RequestStatus(code == RequestStatusCode.Success, (int)code, null),
+                            JsonDocument.Parse("{\"ok\":true}").RootElement.Clone()
+                        )
+                    );
+                }
+            )
+            .Returns(ValueTask.CompletedTask);
 }
