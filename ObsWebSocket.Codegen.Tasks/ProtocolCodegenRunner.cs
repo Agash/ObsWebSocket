@@ -207,7 +207,17 @@ internal static class ProtocolCodegenRunner
             string normalizedRelativePath = NormalizeRelativePath(relativePath);
             string outputPath = Path.Combine(outputDirectory, normalizedRelativePath);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            File.WriteAllText(outputPath, source, new UTF8Encoding(false));
+            // One newline per file. StringBuilder.AppendLine writes the OS newline while protocol
+            // descriptions carry a bare "\n", which left mixed endings that showed as a change on
+            // every regeneration. The OS newline is what git checks out on that OS, and git stores
+            // LF either way.
+            File.WriteAllText(
+                outputPath,
+                source
+                    .Replace("\r\n", "\n", StringComparison.Ordinal)
+                    .Replace("\n", Environment.NewLine, StringComparison.Ordinal),
+                new UTF8Encoding(false)
+            );
         }
     }
 
