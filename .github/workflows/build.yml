@@ -179,7 +179,7 @@ jobs:
     - name: Restore for the AOT RID graph
       run: >
         dotnet restore ObsWebSocket.Example/ObsWebSocket.Example.csproj
-        -p:TargetFramework=net10.0
+        -p:TargetFramework=net11.0
         --runtime ${{ matrix.rid }}
         -p:SelfContained=true
         -p:PublishAot=true
@@ -190,7 +190,7 @@ jobs:
       run: >
         dotnet publish ObsWebSocket.Example/ObsWebSocket.Example.csproj
         --configuration Release
-        --framework net10.0
+        --framework net11.0
         --runtime ${{ matrix.rid }}
         --self-contained true
         -p:PublishAot=true
