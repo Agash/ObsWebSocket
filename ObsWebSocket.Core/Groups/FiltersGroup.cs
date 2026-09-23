@@ -136,18 +136,11 @@ public readonly partial struct FiltersGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement;
-        try
-        {
-            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
-        }
-        catch (JsonException jsonEx)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'.",
-                jsonEx
-            );
-        }
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "filterSettings"
+        );
 
         await client
             .Filters.SetSourceFilterSettingsAsync(
@@ -223,18 +216,11 @@ public readonly partial struct FiltersGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement;
-        try
-        {
-            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
-        }
-        catch (JsonException jsonEx)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for filter '{filterName}'.",
-                jsonEx
-            );
-        }
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "filterSettings"
+        );
 
         await client
             .Filters.CreateSourceFilterAsync(

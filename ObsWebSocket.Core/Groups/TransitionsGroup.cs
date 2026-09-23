@@ -87,7 +87,11 @@ public readonly partial struct TransitionsGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "transitionSettings"
+        );
 
         await client
             .Transitions.SetCurrentSceneTransitionSettingsAsync(

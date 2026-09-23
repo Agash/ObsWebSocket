@@ -86,10 +86,10 @@ public sealed class GroupHelperFailureTests
         BrokenSettings broken = new(new Unwritable());
         var typeInfo = BrokenSettingsContext.Default.BrokenSettings;
 
-        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
             client.Inputs.SetInputSettingsAsync("Web", broken, typeInfo)
         );
-        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
             client.Inputs.CreateInputAsync(
                 "browser_source",
                 "Web",
@@ -98,10 +98,10 @@ public sealed class GroupHelperFailureTests
                 sceneName: "Live"
             )
         );
-        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
             client.Filters.SetSourceFilterSettingsAsync("Cam", "Grade", broken, typeInfo)
         );
-        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketException>(() =>
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
             client.Filters.CreateSourceFilterAsync(
                 "Cam",
                 "Grade",
@@ -109,6 +109,15 @@ public sealed class GroupHelperFailureTests
                 broken,
                 typeInfo
             )
+        );
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
+            client.Outputs.SetOutputSettingsAsync("adv_file_output", broken, typeInfo)
+        );
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
+            client.Config.SetStreamServiceSettingsAsync("rtmp_custom", broken, typeInfo)
+        );
+        _ = await Assert.ThrowsExactlyAsync<ObsWebSocketSerializationException>(() =>
+            client.Transitions.SetCurrentSceneTransitionSettingsAsync(broken, typeInfo)
         );
 
         Assert.IsEmpty(server.Requests);

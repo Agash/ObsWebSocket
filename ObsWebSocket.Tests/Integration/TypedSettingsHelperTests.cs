@@ -197,6 +197,43 @@ public sealed class TypedSettingsHelperTests
                 .ConfigureAwait(false);
         }
     }
+
+    [TestMethod]
+    [Timeout(TimeoutMs, CooperativeCancellation = true)]
+    public async Task PersistentData_LiveObs_RoundTrip()
+    {
+        CancellationToken token = TestContext.CancellationToken;
+        await using LiveClient live = await LiveClient
+            .ConnectAsync(SerializationFormat.Json, TestContext)
+            .ConfigureAwait(false);
+
+        // One fixed slot, overwritten each run: OBS treats a null value as a missing field, so a
+        // slot can never be cleared, and a fresh name per run would leave one behind every time.
+        const string realm = "OBS_WEBSOCKET_DATA_REALM_GLOBAL";
+        const string slot = "obsws_test_persistent_data";
+        SwipeSettings written = new($"run-{Guid.NewGuid():N}", SwipeIn: true);
+
+        await live
+            .Client.Config.SetPersistentDataAsync(
+                realm,
+                slot,
+                written,
+                TransitionSettingsContext.Default.SwipeSettings,
+                token
+            )
+            .ConfigureAwait(false);
+
+        SwipeSettings? read = await live
+            .Client.Config.GetPersistentDataAsync(
+                realm,
+                slot,
+                TransitionSettingsContext.Default.SwipeSettings,
+                token
+            )
+            .ConfigureAwait(false);
+
+        Assert.AreEqual(written, read);
+    }
 }
 
 /// <summary>Settings for the swipe transition, as a consumer would model them.</summary>

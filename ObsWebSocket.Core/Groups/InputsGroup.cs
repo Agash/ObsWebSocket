@@ -209,18 +209,11 @@ public readonly partial struct InputsGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement;
-        try
-        {
-            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
-        }
-        catch (JsonException jsonEx)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for input '{inputName}'.",
-                jsonEx
-            );
-        }
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "inputSettings"
+        );
 
         await client
             .Inputs.SetInputSettingsAsync(
@@ -296,18 +289,11 @@ public readonly partial struct InputsGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement;
-        try
-        {
-            settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
-        }
-        catch (JsonException jsonEx)
-        {
-            throw new ObsWebSocketException(
-                $"Failed to serialize settings object of type '{typeof(T).Name}' for input '{inputName}'.",
-                jsonEx
-            );
-        }
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "inputSettings"
+        );
 
         return await client
             .Inputs.CreateInputAsync(

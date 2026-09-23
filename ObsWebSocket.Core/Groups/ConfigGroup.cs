@@ -83,7 +83,11 @@ public readonly partial struct ConfigGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "streamServiceSettings"
+        );
 
         await client
             .Config.SetStreamServiceSettingsAsync(
@@ -231,5 +235,90 @@ public readonly partial struct ConfigGroup
             return false; // Switch failed because target doesn't exist
         }
         // Let other exceptions propagate
+    }
+
+    /// <summary>
+    /// Reads a persistent data slot as a caller-defined type.
+    /// </summary>
+    /// <typeparam name="T">The type the slot holds.</typeparam>
+    /// <param name="realm">
+    /// <c>OBS_WEBSOCKET_DATA_REALM_GLOBAL</c>, or <c>OBS_WEBSOCKET_DATA_REALM_PROFILE</c> for data
+    /// kept with the current profile.
+    /// </param>
+    /// <param name="slotName">The slot to read.</param>
+    /// <param name="typeInfo">Metadata for <typeparamref name="T"/>, typically from your own <c>JsonSerializerContext</c>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The slot's value, or <see langword="default"/> when the slot is empty.</returns>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or the value does not have that shape.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task<T?> GetPersistentDataAsync<T>(
+        string realm,
+        string slotName,
+        JsonTypeInfo<T> typeInfo,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(realm);
+        ArgumentException.ThrowIfNullOrEmpty(slotName);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        GetPersistentDataResponseData response = await client
+            .Config.GetPersistentDataAsync(
+                new GetPersistentDataRequestData(realm: realm, slotName: slotName),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        return response.GetSlotValue(typeInfo);
+    }
+
+    /// <summary>
+    /// Writes a caller-defined value to a persistent data slot.
+    /// </summary>
+    /// <remarks>
+    /// OBS treats a null value as a missing one and rejects the request, so a slot cannot be
+    /// cleared, only overwritten.
+    /// </remarks>
+    /// <typeparam name="T">The type to store.</typeparam>
+    /// <param name="realm">
+    /// <c>OBS_WEBSOCKET_DATA_REALM_GLOBAL</c>, or <c>OBS_WEBSOCKET_DATA_REALM_PROFILE</c> for data
+    /// kept with the current profile.
+    /// </param>
+    /// <param name="slotName">The slot to write.</param>
+    /// <param name="value">The value to store.</param>
+    /// <param name="typeInfo">Metadata for <typeparamref name="T"/>, typically from your own <c>JsonSerializerContext</c>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="ObsWebSocketException">Thrown if OBS returns an error or serialization fails.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the client is not connected.</exception>
+    public async Task SetPersistentDataAsync<T>(
+        string realm,
+        string slotName,
+        T value,
+        JsonTypeInfo<T> typeInfo,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(realm);
+        ArgumentException.ThrowIfNullOrEmpty(slotName);
+        ArgumentNullException.ThrowIfNull(typeInfo);
+        client.EnsureConnected();
+
+        JsonElement slotValue = ObsWebSocketClientOperations.SerializeFreeForm(
+            value,
+            typeInfo,
+            "slotValue"
+        );
+
+        await client
+            .Config.SetPersistentDataAsync(
+                new SetPersistentDataRequestData(
+                    realm: realm,
+                    slotName: slotName,
+                    slotValue: slotValue
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 }

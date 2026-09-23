@@ -210,7 +210,39 @@ Native AOT.
 | `Outputs.GetOutputSettingsAsync<T>` / `SetOutputSettingsAsync<T>` | Output settings |
 | `Config.GetStreamServiceSettingsAsync<T>` / `SetStreamServiceSettingsAsync<T>` | Stream service settings |
 
+**Your own data**
+
+These carry data only you know the shape of, so they take a `JsonTypeInfo` for it.
+
+| Helper | Notes |
+|---|---|
+| `Config.GetPersistentDataAsync<T>` / `SetPersistentDataAsync<T>` | A persistent data slot; realm is `OBS_WEBSOCKET_DATA_REALM_GLOBAL` or `OBS_WEBSOCKET_DATA_REALM_PROFILE` |
+| `General.CallVendorRequestAsync<TRequest, TResponse>` | A request another plugin registered, typed both ways |
+| `General.BroadcastCustomEventAsync<T>` | A `CustomEvent` with your own payload |
+
 Most take optional parameters before the cancellation token, so pass it as `cancellationToken: ct`.
+
+**Free-form fields in events and responses**
+
+Fields the protocol leaves free-form, such as an input's settings or a vendor's reply, are
+`JsonElement?` on the payload. Each has a pair of typed readers named after the field, one for a
+library-registered type and one taking your `JsonTypeInfo`:
+
+```csharp
+client.InputSettingsChanged += (_, e) =>
+{
+    BrowserSourceSettings? browser = e.EventData.GetInputSettings<BrowserSourceSettings>();
+};
+
+client.CustomEvent += (_, e) =>
+{
+    OverlaySettings? cue = e.EventData.GetEventData(MyContext.Default.OverlaySettings);
+};
+```
+
+They work on responses too, including a batch result read with `GetRequiredData`. A reader returns
+null when OBS sent nothing, and throws `ObsWebSocketSerializationException` when the field has a
+different shape.
 
 **Scenes and scene items**
 
@@ -249,7 +281,8 @@ Most take optional parameters before the cancellation token, so pass it as `canc
 
 - `Record.SetRecordActiveAndWaitAsync(activate, timeout, ct)`,
   `Stream.SetStreamActiveAndWaitAsync(...)` and `Outputs.SetVirtualCamActiveAndWaitAsync(...)` start
-  or stop the output and wait for confirmation, returning the resulting `OutputState`.
+  or stop the output and wait for confirmation, returning the state the event reported, or null
+  when it does not arrive in time.
 - `Record.IsRecordActiveAsync(ct)`, `Stream.IsStreamActiveAsync(ct)` and
   `Outputs.IsVirtualCamActiveAsync(ct)` read current state.
 

@@ -45,6 +45,7 @@ internal static class ProtocolCodeGenerator
         Emitter.GenerateClientExtensions(context, protocol);
         Emitter.GenerateHandleOverloads(context, protocol);
         Emitter.GeneratePayloadHandles(context, protocol);
+        Emitter.GenerateFreeFormFieldReaders(context, protocol);
         Emitter.GenerateEventPayloads(context, protocol);
         Emitter.GenerateEventArgs(context, protocol);
         Emitter.GenerateClientEventInfrastructure(context, protocol);

@@ -93,7 +93,11 @@ public readonly partial struct OutputsGroup
         ArgumentNullException.ThrowIfNull(typeInfo);
         client.EnsureConnected();
 
-        JsonElement settingsElement = JsonSerializer.SerializeToElement(settings, typeInfo);
+        JsonElement settingsElement = ObsWebSocketClientOperations.SerializeFreeForm(
+            settings,
+            typeInfo,
+            "outputSettings"
+        );
 
         await client
             .Outputs.SetOutputSettingsAsync(
