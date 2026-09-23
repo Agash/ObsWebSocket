@@ -1,4 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ObsWebSocket.Core;
+using ObsWebSocket.Core.Networking;
 using ObsWebSocket.Core.Protocol.Generated;
 using ObsWebSocket.Core.Protocol.Responses;
 using ObsWebSocket.Tests.Fakes;
@@ -321,6 +324,68 @@ public sealed class ClientMessageHandlingTests
             "the server would have accepted a reconnect, so none may be tried"
         );
         Assert.IsFalse(fake.Client.IsConnected);
+    }
+
+    /// <summary>Holds the connection loop at the point it gives up, to force the race below.</summary>
+    private sealed class StallOnGiveUp : ILoggerProvider, ILogger
+    {
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        )
+        {
+            // 26: the loop has given up and is about to report why.
+            if (eventId.Id == 26)
+            {
+                Thread.Sleep(300);
+            }
+        }
+
+        public void Dispose() { }
+    }
+
+    [TestMethod]
+    [Timeout(TestTimeout)]
+    public async Task ConnectAsync_FirstAttemptFailsWhileLoopIsSlow_ReportsTheLoopsReasonOnce()
+    {
+        ServiceCollection services = new();
+        _ = services.AddLogging(builder =>
+            builder.ClearProviders().AddProvider(new StallOnGiveUp())
+        );
+        _ = services.AddObsWebSocketClient(options =>
+        {
+            options.ServerUri = new Uri("ws://fake-obs:4455");
+            options.AutoReconnectEnabled = false;
+        });
+        _ = services.AddSingleton<IWebSocketConnectionFactory>(
+            new FakeObsServer { RefuseConnections = true }
+        );
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        ObsWebSocketClient client = provider.GetRequiredService<ObsWebSocketClient>();
+
+        List<Exception?> reasons = [];
+        client.Disconnected += (_, e) => reasons.Add(e.ReasonException);
+
+        _ = await Assert.ThrowsExactlyAsync<ConnectionAttemptFailedException>(() =>
+            client.ConnectAsync()
+        );
+
+        // Disconnected has fired by the time ConnectAsync throws, once, with the loop's account
+        // of how many attempts it made rather than whichever path got there first.
+        Assert.HasCount(1, reasons);
+        Assert.IsInstanceOfType<ObsWebSocketException>(reasons[0]);
+        Assert.Contains("after 1 attempts", reasons[0]!.Message);
+        Assert.IsInstanceOfType<ConnectionAttemptFailedException>(reasons[0]!.InnerException);
     }
 
     [TestMethod]
