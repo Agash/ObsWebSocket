@@ -610,4 +610,17 @@ internal static class ReadmeCompileCheck
 
         await client.ConnectAsync();
     }
+
+    internal static void FreeFormReaders(ObsWebSocketClient client)
+    {
+        client.InputSettingsChanged += (_, e) =>
+        {
+            BrowserSourceSettings? browser = e.EventData.GetInputSettings<BrowserSourceSettings>();
+        };
+
+        client.CustomEvent += (_, e) =>
+        {
+            OverlaySettings? cue = e.EventData.GetEventData(MyContext.Default.OverlaySettings);
+        };
+    }
 }

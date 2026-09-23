@@ -46,6 +46,37 @@ public static partial class ObsWebSocketClientOperations
         return typeInfo ?? throw new ObsWebSocketException(NotRegistered<T>());
     }
 
+    /// <summary>
+    /// Serializes a caller's value for a free-form request field, reporting a failure as this
+    /// library's serialization exception rather than letting the serializer's own escape.
+    /// </summary>
+    /// <typeparam name="T">The value's type.</typeparam>
+    /// <param name="value">The value to send.</param>
+    /// <param name="typeInfo">Metadata for <typeparamref name="T"/>.</param>
+    /// <param name="field">The protocol field the value is for, for the message.</param>
+    /// <exception cref="ObsWebSocketSerializationException">Thrown when the value cannot be serialized.</exception>
+    internal static JsonElement SerializeFreeForm<T>(
+        T value,
+        JsonTypeInfo<T> typeInfo,
+        string field
+    )
+    {
+        ArgumentNullException.ThrowIfNull(typeInfo);
+
+        try
+        {
+            return JsonSerializer.SerializeToElement(value, typeInfo);
+        }
+        catch (Exception ex)
+            when (ex is JsonException or NotSupportedException or InvalidOperationException)
+        {
+            throw new ObsWebSocketSerializationException(
+                $"Could not serialize {typeof(T).Name} for '{field}'.",
+                ex
+            );
+        }
+    }
+
     private static string NotRegistered<T>() =>
         $"Type '{typeof(T).Name}' is not registered in ObsWebSocketJsonContext. "
         + "Pass an explicit JsonTypeInfo<T> or use a library-registered settings type.";
