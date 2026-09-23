@@ -311,14 +311,21 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         catch (Exception ex) // Catches exceptions set on the TCS or cancellation
         {
             _logger.LogConnectasyncFailedToEstablishInitialConnection(ex);
-            // Ensure finalization happens if the TCS faulted, loop might still be running/cleaning up
-            if (
+
+            if (currentInitialConnectionTcs.Task.IsFaulted && loopTask is not null)
+            {
+                // The loop gave up and is finalizing on its own. Finalizing here as well raced it,
+                // and whichever got there first decided the reason Disconnected reported. Waiting
+                // also means Disconnected has been raised by the time this throws.
+                await loopTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+            else if (
                 _connectionState
                 is not ConnectionState.Disconnected
                     and not ConnectionState.Disconnecting
             )
             {
-                // Don't wait indefinitely, trigger finalize and let it run
+                // Timed out or cancelled while the loop may still be retrying: stop it here.
                 _ = FinalizeDisconnectionAsync(
                     WebSocketCloseStatus.InternalServerError,
                     "Initial connection failed.",
