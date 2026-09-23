@@ -18,6 +18,11 @@ generated_code = true
 
 # C# files
 [*.cs]
+# Formatting follows CSharpier; `dotnet csharpier check` enforces it in CI. These keys keep the IDE
+# formatter consistent with it, and IDE0055 is off because some layouts, such as a multi-line
+# constructor initializer before an empty body, cannot be expressed to it.
+dotnet_diagnostic.IDE0055.severity = none
+
 # New line preferences
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true
@@ -82,8 +87,8 @@ dotnet_naming_style.camel_case_underscore_style.capitalization = camel_case
 csharp_using_directive_placement = outside_namespace:suggestion
 dotnet_sort_system_directives_first = true
 csharp_prefer_braces = true:silent
-csharp_preserve_single_line_blocks = true:none
-csharp_preserve_single_line_statements = false:none
+csharp_preserve_single_line_blocks = true
+csharp_preserve_single_line_statements = false
 csharp_prefer_static_local_function = true:suggestion
 csharp_prefer_simple_using_statement = false:none
 csharp_style_prefer_switch_expression = true:suggestion
