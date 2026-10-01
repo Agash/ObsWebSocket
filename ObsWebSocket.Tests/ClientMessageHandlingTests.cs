@@ -326,6 +326,34 @@ public sealed class ClientMessageHandlingTests
         Assert.IsFalse(fake.Client.IsConnected);
     }
 
+    /// <summary>Keeps every log entry.</summary>
+    private sealed class RecordingLogs : ILoggerProvider, ILogger
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<(
+            LogLevel Level,
+            string Message
+        )> _entries = new();
+
+        public IEnumerable<(LogLevel Level, string Message)> Entries => _entries;
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        ) => _entries.Enqueue((logLevel, formatter(state, exception)));
+
+        public void Dispose() { }
+    }
+
     /// <summary>Holds the connection loop at the point it gives up, to force the race below.</summary>
     private sealed class StallOnGiveUp : ILoggerProvider, ILogger
     {
@@ -399,6 +427,25 @@ public sealed class ClientMessageHandlingTests
         Assert.IsFalse(fake.Client.IsConnected);
         _ = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
             fake.Client.General.GetVersionAsync()
+        );
+    }
+
+    [TestMethod]
+    [Timeout(TestTimeout)]
+    public async Task DisconnectAsync_WhileConnected_LogsNoConnectionLoss()
+    {
+        RecordingLogs logs = new();
+        await using FakeObsClient fake = await FakeObsClient.ConnectAsync(
+            ServerWithVersion(),
+            logging: logs
+        );
+
+        await fake.Client.DisconnectAsync();
+
+        Assert.IsFalse(fake.Client.IsConnected);
+        Assert.IsEmpty(
+            logs.Entries.Where(static e => e.Level >= LogLevel.Warning),
+            string.Join("; ", logs.Entries.Select(static e => e.Message))
         );
     }
 

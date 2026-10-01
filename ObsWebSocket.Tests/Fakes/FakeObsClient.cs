@@ -29,13 +29,25 @@ internal sealed class FakeObsClient : IAsyncDisposable
     /// <summary>Builds a client against <paramref name="server"/> without connecting it.</summary>
     /// <param name="server">The OBS to answer on the wire.</param>
     /// <param name="configure">Further client options.</param>
+    /// <param name="logging">Where the client logs; nowhere when null.</param>
     public static FakeObsClient Build(
         FakeObsServer server,
-        Action<ObsWebSocketClientOptions>? configure = null
+        Action<ObsWebSocketClientOptions>? configure = null,
+        ILoggerProvider? logging = null
     )
     {
         ServiceCollection services = new();
-        _ = services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
+        _ = services.AddLogging(builder =>
+        {
+            if (logging is null)
+            {
+                _ = builder.SetMinimumLevel(LogLevel.None);
+            }
+            else
+            {
+                _ = builder.ClearProviders().AddProvider(logging).SetMinimumLevel(LogLevel.Trace);
+            }
+        });
         _ = services.AddObsWebSocketClient(options =>
         {
             options.ServerUri = new Uri("ws://fake-obs:4455");
@@ -57,14 +69,16 @@ internal sealed class FakeObsClient : IAsyncDisposable
     /// <summary>Builds a client against <paramref name="server"/> and connects it.</summary>
     /// <param name="server">The OBS to answer on the wire.</param>
     /// <param name="configure">Further client options.</param>
+    /// <param name="logging">Where the client logs; nowhere when null.</param>
     /// <param name="cancellationToken">A token to cancel the connect.</param>
     public static async Task<FakeObsClient> ConnectAsync(
         FakeObsServer server,
         Action<ObsWebSocketClientOptions>? configure = null,
+        ILoggerProvider? logging = null,
         CancellationToken cancellationToken = default
     )
     {
-        FakeObsClient fake = Build(server, configure);
+        FakeObsClient fake = Build(server, configure, logging);
         await fake.Client.ConnectAsync(cancellationToken).ConfigureAwait(false);
         return fake;
     }

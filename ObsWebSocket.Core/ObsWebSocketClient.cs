@@ -1054,6 +1054,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                 attempt++;
                 bool isConnectedThisAttempt = false;
                 Exception? attemptException = null;
+                bool stopRequested = false;
                 ObsConnectionContext? connection = null;
 
                 try
@@ -1138,6 +1139,7 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                 {
                     _logger.LogConnectionLoopCanceledAttempt(attempt);
                     attemptException = ex;
+                    stopRequested = true;
                     _ = initialTcs.TrySetCanceled(loopToken); // Signal cancellation
                     break;
                 }
@@ -1232,7 +1234,8 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                             await connection.DisposeAsync().ConfigureAwait(false);
                         }
 
-                        if (isConnectedThisAttempt && attemptException != null)
+                        // A requested stop ends the connection; it is not a loss.
+                        if (isConnectedThisAttempt && attemptException != null && !stopRequested)
                         {
                             _logger.LogConnectionLostDuringConnectedStateDueTo(
                                 attemptException.GetType().Name
