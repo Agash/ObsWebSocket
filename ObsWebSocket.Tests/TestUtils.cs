@@ -40,6 +40,7 @@ internal static class TestUtils
     /// </summary>
     /// <param name="configureOptions">Optional action to configure client options.</param>
     /// <param name="existingSerializerMock">Optional existing serializer mock to reuse.</param>
+    /// <param name="timeProvider">The clock the client runs on; the system clock when null.</param>
     /// <returns>A tuple containing the client, mocked connection, mocked serializer, and mocked factory.</returns>
     /// <remarks>
     /// Mocks use MockBehavior.Strict, requiring explicit setups in tests for any interaction not covered by these defaults.
