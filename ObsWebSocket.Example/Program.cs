@@ -28,9 +28,6 @@ builder.Logging.AddConsole();
 
 // Configure OBS WebSocket Client options from "Obs" section in appsettings.json
 builder.Services.Configure<ObsWebSocketClientOptions>(builder.Configuration.GetSection("Obs"));
-builder.Services.Configure<ExampleValidationOptions>(
-    builder.Configuration.GetSection("ExampleValidation")
-);
 builder.Services.AddSingleton(
     new ExampleStartupCommandOptions
     {
