@@ -9,7 +9,7 @@ namespace ObsWebSocket.Core.Serialization;
 internal static partial class SerializerLog
 {
     [LoggerMessage(
-        EventId = 1,
+        EventId = 1000,
         Level = LogLevel.Error,
         Message = "JSON serialization failed for message with OpCode {OpCode}"
     )]
@@ -20,21 +20,21 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 2,
+        EventId = 1001,
         Level = LogLevel.Warning,
         Message = "Attempted to deserialize an empty message stream."
     )]
     public static partial void LogAttemptedToDeserializeAnEmptyMessageStream(this ILogger logger);
 
     [LoggerMessage(
-        EventId = 3,
+        EventId = 1002,
         Level = LogLevel.Warning,
         Message = "JSON deserialization resulted in null."
     )]
     public static partial void LogJsonDeserializationResultedInNull(this ILogger logger);
 
     [LoggerMessage(
-        EventId = 4,
+        EventId = 1003,
         Level = LogLevel.Trace,
         Message = "Deserialized JSON message: Op={Op}"
     )]
@@ -44,7 +44,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 5,
+        EventId = 1004,
         Level = LogLevel.Error,
         Message = "JSON deserialization failed. Raw JSON: {RawJson}"
     )]
@@ -55,7 +55,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 6,
+        EventId = 1005,
         Level = LogLevel.Error,
         Message = "Failed to deserialize message from stream."
     )]
@@ -65,7 +65,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 7,
+        EventId = 1006,
         Level = LogLevel.Warning,
         Message = "JSON Deserializer expected JsonElement payload but received {DataType} for {TargetType}."
     )]
@@ -76,7 +76,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 8,
+        EventId = 1007,
         Level = LogLevel.Error,
         Message = "JSON failed to deserialize payload to {TargetType}. Raw JSON: {Json}"
     )]
@@ -88,7 +88,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 9,
+        EventId = 1008,
         Level = LogLevel.Warning,
         Message = "JSON Deserializer expected JsonElement payload but received {DataType} for value type {TargetType}."
     )]
@@ -99,7 +99,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 10,
+        EventId = 1009,
         Level = LogLevel.Error,
         Message = "JSON failed to deserialize payload to value type {TargetType}. Raw JSON: {Json}"
     )]
@@ -111,7 +111,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 11,
+        EventId = 1010,
         Level = LogLevel.Error,
         Message = "MessagePack serialization failed for message with OpCode {OpCode}"
     )]
@@ -122,7 +122,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 12,
+        EventId = 1011,
         Level = LogLevel.Error,
         Message = "Unexpected error during MessagePack serialization for OpCode {OpCode}"
     )]
@@ -133,7 +133,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 13,
+        EventId = 1012,
         Level = LogLevel.Trace,
         Message = "Deserialized MessagePack message: Op={Op}"
     )]
@@ -143,7 +143,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 14,
+        EventId = 1013,
         Level = LogLevel.Error,
         Message = "MessagePack deserialization failed."
     )]
@@ -153,7 +153,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 15,
+        EventId = 1014,
         Level = LogLevel.Error,
         Message = "MessagePack failed to deserialize payload object to {TargetType}. Object Type: {ObjectType}"
     )]
@@ -165,7 +165,7 @@ internal static partial class SerializerLog
     );
 
     [LoggerMessage(
-        EventId = 16,
+        EventId = 1015,
         Level = LogLevel.Error,
         Message = "MessagePack failed to deserialize payload object to value type {TargetType}. Object Type: {ObjectType}"
     )]
