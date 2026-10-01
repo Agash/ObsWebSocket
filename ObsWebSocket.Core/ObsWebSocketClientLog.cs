@@ -1090,4 +1090,11 @@ internal static partial class ObsWebSocketClientLog
         string dataType,
         string rawData
     );
+
+    [LoggerMessage(
+        EventId = 119,
+        Level = LogLevel.Warning,
+        Message = "A callback registered on the client's lifetime threw while the client disconnected."
+    )]
+    public static partial void LogLifetimeCallbackFailed(this ILogger logger, Exception exception);
 }

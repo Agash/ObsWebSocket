@@ -145,6 +145,8 @@ public readonly partial struct InputsGroup
         catch (ObsWebSocketRequestException ex)
             when (ex.StatusCode is RequestStatusCode.ResourceNotFound)
         {
+            // Deliberately not logged: a source or filter that does not exist is this method's
+            // documented null result.
             return null;
         }
 

@@ -161,6 +161,8 @@ public static class BatchResultExtensions
         }
         catch (ObsWebSocketSerializationException)
         {
+            // Deliberately not logged: a result that is not this response type is what the Try
+            // pattern reports with false.
             data = null;
             return false;
         }

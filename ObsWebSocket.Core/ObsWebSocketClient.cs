@@ -1006,7 +1006,6 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                 CancellationToken.None
             )
             .ConfigureAwait(false);
-        GC.SuppressFinalize(this);
         _logger.LogDisposeasyncCompleted();
     }
 
@@ -1706,13 +1705,13 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
                     lifetimeCts.Cancel();
                 }
             }
-            catch { }
-
-            try
+            catch (AggregateException exception)
             {
-                lifetimeCts.Dispose();
+                // A callback registered on the client's lifetime threw; the client still disconnects.
+                _logger.LogLifetimeCallbackFailed(exception);
             }
-            catch { }
+
+            lifetimeCts.Dispose();
         }
 
         _connectionLoopTask = null;
@@ -2493,42 +2492,4 @@ public sealed partial class ObsWebSocketClient : IAsyncDisposable
         }
     }
     #endregion
-
-    #region Finalizer
-
-    /// <summary>
-    /// Finalizer for the ObsWebSocketClient class.
-    /// </summary>
-    ~ObsWebSocketClient()
-    {
-        if (
-            _connectionState != ConnectionState.Disconnected
-            || _connection != null
-            || _clientLifetimeCts != null
-        )
-        {
-            // Minimal cleanup attempts in finalizer (avoid logging)
-            try
-            {
-                _clientLifetimeCts?.Cancel();
-            }
-            catch { }
-
-            try
-            {
-                _clientLifetimeCts?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                _connection?.Close();
-            }
-            catch { }
-        }
-    }
-    #endregion
-
-    // ConnectionAttemptFailedException and AuthenticationFailureException were promoted to
-    // public top-level types in v0.3.1-dev3; their definitions now live in their own files.
 }

@@ -62,6 +62,8 @@ public readonly partial struct StreamGroup
         }
         catch (ObsWebSocketTimeoutException)
         {
+            // Deliberately not logged: no confirming event within the timeout is this method's
+            // documented null result.
             return null;
         }
     }
