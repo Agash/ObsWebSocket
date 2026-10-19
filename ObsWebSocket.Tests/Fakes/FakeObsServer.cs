@@ -24,6 +24,7 @@ internal sealed class FakeObsServer : IWebSocketConnection, IWebSocketConnection
     );
     private readonly List<string> _requests = [];
     private readonly List<Uri> _connectedTo = [];
+    private readonly List<Uri> _refusedTo = [];
     private readonly Lock _gate = new();
     private readonly ClientWebSocket _optionsCarrier = new();
     private ReadOnlyMemory<byte> _pending;
@@ -39,6 +40,18 @@ internal sealed class FakeObsServer : IWebSocketConnection, IWebSocketConnection
 
     /// <summary>Refuses every connection, as when OBS is not running.</summary>
     public bool RefuseConnections { get; set; }
+
+    /// <summary>The endpoints a connection was refused to, in order.</summary>
+    public IReadOnlyList<Uri> RefusedTo
+    {
+        get
+        {
+            using (_gate.EnterScope())
+            {
+                return [.. _refusedTo];
+            }
+        }
+    }
 
     /// <summary>The endpoints connected to, in order.</summary>
     public IReadOnlyList<Uri> ConnectedTo
@@ -139,6 +152,11 @@ internal sealed class FakeObsServer : IWebSocketConnection, IWebSocketConnection
     {
         if (RefuseConnections)
         {
+            using (_gate.EnterScope())
+            {
+                _refusedTo.Add(uri);
+            }
+
             throw new WebSocketException(WebSocketError.Faulted, "Connection refused.");
         }
 
