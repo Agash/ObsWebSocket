@@ -63,7 +63,7 @@
       PrivateAssets="all"
     />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Resilience" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Resilience" Version="10.11.0" />
     <PackageReference Include="MinVer" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
