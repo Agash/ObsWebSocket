@@ -170,9 +170,10 @@ public sealed class HostedReconfigurationTests
 
         await WaitUntilAsync(() => !harness.Client.IsConnected);
 
-        // A later change still gets through once OBS is back.
-        server.RefuseConnections = false;
+        // A later change still gets through once OBS is back. It is made while OBS still refuses, so the
+        // pending retry for the second address cannot connect first.
         harness.Change("ServerUri", "ws://third:4455");
+        server.RefuseConnections = false;
         await WaitUntilAsync(() => harness.Client.IsConnected);
         Assert.AreEqual(new Uri("ws://third:4455"), server.ConnectedTo[^1]);
 
