@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
@@ -7,6 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
+    <!-- A native executable ships no XML docs. The Compile-only AOT publish (dotnet/sdk#54515) also
+         never copies them into OutDir, where publish looks (MSB3030). -->
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
