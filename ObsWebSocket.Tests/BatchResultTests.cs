@@ -74,6 +74,49 @@ public sealed class BatchResultTests
     }
 
     [TestMethod]
+    public void GetRequiredData_SucceededWithoutPayload_ThrowsSerializationException()
+    {
+        RequestResponsePayload<object> result = JsonResult("GetVersion", null);
+
+        _ = Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+            result.GetRequiredData<GetVersionResponseData>()
+        );
+    }
+
+    [TestMethod]
+    public void GetData_PayloadOfAnotherShape_ThrowsSerializationException()
+    {
+        // A JSON array where an object is expected fails in the serializer, which is reported as
+        // this library's exception.
+        RequestResponsePayload<object> result = new(
+            "GetVersion",
+            "GetVersion_0",
+            Ok,
+            JsonDocument.Parse("[1, 2, 3]").RootElement.Clone()
+        );
+
+        ObsWebSocketSerializationException error =
+            Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+                result.GetData<GetVersionResponseData>()
+            );
+        Assert.IsInstanceOfType<JsonException>(error.InnerException);
+    }
+
+    [TestMethod]
+    public void GetData_TypeTheContextDoesNotKnow_ThrowsSerializationException()
+    {
+        RequestResponsePayload<object> result = JsonResult("GetVersion", TestUtils.SampleVersion());
+
+        ObsWebSocketSerializationException error =
+            Assert.ThrowsExactly<ObsWebSocketSerializationException>(() =>
+                result.GetData<UnregisteredResponse>()
+            );
+        Assert.IsNotNull(error.InnerException);
+    }
+
+    private sealed record UnregisteredResponse(string Name);
+
+    [TestMethod]
     public void GetRequiredData_FailedRequest_ThrowsCarryingStatus()
     {
         RequestResponsePayload<object> result = new(

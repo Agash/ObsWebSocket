@@ -111,6 +111,47 @@ public sealed class HostingTests
         await host.StopAsync(TestContext.CancellationTokenSource.Token);
     }
 
+    // A named client's check is named after it, so two clients' checks do not collide.
+    [TestMethod]
+    [DataRow(null, "obs-websocket")]
+    [DataRow("studio", "obs-websocket-studio")]
+    public void WithHealthCheck_DefaultName_FollowsTheClientName(string? key, string expected)
+    {
+        ServiceCollection services = new();
+        IObsWebSocketClientBuilder builder = key is null
+            ? services.AddObsWebSocketClient()
+            : services.AddObsWebSocketClient(key);
+
+        _ = builder.WithHealthCheck();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        HealthCheckServiceOptions options = provider
+            .GetRequiredService<IOptions<HealthCheckServiceOptions>>()
+            .Value;
+        Assert.AreEqual(expected, options.Registrations.Single().Name);
+    }
+
+    // Configure targets the builder's own client: the default options for the unnamed one, the
+    // named options for a named one.
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("studio")]
+    public void Configure_AppliesToThatClientsOptions(string? key)
+    {
+        ServiceCollection services = new();
+        IObsWebSocketClientBuilder builder = key is null
+            ? services.AddObsWebSocketClient()
+            : services.AddObsWebSocketClient(key);
+
+        _ = builder.Configure(o => o.ServerUri = new Uri("ws://configured:4455"));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ObsWebSocketClientOptions options = provider
+            .GetRequiredService<IOptionsMonitor<ObsWebSocketClientOptions>>()
+            .Get(key ?? Microsoft.Extensions.Options.Options.DefaultName);
+        Assert.AreEqual(new Uri("ws://configured:4455"), options.ServerUri);
+    }
+
     [TestMethod]
     public void Options_ResolveThroughTheMonitor_SoChangesAreSeen()
     {
