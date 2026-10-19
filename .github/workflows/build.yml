@@ -48,7 +48,7 @@ jobs:
         dotnet-version: |
           9.x
           10.x
-          11.0.100-rc.1.26425.128
+          11.0.x
 
     - name: Restore dependencies
       run: dotnet restore ObsWebSocket.sln
@@ -174,7 +174,7 @@ jobs:
       with:
         dotnet-version: |
           10.x
-          11.0.100-rc.1.26425.128
+          11.0.x
 
     - name: Restore for the AOT RID graph
       run: >
