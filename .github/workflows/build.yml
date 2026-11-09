@@ -43,7 +43,7 @@ jobs:
         fetch-depth: 0 # Required for MinVer to determine the version from Git history
 
     - name: Setup .NET SDKs
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
       with:
         dotnet-version: |
           9.x
@@ -170,7 +170,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
       with:
         dotnet-version: |
           10.x
@@ -245,7 +245,7 @@ jobs:
         path: ${{ env.NuGetDirectory }}
 
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
 
     - name: NuGet login
       uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
